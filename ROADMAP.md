@@ -4,7 +4,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 
 ## Como manter este arquivo
 
-- Marque `[x]` **somente** quando o item estiver implementado, testado (`vendor/bin/phpunit` passando) e commitado.
+- Marque `[x]` **somente** quando o item estiver implementado, **com testes** (`vendor/bin/phpunit` passando) e commitado. Toda feature deve vir acompanhada de testes; item sem teste fica `[~]`.
 - Use `[~]` para item em andamento e `[ ]` para item não iniciado.
 - Toda tarefa que conclui, inicia, adia, cria ou remove um item **atualiza este arquivo no mesmo commit** da mudança de código.
 - Ao terminar um item, anote a data (AAAA-MM-DD) ao final da linha. Ex.: `- [x] Migration 001_init.sql (2026-12-01)`.

@@ -15,6 +15,7 @@ Três superfícies: `/admin` (Embracore), `/gerente` (gerente) e `/tv/{token}` (
 3. **Isolamento entre condomínios é a regra de segurança nº 1.** Um gerente nunca pode ler ou alterar dados de condomínio ao qual não está vinculado. Veja a seção 6.
 4. **Não invente requisitos.** Se algo estiver ambíguo, implemente o mínimo coerente com este documento e o README, e registre a dúvida no final da sua resposta.
 5. **Mudanças pequenas e verificáveis.** Um assunto por vez, com testes.
+   **Toda feature deve vir acompanhada de testes**, no mesmo commit ou no mesmo conjunto de commits que a entrega. Feature sem teste não é considerada pronta, não vai para o push e não pode ser marcada como concluída no `ROADMAP.md`.
 6. **Commits frequentes e push por feature concluída.** Faça commit sempre que houver alterações (feature, correção ou atualização de código/documentação), com mensagem em português explicando o que foi feito. Faça `git push` sempre que uma feature for finalizada (testes passando).
 7. **`ROADMAP.md` sempre fiel ao código.** Ele é a fonte de verdade do progresso. Toda mudança que conclua, inicie, adie, adicione ou remova um item do projeto deve atualizar o `ROADMAP.md` **no mesmo commit** do código. Só marque `[x]` o que estiver implementado, testado e commitado; use `[~]` para em andamento. Antes de começar uma tarefa, confira no `ROADMAP.md` onde ela se encaixa; se não estiver listada, não invente: registre a dúvida (princípio 4) e, se o escopo realmente mudar, atualize `README.md`, `AGENTS.md` e `ROADMAP.md` juntos.
 
@@ -159,7 +160,9 @@ A tela da TV deve funcionar bem no navegador de um Fire Stick (Silk ou Fully Kio
 
 ## 9. Testes
 
-- Todo código novo de regra de negócio, Repository e autorização deve vir com teste.
+- **Toda feature nova vem acompanhada de testes**, sem exceção: regra de negócio, Repository, Controller/rota, autorização, validação de entrada, upload, endpoint da TV e comando de `bin/`. Correção de bug também ganha um teste que falha antes da correção e passa depois.
+- Os testes cobrem o caminho feliz **e** os casos de erro e de borda (entrada inválida, permissão negada, recurso inexistente, período expirado, etc.).
+- Se algo for realmente impossível de testar automaticamente (ex.: comportamento no Fire Stick físico), registre no `ROADMAP.md` como item de teste manual e descreva o que foi verificado, em vez de omitir o teste.
 - **Testes de isolamento de tenant são obrigatórios** para qualquer recurso por condomínio. Cenário padrão: usuário gerente A tenta ler/editar/excluir recurso do condomínio de B (por ID direto) e deve receber `404`/negado, sem alteração no banco.
 - Teste de autorização por papel nas rotas `/admin` e `/gerente`.
 - Teste do endpoint da TV: token válido retorna só avisos ativos e dentro do período; token inválido retorna `404`.
@@ -180,7 +183,7 @@ php bin/cron.php                         # executa o agendador uma vez
 
 Uma tarefa só está concluída quando:
 1. O código segue as convenções e a separação de camadas deste documento.
-2. Há testes cobrindo a mudança, incluindo isolamento de tenant quando aplicável.
+2. A feature tem testes automatizados cobrindo a mudança (caminho feliz e erros), incluindo isolamento de tenant quando aplicável. Sem testes, a tarefa não está pronta.
 3. `vendor/bin/phpunit` passa.
 4. Migrations novas são aditivas e aplicam do zero e sobre o estado anterior.
 5. Nenhum segredo, token ou senha foi commitado.
