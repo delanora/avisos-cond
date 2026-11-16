@@ -85,7 +85,9 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [ ] Firewall da VM liberando a porta HTTP apenas para o IP do proxy
 - [ ] Teste: rate limit enxerga o IP real do cliente (não o do proxy)
 - [ ] Rotina de backup (pg_dump + `/storage/uploads`)
-- [ ] Teste em hardware real (mini PC com Chromium kiosk e TV)
+- [ ] Teste em hardware real: **Fire Stick (Fire OS) com Fully Kiosk Browser e com Silk** (dispositivo principal), incluindo service worker offline, vídeo MP4 H.264, abertura após reinício e proteção de tela desativada
+- [ ] Teste em hardware real: mini PC com Chromium kiosk (opção secundária)
+- [ ] Validar o passo a passo de instalação do Fire Stick no README e ajustá-lo conforme o que for observado
 - [ ] README atualizado com o que foi entregue
 
 ## Fase 2 — Operação e gestão
@@ -126,6 +128,8 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: vínculos do gerente lidos do banco a cada requisição (sem cache em sessão).
 - 2026-11-16: cobrança removida do projeto (sem Asaas/webhook). Financeiro será só visualização + bloqueio manual pelo superadmin.
 - 2026-11-16: TLS e roteamento em Nginx proxy reverso externo (compartilhado); VM com Nginx + PHP-FPM recebendo HTTP só do proxy. Apache descartado (mídia via `X-Accel-Redirect`).
+- 2026-11-16: dispositivo principal de exibição = Amazon Fire TV Stick (Fire OS). Mini PC e smart TV continuam como alternativas.
+- Pendente: confirmar no hardware real se Fully Kiosk Browser (licença paga para alguns recursos) é necessário ou se o Silk basta.
 - Pendente: IP do proxy reverso (substitui `IP_DO_PROXY` na configuração).
 - Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
 - Pendente: biblioteca de envio de e-mail (SMTP/PHPMailer) — exige justificativa por causa da regra de dependências.

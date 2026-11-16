@@ -4,7 +4,7 @@ Instruções para agentes de código que trabalham neste repositório. Leia este
 
 ## 1. Contexto do projeto
 
-**Avisos-Cond** é um mural digital de avisos para condomínios. O gerente cadastra avisos; uma TV/mini PC no elevador os exibe via navegador. A Embracore (fornecedor) administra gerentes, condomínios, dispositivos e a situação financeira (apenas visualização e bloqueio manual; a cobrança é feita em um sistema à parte).
+**Avisos-Cond** é um mural digital de avisos para condomínios. O gerente cadastra avisos; uma TV no elevador os exibe via navegador. O dispositivo principal é o **Amazon Fire TV Stick (Fire OS)**; mini PC com Chromium e outros dispositivos também são suportados. A Embracore (fornecedor) administra gerentes, condomínios, dispositivos e a situação financeira (apenas visualização e bloqueio manual; a cobrança é feita em um sistema à parte).
 
 Três superfícies: `/admin` (Embracore), `/gerente` (gerente) e `/tv/{token}` (exibição pública por token).
 
@@ -146,6 +146,16 @@ Regras de camada:
 - **Offline e relógio do dispositivo:** sem internet, a TV não consegue perguntar ao servidor o que está ativo; ela usa a lista em cache e decide o que exibir pelo relógio local. Por isso o JSON de `/tv/{token}/state` deve incluir, em cada aviso, `inicio_em` e `fim_em` (UTC, ISO 8601) e, no topo, `server_time`. O JS calcula `deslocamento = server_time - Date.now()` a cada resposta bem-sucedida e usa `Date.now() + deslocamento` para filtrar os avisos: o que venceu durante a queda sai da tela e o agendado entra no horário certo. Isso protege contra mini PCs com relógio errado (sem NTP/bateria de BIOS). Se nunca houve resposta do servidor, usa o relógio local sem correção.
 - Avisos do tipo `urgente` têm prioridade e destaque em tela cheia.
 - Não use WebSocket/SSE no PHP-FPM: ele prende workers. Polling é a decisão de arquitetura.
+
+### Dispositivo principal: Fire Stick (Fire OS)
+A tela da TV deve funcionar bem no navegador de um Fire Stick (Silk ou Fully Kiosk Browser), que tem pouca memória e processamento. Regras para o front da TV:
+- **Leve:** poucas dependências de JS, sem animações pesadas, sem recursos que cresçam indefinidamente na memória. HTMX/Alpine só onde forem realmente necessários na tela da TV.
+- **Compatibilidade:** não use recursos de JS/CSS muito recentes sem fallback; a versão do motor do navegador varia conforme o modelo e a versão do Fire OS. Valide em um Fire Stick real.
+- **Layout:** pensado para 1920×1080 (16:9), tipografia grande e margens de segurança, pois algumas TVs cortam as bordas (overscan).
+- **Vídeo:** MP4 com H.264 + AAC, até 1080p e 30 fps, sem depender de recursos como Picture-in-Picture. Vídeos curtos e leves; o gerente deve ser orientado sobre isso no upload.
+- **Sem interação:** a TV não depende de clique ou toque. A única interação é o gerente digitar a URL com o controle remoto na instalação, por isso o token curto (seção 6.8).
+- **Service worker** e cache offline (seção 8) devem ser testados no navegador do Fire Stick, não só no Chromium do desktop.
+- O comportamento em mini PC (Chromium kiosk) continua suportado e não deve ser quebrado.
 
 ## 9. Testes
 

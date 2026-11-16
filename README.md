@@ -1,6 +1,6 @@
 # Avisos-Cond
 
-Sistema de **mural digital de avisos para condomínios**. O gerente cadastra os avisos em um painel web e eles são exibidos automaticamente em uma TV ou mini PC instalado no elevador (ou na portaria) de cada condomínio.
+Sistema de **mural digital de avisos para condomínios**. O gerente cadastra os avisos em um painel web e eles são exibidos automaticamente em uma TV instalada no elevador (ou na portaria) de cada condomínio. O dispositivo principal é o **Amazon Fire TV Stick (Fire OS)** ligado à TV; mini PC com Chromium e outros dispositivos também são suportados.
 
 Desenvolvido e operado pela **Embracore** como serviço para gerentes que administram um ou vários condomínios.
 
@@ -19,7 +19,7 @@ Existem três "superfícies" no sistema:
                               ├──► PostgreSQL ◄── cron.php (agendador)
  Embracore ─► Painel /admin ──┘        ▲
                                        │ polling (version)
- TV / mini PC (Chromium kiosk) ──► /tv/{token}
+ TV + Fire Stick (Fire OS) ou mini PC ──► /tv/{token}
 ```
 
 ## Funcionalidades
@@ -37,7 +37,7 @@ Existem três "superfícies" no sistema:
 ### Painel Embracore
 - CRUD de usuários gerentes e de usuários administradores.
 - CRUD de condomínios e vínculo gerente ↔ condomínios (N:N).
-- Gestão de dispositivos (TVs/mini PCs): geração de token e último ping (MVP); código de pareamento e painel de status online/offline (Fase 2).
+- Gestão de dispositivos (Fire Sticks, mini PCs e outras TVs): geração de token e último ping (MVP); código de pareamento e painel de status online/offline (Fase 2).
 - Situação financeira por condomínio: **somente visualização** (situação, valor, vencimento, observações cadastrados manualmente) e **bloqueio/desbloqueio manual** da exibição (a TV passa a mostrar somente o relógio). A cobrança em si (boletos, Pix, faturas) é feita em um sistema à parte, fora deste projeto.
 - Log de auditoria (quem fez o quê) e acesso de suporte como gerente (com registro).
 
@@ -229,14 +229,24 @@ O `cron.php` publica/expira avisos agendados e, na Fase 2, marca dispositivos of
 ## Instalando a tela no condomínio
 
 1. No painel Embracore, cadastre o dispositivo e copie a URL `https://avisos.exemplo.com.br/tv/{token}`.
-2. **Mini PC (Linux)**: Chromium em modo kiosk iniciado no boot:
+2. **Fire Stick, Amazon Fire TV (Fire OS), opção principal**:
+   1. Conecte o Fire Stick à TV e à rede, e entre com a conta Amazon da Embracore.
+   2. Instale um navegador pela Appstore da Amazon. Duas opções:
+      - **Fully Kiosk Browser** (recomendado para produção): permite definir a URL inicial, manter a tela sempre ligada e abrir sozinho ao ligar o aparelho. Alguns recursos de quiosque exigem licença paga.
+      - **Amazon Silk** (navegador padrão, gratuito): abra a URL e deixe em tela cheia. Não tem modo quiosque de verdade, então não abre sozinho após reiniciar.
+   3. Digite a URL `https://avisos.exemplo.com.br/tv/{token}` com o controle remoto. O token tem só 12 caracteres justamente para facilitar essa digitação. Salve como página inicial (Fully Kiosk: "Start URL").
+   4. Em **Configurações → Preferências → Proteção de tela**, desative a proteção de tela e o modo ambiente; em **Tela e sons**, desative o desligamento automático da tela. Desative também as atualizações automáticas de apps no horário de exibição.
+   5. Se possível, ligue o Fire Stick numa tomada fixa (não na USB da TV, que desliga junto) e use um cabo HDMI estável.
+3. **Mini PC (Linux)**: Chromium em modo kiosk iniciado no boot:
    ```bash
    chromium --kiosk --noerrdialogs --disable-infobars \
             --autoplay-policy=no-user-gesture-required \
             "https://avisos.exemplo.com.br/tv/{token}"
    ```
-3. **Smart TV**: abra a URL no navegador da TV, ou prefira um Fire Stick/Chromecast/mini PC, que costumam ser mais confiáveis que o navegador nativo.
-4. Desative suspensão de tela e economia de energia do dispositivo.
+4. **Smart TV**: abra a URL no navegador da TV. O navegador nativo costuma ser menos confiável que um Fire Stick ou mini PC; use só se não houver alternativa.
+5. Em qualquer dispositivo, desative suspensão de tela e economia de energia.
+
+> A configuração do Fire Stick acima ainda precisa ser validada em hardware real (ver `ROADMAP.md`, item 1.8).
 
 ## Roadmap
 
