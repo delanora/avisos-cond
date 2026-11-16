@@ -10,7 +10,7 @@ Desenvolvido e operado pela **Embracore** como serviço para gerentes que admini
 
 Existem três "superfícies" no sistema:
 
-1. **Painel Embracore** (`/admin`): uso interno do fornecedor. Gestão de gerentes, condomínios, dispositivos, planos e faturamento.
+1. **Painel Embracore** (`/admin`): uso interno do fornecedor. Gestão de gerentes, condomínios, dispositivos e situação financeira (somente visualização e bloqueio manual).
 2. **Painel do Gerente** (`/gerente`): o gerente vê apenas os condomínios aos quais está vinculado e gerencia os avisos de cada um.
 3. **Tela de exibição (TV)** (`/tv/{token}`): página pública, sem login, identificada por um token único por dispositivo. Mostra os avisos ativos em tela cheia, em rotação.
 
@@ -38,7 +38,7 @@ Existem três "superfícies" no sistema:
 - CRUD de usuários gerentes e de usuários administradores.
 - CRUD de condomínios e vínculo gerente ↔ condomínios (N:N).
 - Gestão de dispositivos (TVs/mini PCs): geração de token e último ping (MVP); código de pareamento e painel de status online/offline (Fase 2).
-- Planos, assinaturas e faturas por condomínio; painel de faturamento e inadimplência; suspensão automática da exibição (a TV passa a mostrar somente o relógio).
+- Situação financeira por condomínio: **somente visualização** (situação, valor, vencimento, observações cadastrados manualmente) e **bloqueio/desbloqueio manual** da exibição (a TV passa a mostrar somente o relógio). A cobrança em si (boletos, Pix, faturas) é feita em um sistema à parte, fora deste projeto.
 - Log de auditoria (quem fez o quê) e acesso de suporte como gerente (com registro).
 
 ### Tela de exibição
@@ -60,7 +60,6 @@ Existem três "superfícies" no sistema:
 - **Composer** apenas para autoload PSR-4 e as poucas bibliotecas acima
 - **Migrations** em arquivos `.sql` numerados, aplicados por `bin/migrate.php`
 - **Cron** do sistema chamando `bin/cron.php` a cada minuto
-- Cobrança via **Asaas** (boleto/Pix) com webhook
 
 Filosofia: poucas dependências, código explícito e fácil de auditar.
 
@@ -69,9 +68,9 @@ Filosofia: poucas dependências, código explícito e fácil de auditar.
 ```
 /public              front controller (index.php), assets, service worker
 /src
-  /Controllers       Admin, Gerente, Tv, Webhook
+  /Controllers       Admin, Gerente, Tv
   /Repositories      acesso ao banco (todo o SQL fica aqui)
-  /Services          Auth, Billing, Scheduler, Upload, Audit
+  /Services          Auth, Scheduler, Upload, Audit
   /Middleware        Auth, Role, Csrf, RateLimit
   /Support           helpers (Config, Db, Session, Response)
 /templates           Twig (admin, gerente, tv, layouts)
@@ -94,13 +93,12 @@ README.md
 ## Modelo de dados (resumo)
 
 - `usuarios` (id, nome, email, senha_hash, papel, ativo)
-- `condominios` (id, nome, endereco, logo, cor_primaria, cor_secundaria, ativo, suspenso_ate); logo e cores nulas = padrão Embracore
+- `condominios` (id, nome, endereco, logo, cor_primaria, cor_secundaria, ativo, bloqueado, bloqueio_motivo); logo e cores nulas = padrão Embracore. `bloqueado` é definido manualmente pelo admin.
 - `usuario_condominio` (usuario_id, condominio_id), relação N:N
 - `avisos` (id, condominio_id, titulo, corpo, tipo, midia, inicio_em, fim_em, recorrencia, ativo, criado_por); cada aviso pertence a um único condomínio
 - `modelos_aviso` (modelos prontos de aviso)
 - `dispositivos` (id, condominio_id, nome, token, ultimo_ping, ativo; `codigo_pareamento` na Fase 2)
-- `planos`, `assinaturas`, `faturas`
-- `asaas_eventos` (ID do evento já processado, para idempotência do webhook)
+- `condominio_financeiro` (condominio_id, situacao, valor_mensal em centavos, dia_vencimento, observacoes): informação financeira cadastrada manualmente, só para consulta
 - `password_resets` (usuario_id, token_hash, expira_em, usado_em)
 - `rate_limits` (contadores de tentativas de login, recuperação de senha e token de TV inválido)
 - `auditoria` (usuario_id, acao, entidade, entidade_id, dados, criado_em)
@@ -151,8 +149,6 @@ MAIL_USER=
 MAIL_PASS=
 MAIL_FROM=
 
-ASAAS_API_KEY=
-ASAAS_WEBHOOK_TOKEN=
 ```
 
 ## Deploy (produção)
@@ -193,7 +189,7 @@ server {
 * * * * * www-data php /var/www/avisos-cond/bin/cron.php >> /var/www/avisos-cond/storage/logs/cron.log 2>&1
 ```
 
-O `cron.php` publica/expira avisos agendados e, nas fases seguintes, marca dispositivos offline, gera faturas e suspende condomínios inadimplentes. Não pode haver duas execuções simultâneas (usa lock) e todas as tarefas são idempotentes.
+O `cron.php` publica/expira avisos agendados e, na Fase 2, marca dispositivos offline. Não pode haver duas execuções simultâneas (usa lock) e todas as tarefas são idempotentes.
 
 **Backup**: `pg_dump` diário do banco e cópia de `/storage/uploads`.
 
@@ -215,11 +211,11 @@ Resumo abaixo. O detalhamento item a item e o status real de cada um ficam em [`
 
 - **MVP**: login com rate limit, recuperação de senha, CRUD de condomínios, gerentes e avisos, personalização visual (logo/cores), dispositivos (cadastro, token e heartbeat), tela da TV com rotação e cache offline.
 - **Fase 2**: painel de status online/offline dos dispositivos, agendamento avançado, auditoria, pareamento por código.
-- **Fase 3**: faturamento (Asaas), suspensão automática (TV mostra só o relógio), widget de clima, notificações externas (WhatsApp/e-mail), perfil zelador.
+- **Fase 3**: situação financeira (visualização e bloqueio manual; TV bloqueada mostra só o relógio), widget de clima, notificações externas (WhatsApp/e-mail), perfil zelador.
 
 ## Segurança
 
-Resumo das regras (detalhes em `AGENTS.md`): isolamento rigoroso entre condomínios (tenants), Argon2id para senhas, CSRF em todo POST, escape de saída por padrão, validação de uploads por MIME real (somente imagens e vídeo), webhooks autenticados e idempotentes, rate limit em login, recuperação de senha e token de TV.
+Resumo das regras (detalhes em `AGENTS.md`): isolamento rigoroso entre condomínios (tenants), Argon2id para senhas, CSRF em todo POST, escape de saída por padrão, validação de uploads por MIME real (somente imagens e vídeo), rate limit em login, recuperação de senha e token de TV.
 
 ## Licença
 

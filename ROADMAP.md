@@ -95,13 +95,15 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [ ] QR code opcional no aviso
 - [ ] Auditoria (tabela `auditoria`, registro de ações) e modo suporte do superadmin como gerente
 
-## Fase 3 — Faturamento e extras
+## Fase 3 — Financeiro (visualização e bloqueio manual) e extras
 
-- [ ] Planos, assinaturas e faturas por condomínio
-- [ ] Integração Asaas (boleto/Pix) e webhook idempotente (`asaas_eventos`)
-- [ ] Geração de faturas no cron (idempotente)
-- [ ] Painel de faturamento e inadimplência
-- [ ] Suspensão automática com período de tolerância (TV mostra só o relógio)
+A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para consulta e bloqueio manual.
+
+- [ ] Migration `condominio_financeiro` (situação, valor mensal, dia de vencimento, observações) e campos `bloqueado`/`bloqueio_motivo` em `condominios`
+- [ ] Painel `/admin` de situação financeira por condomínio (listagem, filtros por situação, edição manual)
+- [ ] Bloqueio/desbloqueio manual da exibição, com motivo e registro na auditoria
+- [ ] TV de condomínio bloqueado mostra somente o relógio
+- [ ] Testes: financeiro restrito ao superadmin (gerente → negado) e TV bloqueada sem avisos
 - [ ] Widget de clima
 - [ ] Notificações externas (WhatsApp/e-mail)
 - [ ] Perfil zelador
@@ -112,10 +114,13 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - PDF e SVG em uploads
 - Widget de aniversariantes (LGPD)
 - Integração n8n (adiada; reavaliar no futuro)
+- Cobrança dentro do sistema: Asaas, boletos, Pix, faturas, webhooks e suspensão automática por inadimplência (cobrança fica em sistema à parte)
 - WebSocket/SSE no PHP (polling é a arquitetura)
 
 ## Decisões e pendências
 
 - 2026-11-16: token da TV com 12 caracteres (~60 bits) compensado por rate limit por IP.
 - 2026-11-16: vínculos do gerente lidos do banco a cada requisição (sem cache em sessão).
+- 2026-11-16: cobrança removida do projeto (sem Asaas/webhook). Financeiro será só visualização + bloqueio manual pelo superadmin.
+- Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
 - Pendente: biblioteca de envio de e-mail (SMTP/PHPMailer) — exige justificativa por causa da regra de dependências.

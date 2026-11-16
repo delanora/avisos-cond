@@ -4,7 +4,7 @@ Instruções para agentes de código que trabalham neste repositório. Leia este
 
 ## 1. Contexto do projeto
 
-**Avisos-Cond** é um mural digital de avisos para condomínios. O gerente cadastra avisos; uma TV/mini PC no elevador os exibe via navegador. A Embracore (fornecedor) administra gerentes, condomínios, dispositivos e faturamento.
+**Avisos-Cond** é um mural digital de avisos para condomínios. O gerente cadastra avisos; uma TV/mini PC no elevador os exibe via navegador. A Embracore (fornecedor) administra gerentes, condomínios, dispositivos e a situação financeira (apenas visualização e bloqueio manual; a cobrança é feita em um sistema à parte).
 
 Três superfícies: `/admin` (Embracore), `/gerente` (gerente) e `/tv/{token}` (exibição pública por token).
 
@@ -37,7 +37,7 @@ Bibliotecas adicionais permitidas somente se pequenas, mantidas e realmente nece
 /src
   /Controllers     recebem a requisição, validam entrada, chamam Services/Repositories, devolvem resposta
   /Repositories    TODO o SQL do sistema mora aqui, e só aqui
-  /Services        regras de negócio (Auth, Billing, Scheduler, Upload, Audit)
+  /Services        regras de negócio (Auth, Scheduler, Upload, Audit)
   /Middleware      Auth, Role, Csrf, RateLimit
   /Support         Config, Db, Session, Response, Validator
 /templates         Twig
@@ -69,7 +69,7 @@ Regras de camada:
 - O `condominio_id` **nunca** é confiável quando vem do request (form, query, JSON).
 - No contexto do gerente, a lista de condomínios permitidos é lida **do banco** (tabela `usuario_condominio`) a **cada requisição** em `/gerente/*`, nunca do cliente e nunca de cache na sessão. Assim, um vínculo removido pelo admin vale imediatamente. O custo é uma consulta indexada por chave, desprezível.
 - Cada aviso pertence a **um único** condomínio. O gerente cria avisos individualmente para cada condomínio; não existe publicação em lote para vários condomínios.
-- Todo método de Repository que acessa dados de condomínio recebe os IDs permitidos e usa `WHERE condominio_id = ANY(:ids)` (ou equivalente). Não existe consulta de `avisos`, `dispositivos`, `faturas` etc. sem esse filtro no contexto do gerente.
+- Todo método de Repository que acessa dados de condomínio recebe os IDs permitidos e usa `WHERE condominio_id = ANY(:ids)` (ou equivalente). Não existe consulta de `avisos`, `dispositivos`, `condominio_financeiro` etc. sem esse filtro no contexto do gerente.
 - Ao receber um ID de recurso (`/gerente/avisos/42/editar`), verifique que o recurso pertence a um condomínio permitido **antes** de qualquer leitura ou escrita. Resposta para recurso fora do escopo: `404`.
 - Toda funcionalidade nova que toque dados por condomínio **precisa** de teste de isolamento (veja seção 9).
 
@@ -105,19 +105,21 @@ Regras de camada:
 - Armazene em `/storage/uploads`, **fora** do webroot. Sirva por rota autenticada/controlada ou por `X-Accel-Redirect` (Nginx `internal`). Para a TV, a mídia é servida por `/tv/{token}/media/{id}` (ver 6.8).
 - Nunca execute nem inclua arquivo enviado.
 
-### 6.7 Webhooks e integrações
-- Webhook do Asaas: valide o token configurado, trate de forma **idempotente** (guarde o ID do evento processado) e responda rápido.
+### 6.7 Integrações e financeiro
+- Não há integração de cobrança (Asaas ou outra) e não há webhooks: a cobrança é feita em um sistema à parte. O módulo financeiro deste projeto só **exibe** a situação do condomínio e permite **bloquear/desbloquear manualmente** a exibição.
+- O módulo financeiro é restrito ao `superadmin`; gerentes não têm acesso a dados financeiros. Todo bloqueio/desbloqueio e toda edição financeira são registrados na auditoria (com motivo).
+- Se uma integração externa for adicionada no futuro, registre a decisão no `ROADMAP.md` e siga as regras abaixo.
 - Segredos somente em `.env` (nunca no repositório, nunca em log).
 - Chamadas externas com timeout definido.
 
 ### 6.8 Tela da TV (`/tv/{token}`)
 - O "login" da TV/mini PC é feito **somente pela URL com token** (`/tv/{token}`), sem usuário e senha. O token precisa ser curto o bastante para ser digitado no dispositivo: **12 caracteres** aleatórios (~60 bits), gerados com `random_int` a partir de um alfabeto de 32 símbolos sem caracteres ambíguos (sem `0 O 1 I L`), único por dispositivo, revogável. Por ser mais curto que o ideal, a segurança depende também do rate limit abaixo.
 - Rate limit por IP para tokens inválidos em `/tv/*` (bloqueio temporário com `429`), para impedir adivinhação por força bruta.
-- A rota expõe **somente** os avisos ativos do condomínio do dispositivo. Nenhum dado de gerentes, faturas ou outros condomínios.
+- A rota expõe **somente** os avisos ativos do condomínio do dispositivo. Nenhum dado de gerentes, financeiro ou outros condomínios.
 - Token inválido ou dispositivo inativo: resposta `404` sem detalhes.
 - **Mídias da TV**: o Nginx serve `/media/` como `internal`, então a TV nunca acessa o arquivo direto. Ela pede `/tv/{token}/media/{id}`; o controller valida o token, confere que a mídia pertence a um aviso ativo do condomínio do dispositivo e responde com `X-Accel-Redirect`.
 - **Token em logs e Referrer**: o token aparece na URL, então (a) configure o Nginx para mascarar o token no `access_log` das rotas `/tv/`, (b) nunca registre o token em logs da aplicação, e (c) envie `Referrer-Policy: no-referrer` nessas rotas.
-- **Condomínio suspenso por inadimplência** (ou dispositivo cuja assinatura esteja suspensa): a TV mostra **somente o relógio com o horário atual**, sem avisos e sem anúncios.
+- **Condomínio bloqueado manualmente** pelo superadmin (`condominios.bloqueado`): a TV mostra **somente o relógio com o horário atual**, sem avisos e sem anúncios.
 - **Aparência**: a TV usa a logo e o esquema de cores definidos pelo gerente para o condomínio; se não houver seleção, usa a logo e as cores padrão da Embracore.
 
 ## 7. Banco de dados e migrations
@@ -194,9 +196,9 @@ Uma tarefa só está concluída quando:
 7. Dispositivos: cadastro, token e heartbeat (`ultimo_ping`). O painel de status online/offline fica para a Fase 2.
 8. `bin/cron.php`: publicação/expiração de avisos. A detecção de dispositivos offline entra na Fase 2.
 9. Recuperação de senha e personalização visual do condomínio (logo e cores) podem ser feitas junto dos passos 3 e 5.
-10. Auditoria, faturamento (Asaas) e demais itens das fases 2 e 3.
+10. Auditoria, situação financeira (visualização e bloqueio manual) e demais itens das fases 2 e 3.
 
 ### Cron (`bin/cron.php`)
 - Roda a cada minuto, então **nunca pode haver duas execuções simultâneas**: use `flock` num arquivo de lock ou `pg_try_advisory_lock` e encerre silenciosamente se não obtiver o lock.
-- Todas as tarefas devem ser **idempotentes** (ex.: geração de faturas não pode duplicar a fatura do mesmo período; publicar/expirar aviso já tratado não faz nada).
+- Todas as tarefas devem ser **idempotentes** (ex.: publicar/expirar aviso já tratado não faz nada; marcar um dispositivo como offline mais de uma vez não duplica registros).
 - Falha em uma tarefa é registrada em log e não impede as demais.
