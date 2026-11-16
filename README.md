@@ -93,9 +93,9 @@ README.md
 ## Modelo de dados (resumo)
 
 - `usuarios` (id, nome, email, senha_hash, papel, ativo)
-- `condominios` (id, nome, endereco, logo, cor_primaria, cor_secundaria, ativo, bloqueado, bloqueio_motivo); logo e cores nulas = padrão Embracore. `bloqueado` é definido manualmente pelo admin.
+- `condominios` (id, nome, endereco, logo, cor_primaria, cor_secundaria, ativo; `bloqueado` e `bloqueio_motivo` na Fase 3); logo e cores nulas = padrão Embracore. `bloqueado` é definido manualmente pelo admin.
 - `usuario_condominio` (usuario_id, condominio_id), relação N:N
-- `avisos` (id, condominio_id, titulo, corpo, tipo, midia, inicio_em, fim_em, recorrencia, ativo, criado_por); cada aviso pertence a um único condomínio
+- `avisos` (id, condominio_id, titulo, corpo, tipo, midia, midia_tipo, inicio_em, fim_em, ativo, criado_por; `recorrencia` na Fase 2); cada aviso pertence a um único condomínio
 - `modelos_aviso` (modelos prontos de aviso)
 - `dispositivos` (id, condominio_id, nome, token, ultimo_ping, ativo; `codigo_pareamento` na Fase 2)
 - `condominio_financeiro` (condominio_id, situacao, valor_mensal em centavos, dia_vencimento, observacoes): informação financeira cadastrada manualmente, só para consulta
@@ -121,7 +121,7 @@ git clone <repo> avisos-cond && cd avisos-cond
 composer install
 cp .env.example .env          # ajuste as variáveis
 createdb avisos_cond          # ou crie o banco/usuário manualmente
-php bin/migrate.php           # aplica as migrations
+php bin/migrate.php           # aplica as migrations pendentes (idempotente)
 php bin/create-admin.php      # cria o primeiro superadmin
 php -S 127.0.0.1:8080 -t public public/index.php
 ```
@@ -148,6 +148,11 @@ MAIL_PORT=587
 MAIL_USER=
 MAIL_PASS=
 MAIL_FROM=
+
+# Opcional: usuário com permissão de DDL só para as migrations (em produção,
+# o usuário da aplicação não deve ter DDL).
+MIGRATE_DB_USER=
+MIGRATE_DB_PASS=
 
 ```
 

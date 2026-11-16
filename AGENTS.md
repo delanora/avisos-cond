@@ -134,7 +134,8 @@ Regras de camada:
 
 - Migrations em `/migrations/NNN_descricao.sql`, numeradas com 3 dígitos, em ordem.
 - **Nunca edite uma migration já aplicada.** Para corrigir, crie uma nova.
-- `bin/migrate.php` registra versões aplicadas na tabela `schema_migrations` e executa cada arquivo numa transação.
+- `bin/migrate.php` registra versões e o checksum de cada arquivo na tabela `schema_migrations` e executa cada arquivo numa transação, com lock para evitar execuções simultâneas. Se uma migration já aplicada for alterada, a execução é interrompida. Para usar um usuário com permissão de DDL, defina `MIGRATE_DB_USER` e `MIGRATE_DB_PASS` no `.env`.
+- Testes que usam o banco herdam de `Tests\DatabaseTestCase`, que recria o schema do banco `*_test` antes de cada teste e se recusa a rodar em banco que não termine em `_test`.
 - Chaves primárias `bigint generated always as identity`. Chaves estrangeiras com `ON DELETE` explícito. Índices em colunas de filtro (`condominio_id`, `inicio_em`, `fim_em`, `token`).
 - Constraints no banco (NOT NULL, UNIQUE, CHECK) além da validação na aplicação.
 

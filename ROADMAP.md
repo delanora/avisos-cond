@@ -11,7 +11,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 - Decisões que mudam o escopo vão para "Decisões e pendências" ao final, com data.
 - Não invente itens: o escopo vem do `README.md` e do `AGENTS.md`. Se o escopo mudar, atualize os três arquivos juntos.
 
-**Status atual:** Fase 1 em andamento. Bloco 1.1 (estrutura base) concluído; próximo: 1.2 (banco de dados).
+**Status atual:** Fase 1 em andamento. Blocos 1.1 (estrutura base) e 1.2 (banco de dados) concluídos; próximo: 1.3 (autenticação e segurança).
 
 ---
 
@@ -37,10 +37,10 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] `.env.example`, `phpunit.xml` e banco PostgreSQL de teste (2026-11-16)
 
 ### 1.2 Banco de dados
-- [ ] `bin/migrate.php` com `schema_migrations` e transação por arquivo
-- [ ] `001_init.sql`: usuarios, condominios, usuario_condominio, avisos, dispositivos
-- [ ] Tabelas de apoio: password_resets, rate_limits
-- [ ] Índices e constraints (condominio_id, inicio_em, fim_em, token)
+- [x] `bin/migrate.php` com `schema_migrations` e transação por arquivo (+ lock, checksum que barra edição de migration aplicada, usuário de DDL opcional) (2026-11-16)
+- [x] `001_init.sql`: usuarios, condominios, usuario_condominio, avisos, dispositivos (2026-11-16)
+- [x] Tabelas de apoio: password_resets, rate_limits (`002_tabelas_apoio.sql`) (2026-11-16)
+- [x] Índices e constraints (condominio_id, inicio_em, fim_em, token) (2026-11-16)
 
 ### 1.3 Autenticação e segurança
 - [ ] Login/logout (Argon2id, `session_regenerate_id`, cookies seguros)
@@ -131,7 +131,8 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: dispositivo principal de exibição = Amazon Fire TV Stick (Fire OS). Mini PC e smart TV continuam como alternativas.
 - Pendente: confirmar no hardware real se Fully Kiosk Browser (licença paga para alguns recursos) é necessário ou se o Silk basta.
 - 2026-11-16: VM com Debian 13: PHP 8.4, PostgreSQL 17, Nginx 1.26 e Composer 2.8 dos repositórios oficiais (PHP 8.3 não existe no Debian 13). Documentação passou a exigir PHP 8.3 ou superior.
-- Atenção: a VM já tinha um Apache (porta 80) servindo `/var/www/html`, o que expõe o repositório (incluindo `.git`) em `http://<VM>/avisos-cond/`. Resolver antes de colocar dados reais (desativar o Apache ou mover o projeto para fora de `/var/www/html`, como o README prevê em `/var/www/avisos-cond`).
+- 2026-11-16: Apache removido da VM (não era usado); porta 80 livre para o Nginx. O projeto está em `/var/www/html/avisos-cond`; o README prevê `/var/www/avisos-cond` em produção.
+- 2026-11-16: `001_init.sql` não tem `bloqueado`/`bloqueio_motivo`, `recorrencia` nem `codigo_pareamento`: entram em migrations aditivas das fases 2 e 3. Foi adicionado `avisos.midia_tipo` (imagem/video) para a TV saber como exibir a mídia; `atualizado_em` foi omitido (a auditoria cobrirá o histórico).
 - Pendente: IP do proxy reverso (substitui `IP_DO_PROXY` na configuração).
 - Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
 - Pendente: biblioteca de envio de e-mail (SMTP/PHPMailer) — exige justificativa por causa da regra de dependências.

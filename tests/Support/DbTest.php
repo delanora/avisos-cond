@@ -51,6 +51,19 @@ final class DbTest extends TestCase
         $this->pdo()->query('select * from tabela_que_nao_existe');
     }
 
+    public function testUsuarioAlternativoParaMigrations(): void
+    {
+        $config = Config::fromFile(dirname(__DIR__, 2) . '/.env');
+
+        // Mesmo usuário e senha informados explicitamente: conecta.
+        $pdo = Db::connect($config, $config->obrigatorio('DB_USER'), $config->string('DB_PASS'));
+        $this->assertSame('avisos', $pdo->query('select current_user')->fetchColumn());
+
+        // Senha errada para o usuário alternativo: a conexão falha.
+        $this->expectException(PDOException::class);
+        Db::connect($config, $config->obrigatorio('DB_USER'), 'senha-errada');
+    }
+
     public function testConfiguracaoObrigatoriaAusenteFalha(): void
     {
         $this->expectException(ConfigException::class);
