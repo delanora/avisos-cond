@@ -52,7 +52,7 @@ Existem três "superfícies" no sistema:
 
 ## Stack
 
-- **PHP 8.3** (puro, sem framework full-stack) com **PHP-FPM**
+- **PHP 8.3+** (8.4 na VM; puro, sem framework full-stack) com **PHP-FPM**
 - **Nginx**
 - **PostgreSQL 16+** via **PDO** (queries em SQL explícito, sem ORM)
 - **FastRoute** (roteamento) e **Twig** (templates com auto-escape)
@@ -109,7 +109,7 @@ O esquema completo fica em `/migrations`.
 ## Requisitos
 
 - Linux (Debian/Ubuntu recomendado)
-- PHP 8.3 com extensões: `pdo_pgsql`, `mbstring`, `fileinfo`, `curl`, `intl`
+- PHP 8.3 ou superior (a VM usa 8.4) com extensões: `pdo_pgsql`, `mbstring`, `fileinfo`, `curl`, `intl`
 - PostgreSQL 16+
 - Nginx + PHP-FPM
 - Composer 2
@@ -185,7 +185,7 @@ server {
 
     location ~ \.php$ {
         include fastcgi_params;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;  # ajuste para a versão instalada
         fastcgi_param SCRIPT_FILENAME $document_root/index.php;
         # Todo acesso real é HTTPS (TLS termina no proxy); sem isso os cookies
         # Secure e as URLs geradas pela aplicação ficam incorretos.

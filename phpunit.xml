@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true"
+         failOnDeprecation="true">
+    <testsuites>
+        <testsuite name="Avisos-Cond">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <!-- Os testes usam sempre o banco de teste, nunca o de desenvolvimento. -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="DB_NAME" value="avisos_cond_test" force="true"/>
+    </php>
+</phpunit>

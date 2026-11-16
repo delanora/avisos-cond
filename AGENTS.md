@@ -21,7 +21,7 @@ Três superfícies: `/admin` (Embracore), `/gerente` (gerente) e `/tv/{token}` (
 
 ## 3. Stack e versões
 
-- PHP 8.3 (`declare(strict_types=1);` em todo arquivo PHP)
+- PHP 8.3 ou superior (`declare(strict_types=1);` em todo arquivo PHP). A VM usa o PHP 8.4 do Debian 13, que não traz o 8.3; o código deve rodar em ambos.
 - PHP-FPM + Nginx
 - PostgreSQL 16+ via **PDO** (`pdo_pgsql`), com *prepared statements* sempre
 - FastRoute (roteamento), Twig (templates, auto-escape ligado)

@@ -11,7 +11,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 - Decisões que mudam o escopo vão para "Decisões e pendências" ao final, com data.
 - Não invente itens: o escopo vem do `README.md` e do `AGENTS.md`. Se o escopo mudar, atualize os três arquivos juntos.
 
-**Status atual:** Fase 0 em andamento (apenas documentação; nenhum código implementado).
+**Status atual:** Fase 1 em andamento. Bloco 1.1 (estrutura base) concluído; próximo: 1.2 (banco de dados).
 
 ---
 
@@ -28,13 +28,13 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotação e cache offline.
 
 ### 1.1 Estrutura base
-- [ ] `composer.json` (autoload PSR-4, FastRoute, Twig, PHPUnit dev)
-- [ ] `public/index.php` (front controller) e roteador
-- [ ] `Support`: Config (.env), Db (PDO), Session, Response, Validator
-- [ ] Twig configurado com auto-escape e layouts base
-- [ ] Tratamento global de erros (log em `storage/logs`, mensagem genérica)
-- [ ] Cabeçalhos de segurança (CSP, nosniff, Referrer-Policy, X-Frame-Options)
-- [ ] `.env.example`, `phpunit.xml` e banco PostgreSQL de teste
+- [x] `composer.json` (autoload PSR-4, FastRoute, Twig, PHPUnit dev) (2026-11-16)
+- [x] `public/index.php` (front controller) e roteador (2026-11-16)
+- [x] `Support`: Config (.env), Db (PDO), Session, Response, Validator (+ Request, Logger, View) (2026-11-16)
+- [x] Twig configurado com auto-escape e layouts base (2026-11-16)
+- [x] Tratamento global de erros (log em `storage/logs`, mensagem genérica) (2026-11-16)
+- [x] Cabeçalhos de segurança (CSP, nosniff, Referrer-Policy, X-Frame-Options) (2026-11-16)
+- [x] `.env.example`, `phpunit.xml` e banco PostgreSQL de teste (2026-11-16)
 
 ### 1.2 Banco de dados
 - [ ] `bin/migrate.php` com `schema_migrations` e transação por arquivo
@@ -130,6 +130,8 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: TLS e roteamento em Nginx proxy reverso externo (compartilhado); VM com Nginx + PHP-FPM recebendo HTTP só do proxy. Apache descartado (mídia via `X-Accel-Redirect`).
 - 2026-11-16: dispositivo principal de exibição = Amazon Fire TV Stick (Fire OS). Mini PC e smart TV continuam como alternativas.
 - Pendente: confirmar no hardware real se Fully Kiosk Browser (licença paga para alguns recursos) é necessário ou se o Silk basta.
+- 2026-11-16: VM com Debian 13: PHP 8.4, PostgreSQL 17, Nginx 1.26 e Composer 2.8 dos repositórios oficiais (PHP 8.3 não existe no Debian 13). Documentação passou a exigir PHP 8.3 ou superior.
+- Atenção: a VM já tinha um Apache (porta 80) servindo `/var/www/html`, o que expõe o repositório (incluindo `.git`) em `http://<VM>/avisos-cond/`. Resolver antes de colocar dados reais (desativar o Apache ou mover o projeto para fora de `/var/www/html`, como o README prevê em `/var/www/avisos-cond`).
 - Pendente: IP do proxy reverso (substitui `IP_DO_PROXY` na configuração).
 - Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
 - Pendente: biblioteca de envio de e-mail (SMTP/PHPMailer) — exige justificativa por causa da regra de dependências.
