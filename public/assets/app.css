@@ -14,3 +14,51 @@ body {
     margin: 0 auto;
     padding: 2rem 1rem;
 }
+
+.topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: #1f2937;
+    color: #fff;
+}
+
+.topo-sair { display: flex; align-items: center; gap: 0.75rem; margin: 0; }
+.topo-sair span { font-size: 0.9rem; }
+
+.cartao {
+    max-width: 420px;
+    margin: 2rem auto;
+    padding: 1.5rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+label { display: block; margin-bottom: 1rem; font-size: 0.95rem; }
+
+input[type="email"], input[type="password"], input[type="text"] {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.55rem;
+    font: inherit;
+    border: 1px solid #9ca3af;
+    border-radius: 4px;
+}
+
+button {
+    padding: 0.55rem 1.1rem;
+    font: inherit;
+    color: #fff;
+    background: #2563eb;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button.botao-secundario { background: #4b5563; padding: 0.3rem 0.7rem; }
+
+.erro { color: #b91c1c; }
+.aviso { color: #166534; }

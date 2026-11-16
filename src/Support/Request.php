@@ -11,6 +11,7 @@ final class Request
      * @param array<string, mixed>  $body
      * @param array<string, string> $server
      * @param array<string, string> $cookies
+     * @param array<string, mixed>  $attributes dados anexados pelos middlewares (ex.: usuário autenticado)
      */
     public function __construct(
         public readonly string $method,
@@ -19,7 +20,26 @@ final class Request
         public readonly array $body = [],
         public readonly array $server = [],
         public readonly array $cookies = [],
+        public readonly array $attributes = [],
     ) {
+    }
+
+    public function withAttribute(string $nome, mixed $valor): self
+    {
+        return new self(
+            $this->method,
+            $this->path,
+            $this->query,
+            $this->body,
+            $this->server,
+            $this->cookies,
+            [...$this->attributes, $nome => $valor],
+        );
+    }
+
+    public function attribute(string $nome, mixed $padrao = null): mixed
+    {
+        return $this->attributes[$nome] ?? $padrao;
     }
 
     public static function fromGlobals(): self

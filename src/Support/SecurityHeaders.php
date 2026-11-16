@@ -20,6 +20,8 @@ final class SecurityHeaders
         'X-Content-Type-Options' => 'nosniff',
         'Referrer-Policy' => 'strict-origin-when-cross-origin',
         'X-Frame-Options' => 'DENY',
+        // Páginas dinâmicas (sessão, dados de condomínio) não devem ser guardadas em cache.
+        'Cache-Control' => 'no-store',
     ];
 
     public function apply(Response $resposta): Response

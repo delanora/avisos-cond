@@ -28,6 +28,39 @@ final class ViewTest extends TestCase
         $this->assertStringContainsString('&lt;script&gt;', $html);
     }
 
+    public function testCsrfTokenNaoConfiguradoFalhaEmVezDeRenderizarSemToken(): void
+    {
+        $dir = sys_get_temp_dir() . '/tpl_' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        file_put_contents($dir . '/form.twig', '<input value="{{ csrf_token() }}">');
+
+        try {
+            $this->expectException(\Twig\Error\RuntimeError::class);
+            $this->expectExceptionMessage('csrf_token não foi configurada');
+            (new View($dir))->render('form.twig');
+        } finally {
+            unlink($dir . '/form.twig');
+            rmdir($dir);
+        }
+    }
+
+    public function testCsrfDefinidoEhUsadoEEscapado(): void
+    {
+        $dir = sys_get_temp_dir() . '/tpl_' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        file_put_contents($dir . '/form.twig', '<input value="{{ csrf_token() }}">');
+
+        try {
+            $view = new View($dir);
+            $view->definirCsrf(static fn (): string => 'abc"<x>');
+
+            $this->assertSame('<input value="abc&quot;&lt;x&gt;">', $view->render('form.twig'));
+        } finally {
+            unlink($dir . '/form.twig');
+            rmdir($dir);
+        }
+    }
+
     public function testVariavelInexistenteGeraErro(): void
     {
         $this->expectException(RuntimeError::class);

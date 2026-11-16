@@ -20,6 +20,7 @@ final class SecurityHeadersTest extends TestCase
         $this->assertStringContainsString("default-src 'self'", $r->headers['Content-Security-Policy']);
         $this->assertStringContainsString("frame-ancestors 'none'", $r->headers['Content-Security-Policy']);
         $this->assertStringNotContainsString('unsafe-inline', $r->headers['Content-Security-Policy']);
+        $this->assertSame('no-store', $r->headers['Cache-Control']);
     }
 
     public function testNaoSobrescreveCabecalhoDefinidoPelaRota(): void

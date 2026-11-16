@@ -1,0 +1,25 @@
+{% extends 'layouts/base.html.twig' %}
+
+{% block titulo %}Nova senha - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <section class="cartao">
+        <h1>Nova senha</h1>
+        {% if token_valido %}
+            {% if erro != '' %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
+            <form method="post" action="/redefinir-senha/{{ token }}">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <label>Nova senha (mínimo 10 caracteres)
+                    <input type="password" name="senha" required minlength="10" maxlength="128" autocomplete="new-password" autofocus>
+                </label>
+                <label>Confirme a nova senha
+                    <input type="password" name="confirmacao" required minlength="10" maxlength="128" autocomplete="new-password">
+                </label>
+                <button type="submit">Salvar nova senha</button>
+            </form>
+        {% else %}
+            <p class="erro" role="alert">{{ erro != '' ? erro : 'Este link é inválido ou expirou. Peça um novo link de recuperação.' }}</p>
+            <p><a href="/esqueci-senha">Pedir novo link</a></p>
+        {% endif %}
+    </section>
+{% endblock %}

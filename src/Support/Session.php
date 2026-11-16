@@ -9,7 +9,14 @@ final class Session
     public function __construct(
         private readonly string $nome,
         private readonly bool $seguro,
+        private readonly bool $nativa = true,
     ) {
+    }
+
+    /** Sessão só em memória ($_SESSION), sem cookies nem funções session_*: usada nos testes. */
+    public static function emMemoria(): self
+    {
+        return new self('teste', false, false);
     }
 
     public static function fromConfig(Config $config): self
@@ -35,6 +42,12 @@ final class Session
 
     public function start(): void
     {
+        if (!$this->nativa) {
+            $_SESSION ??= [];
+
+            return;
+        }
+
         if (session_status() === PHP_SESSION_ACTIVE) {
             return;
         }
@@ -69,6 +82,10 @@ final class Session
     /** Deve ser chamado no login, para impedir fixação de sessão. */
     public function regenerate(): void
     {
+        if (!$this->nativa) {
+            return;
+        }
+
         session_regenerate_id(true);
     }
 

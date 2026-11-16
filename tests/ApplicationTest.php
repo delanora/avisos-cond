@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests;
 
 use App\Application;
-use App\Controllers\HomeController;
 use App\Support\Logger;
 use App\Support\Request;
 use App\Support\Response;
@@ -33,10 +32,9 @@ final class ApplicationTest extends TestCase
     private function app(?string $templates = null): Application
     {
         $view = new View($templates ?? dirname(__DIR__) . '/templates');
-        $home = new HomeController($view);
 
-        $dispatcher = simpleDispatcher(static function (RouteCollector $r) use ($home): void {
-            $r->addRoute('GET', '/', [$home, 'index']);
+        $dispatcher = simpleDispatcher(static function (RouteCollector $r): void {
+            $r->addRoute('GET', '/', static fn (): Response => Response::html('inicio'));
             $r->addRoute('POST', '/enviar', static fn (Request $req, array $v): Response => Response::html('ok'));
             $r->addRoute('GET', '/item/{id:\d+}', static fn (Request $req, array $v): Response => Response::html('item ' . $v['id']));
             $r->addRoute('GET', '/quebra', static function (): Response {
@@ -48,12 +46,12 @@ final class ApplicationTest extends TestCase
         return new Application($dispatcher, $view, new Logger($this->log), new SecurityHeaders());
     }
 
-    public function testRotaEncontradaRenderizaPaginaInicial(): void
+    public function testRotaEncontradaChamaOHandler(): void
     {
         $r = $this->app()->handle(new Request('GET', '/'));
 
         $this->assertSame(200, $r->status);
-        $this->assertStringContainsString('Avisos-Cond', $r->body);
+        $this->assertSame('inicio', $r->body);
     }
 
     public function testVariaveisDaRotaChegamAoHandler(): void
@@ -68,6 +66,8 @@ final class ApplicationTest extends TestCase
         $r = $this->app()->handle(new Request('GET', '/nao-existe'));
 
         $this->assertSame(404, $r->status);
+        // Garante que é o template de erro (e não o texto simples de contingência).
+        $this->assertStringContainsString('<h1>404</h1>', $r->body);
         $this->assertStringContainsString('Página não encontrada', $r->body);
     }
 
@@ -89,6 +89,7 @@ final class ApplicationTest extends TestCase
         $r = $this->app()->handle(new Request('GET', '/quebra'));
 
         $this->assertSame(500, $r->status);
+        $this->assertStringContainsString('<h1>500</h1>', $r->body);
         $this->assertStringContainsString('erro inesperado', $r->body);
         $this->assertStringNotContainsString('segredo-interno-123', $r->body);
         $this->assertStringNotContainsString('RuntimeException', $r->body);

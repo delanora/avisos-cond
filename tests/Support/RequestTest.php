@@ -32,6 +32,16 @@ final class RequestTest extends TestCase
         $this->assertNull($r->header('X-Outro'));
     }
 
+    public function testAtributosSaoImutaveis(): void
+    {
+        $original = new Request('GET', '/');
+        $novo = $original->withAttribute('usuario', ['id' => 1]);
+
+        $this->assertNull($original->attribute('usuario'));
+        $this->assertSame(['id' => 1], $novo->attribute('usuario'));
+        $this->assertSame('padrao', $novo->attribute('outro', 'padrao'));
+    }
+
     public function testFromGlobals(): void
     {
         $antes = [$_SERVER, $_GET, $_POST, $_COOKIE];

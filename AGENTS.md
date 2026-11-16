@@ -26,6 +26,7 @@ Três superfícies: `/admin` (Embracore), `/gerente` (gerente) e `/tv/{token}` (
 - PostgreSQL 16+ via **PDO** (`pdo_pgsql`), com *prepared statements* sempre
 - FastRoute (roteamento), Twig (templates, auto-escape ligado)
 - HTMX + Alpine.js servidos como arquivos estáticos locais em `/public/assets` (sem CDN em produção, sem build step, sem Node)
+- PHPMailer (envio de e-mail por SMTP, usado na recuperação de senha). Justificativa: biblioteca pequena e mantida; um cliente SMTP próprio (STARTTLS, autenticação) seria mais arriscado.
 - Composer: apenas autoload PSR-4 (`App\` → `src/`) e as bibliotecas citadas acima
 - Testes: PHPUnit (dev dependency)
 
@@ -75,14 +76,20 @@ Regras de camada:
 - Toda funcionalidade nova que toque dados por condomínio **precisa** de teste de isolamento (veja seção 9).
 
 ### 6.2 Autenticação e sessão
-- Senhas com `password_hash($senha, PASSWORD_ARGON2ID)` e `password_verify`. Use `password_needs_rehash`.
+- Senhas **nunca** são guardadas em texto puro: somente o hash Argon2id (`PasswordHasher`: `password_hash(..., PASSWORD_ARGON2ID)` com 19 MiB de memória, 2 iterações e 1 thread, conforme a OWASP), `password_verify` e `password_needs_rehash` (o hash é refeito, sem invalidar a sessão, no login seguinte quando os parâmetros mudarem). Senha: mínimo 10 e máximo 128 caracteres; sem `trim` (espaços fazem parte). Todo cadastro de usuário passa por `UsuarioService`, que faz a validação e o hash.
+- Quando o e-mail não existe, o login ainda executa uma verificação de senha com hash falso, para o tempo de resposta não revelar quais e-mails estão cadastrados.
+- O `AuthMiddleware` recarrega o usuário do banco a cada requisição: conta desativada/excluída perde o acesso na hora, e a sessão iniciada antes de `usuarios.senha_alterada_em` deixa de valer (a troca de senha derruba os logins antigos).
 - No login: `session_regenerate_id(true)`. No logout: destruir sessão e cookie.
 - Cookies de sessão: `HttpOnly`, `Secure`, `SameSite=Lax`, nome definido em `.env`.
-- Limite de tentativas de login por IP e por usuário (tabela ou cache), com atraso/bloqueio temporário.
+- Limite de tentativas de login por IP e por e-mail, com bloqueio temporário (valores na seção abaixo).
 - Mensagens de login genéricas ("credenciais inválidas"), sem revelar se o e-mail existe.
-- Recuperação de senha ("esqueci minha senha") para gerentes e superadmins: token aleatório (`random_bytes`), armazenado **apenas com hash** na tabela `password_resets`, de uso único e com expiração curta (ex.: 30 min). Ao concluir a troca, invalide o token e as demais sessões do usuário.
+- Recuperação de senha ("esqueci minha senha") para gerentes e superadmins: token aleatório (`random_bytes`), armazenado **apenas com hash** na tabela `password_resets`, de uso único e com expiração curta (ex.: 30 min). Ao concluir a troca, o token e os demais tokens pendentes são invalidados (a marcação como usado é atômica, então o link vale uma só vez) e as sessões anteriores deixam de valer. O token tem 256 bits (`bin2hex(random_bytes(32))`), vai na URL `/redefinir-senha/{token}` (resposta com `Referrer-Policy: no-referrer`) e o e-mail nunca é logado com ele.
 - A resposta do pedido de recuperação é sempre a mesma ("se o e-mail existir, enviaremos instruções"), exista ou não a conta.
-- **Rate limit anti-bruteforce** (middleware `RateLimit`, contadores em tabela do PostgreSQL, sem Redis): aplica-se ao login (por IP **e** por e-mail), ao pedido de recuperação de senha (por IP e por e-mail) e à troca de senha por token (por IP). Excedido o limite: bloqueio temporário com resposta `429` e mensagem genérica. Nunca logar a senha tentada.
+- **Rate limit anti-bruteforce** (middleware `RateLimit`, contadores em tabela do PostgreSQL, sem Redis): aplica-se ao login (por IP **e** por e-mail), ao pedido de recuperação de senha (por IP e por e-mail) e à troca de senha por token (por IP). Excedido o limite: bloqueio temporário com resposta `429`, cabeçalho `Retry-After` e mensagem genérica. Nunca logar a senha tentada.
+- **Limites atuais** (alterar só com justificativa): login, 5 falhas por e-mail em 15 min bloqueiam o e-mail por 15 min (vale também para e-mails inexistentes) e 30 requisições por IP em 15 min bloqueiam o IP por 15 min; recuperação de senha, 3 pedidos por e-mail e 5 por IP por hora, além de 20 requisições por IP por hora nas rotas; troca de senha por token, 10 tentativas por IP por hora. Chaves com e-mail usam o SHA-256 dele (`RateLimiter::hashDe`).
+- **CSRF:** `Csrf` guarda um token de 256 bits na sessão (refeito após o login); o `CsrfMiddleware` o exige em POST/PUT/PATCH/DELETE (campo `_csrf` ou cabeçalho `X-CSRF-Token`). Formulários usam `{{ csrf_token() }}`; a `View` falha se essa função não estiver configurada.
+- **Middlewares:** cada rota declara explicitamente os seus (`Pipeline::envolver`), na ordem limite → CSRF → login → papel. As rotas são montadas em `AppFactory`, usada também pelos testes de integração.
+- **E-mail:** sem `MAIL_HOST` no `.env`, nada é enviado e o motivo vai para o log, sem o token; o usuário vê sempre a mesma resposta genérica.
 - O envio de e-mail (recuperação de senha) usa SMTP configurado no `.env`. Se for necessária uma biblioteca (ex.: PHPMailer), justifique conforme a regra de dependências (seção 2.2).
 
 ### 6.3 Autorização

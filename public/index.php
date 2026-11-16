@@ -2,16 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Application;
-use App\Controllers\HomeController;
+use App\AppFactory;
+use App\Services\MailerNaoConfigurado;
+use App\Services\SmtpMailer;
 use App\Support\Config;
+use App\Support\Db;
 use App\Support\Logger;
 use App\Support\Request;
-use App\Support\SecurityHeaders;
-use App\Support\View;
-use FastRoute\RouteCollector;
-
-use function FastRoute\simpleDispatcher;
+use App\Support\Response;
+use App\Support\Session;
 
 $raiz = dirname(__DIR__);
 
@@ -41,15 +40,36 @@ set_error_handler(static function (int $nivel, string $mensagem, string $arquivo
     throw new ErrorException($mensagem, 0, $nivel, $arquivo, $linha);
 });
 
-$config = Config::fromFile($raiz . '/.env');
-$view = new View($raiz . '/templates', 'Avisos-Cond', $config->string('APP_ENV') === 'local');
 $logger = new Logger($raiz . '/storage/logs/app.log');
 
-$home = new HomeController($view);
+try {
+    $config = Config::fromFile($raiz . '/.env');
 
-$dispatcher = simpleDispatcher(static function (RouteCollector $r) use ($home): void {
-    $r->addRoute('GET', '/', [$home, 'index']);
-});
+    $mailer = $config->string('MAIL_HOST') === ''
+        ? new MailerNaoConfigurado()
+        : new SmtpMailer(
+            $config->string('MAIL_HOST'),
+            $config->int('MAIL_PORT', 587),
+            $config->string('MAIL_USER'),
+            $config->string('MAIL_PASS'),
+            $config->string('MAIL_FROM'),
+        );
 
-$app = new Application($dispatcher, $view, $logger, new SecurityHeaders());
-$app->handle(Request::fromGlobals())->send();
+    $app = AppFactory::criar(
+        $config,
+        Db::connect($config),
+        Session::fromConfig($config),
+        $mailer,
+        $logger,
+        $raiz . '/templates',
+    );
+    $resposta = $app->handle(Request::fromGlobals());
+} catch (Throwable $erro) {
+    // Falha antes de a Application existir (ex.: banco fora do ar): mensagem genérica, detalhes no log.
+    $logger->error('Falha ao iniciar a aplicação', $erro);
+    $resposta = new Response(500, 'Serviço indisponível. Tente novamente mais tarde.', [
+        'Content-Type' => 'text/plain; charset=utf-8',
+    ]);
+}
+
+$resposta->send();

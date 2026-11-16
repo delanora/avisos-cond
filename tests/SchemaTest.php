@@ -104,7 +104,9 @@ final class SchemaTest extends DatabaseTestCase
             $this->migrarTudo();
 
             $versoes = $this->pdo->query('SELECT versao FROM schema_migrations ORDER BY versao')->fetchAll(PDO::FETCH_COLUMN);
-            $this->assertSame(['001_init.sql', '002_tabelas_apoio.sql'], $versoes);
+            $esperadas = array_map('basename', glob(dirname(__DIR__) . '/migrations/*.sql'));
+            sort($esperadas);
+            $this->assertSame($esperadas, $versoes);
         } finally {
             unlink($dir . '/001_init.sql');
             rmdir($dir);

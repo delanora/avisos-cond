@@ -63,6 +63,15 @@ final class ValidatorTest extends TestCase
         ];
     }
 
+    public function testSameCompara(): void
+    {
+        $ok = new Validator(['senha' => 'abc', 'confirmacao' => 'abc'], ['confirmacao' => 'required|same:senha']);
+        $erro = new Validator(['senha' => 'abc', 'confirmacao' => 'abd'], ['confirmacao' => 'required|same:senha']);
+
+        $this->assertTrue($ok->passes());
+        $this->assertSame('Os valores não coincidem.', $erro->errors()['confirmacao']);
+    }
+
     public function testMinMaxContamCaracteresMultibyte(): void
     {
         $v = new Validator(['campo' => 'ação'], ['campo' => 'max:4']);

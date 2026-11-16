@@ -6,7 +6,7 @@ namespace App\Support;
 
 /**
  * Validador simples. Regras separadas por "|":
- * required, email, int, min:N, max:N, in:a,b,c
+ * required, email, int, min:N, max:N, in:a,b,c, same:outro_campo
  *
  * min/max medem o tamanho do texto (ou o valor, quando a regra "int" está presente).
  * Mensagens em português do Brasil.
@@ -19,12 +19,17 @@ final class Validator
     /** @var array<string, string> */
     private array $valores = [];
 
+    /** @var array<string, mixed> */
+    private readonly array $dados;
+
     /**
      * @param array<string, mixed>  $dados
      * @param array<string, string> $regras
      */
     public function __construct(array $dados, array $regras)
     {
+        $this->dados = $dados;
+
         foreach ($regras as $campo => $regra) {
             $valor = $dados[$campo] ?? '';
             $valor = is_string($valor) ? trim($valor) : '';
@@ -78,6 +83,8 @@ final class Validator
                     ? ($numerico ? "O valor máximo é {$parametro}." : "Use no máximo {$parametro} caracteres.") : null,
                 'in' => !in_array($valor, explode(',', $parametro), true)
                     ? 'Valor inválido.' : null,
+                'same' => !hash_equals((string) ($this->dados[$parametro] ?? ''), $valor)
+                    ? 'Os valores não coincidem.' : null,
                 default => null,
             };
 

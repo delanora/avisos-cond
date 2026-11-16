@@ -11,7 +11,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 - Decisões que mudam o escopo vão para "Decisões e pendências" ao final, com data.
 - Não invente itens: o escopo vem do `README.md` e do `AGENTS.md`. Se o escopo mudar, atualize os três arquivos juntos.
 
-**Status atual:** Fase 1 em andamento. Blocos 1.1 (estrutura base) e 1.2 (banco de dados) concluídos; próximo: 1.3 (autenticação e segurança).
+**Status atual:** Fase 1 em andamento. Blocos 1.1 (estrutura base), 1.2 (banco de dados) e 1.3 (autenticação e segurança) concluídos; próximo: 1.4 (painel `/admin`).
 
 ---
 
@@ -43,12 +43,13 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] Índices e constraints (condominio_id, inicio_em, fim_em, token) (2026-11-16)
 
 ### 1.3 Autenticação e segurança
-- [ ] Login/logout (Argon2id, `session_regenerate_id`, cookies seguros)
-- [ ] Middleware Auth, Role (`superadmin`, `gerente`) e Csrf
-- [ ] Middleware RateLimit (login por IP e por e-mail)
-- [ ] Recuperação de senha por e-mail (token com hash, uso único, expiração) + rate limit
-- [ ] `bin/create-admin.php`
-- [ ] Testes: autorização por papel em `/admin` e `/gerente`
+- [x] Login/logout (Argon2id, `session_regenerate_id`, cookies seguros) (2026-11-16)
+- [x] Middleware Auth, Role (`superadmin`, `gerente`) e Csrf (2026-11-16)
+- [x] Middleware RateLimit (login por IP e por e-mail) (2026-11-16)
+- [x] Recuperação de senha por e-mail (token com hash, uso único, expiração) + rate limit (2026-11-16)
+- [x] `bin/create-admin.php` (2026-11-16)
+- [x] Testes: autorização por papel em `/admin` e `/gerente` (2026-11-16)
+- [ ] Validar o envio real do e-mail de recuperação com um servidor SMTP configurado (os testes usam um mailer falso)
 
 ### 1.4 Painel `/admin` (Embracore)
 - [ ] CRUD de gerentes e administradores
@@ -135,4 +136,7 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: `001_init.sql` não tem `bloqueado`/`bloqueio_motivo`, `recorrencia` nem `codigo_pareamento`: entram em migrations aditivas das fases 2 e 3. Foi adicionado `avisos.midia_tipo` (imagem/video) para a TV saber como exibir a mídia; `atualizado_em` foi omitido (a auditoria cobrirá o histórico).
 - Pendente: IP do proxy reverso (substitui `IP_DO_PROXY` na configuração).
 - Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
-- Pendente: biblioteca de envio de e-mail (SMTP/PHPMailer) — exige justificativa por causa da regra de dependências.
+- 2026-11-16: PHPMailer adicionado (e-mail SMTP da recuperação de senha); justificativa no `AGENTS.md` seção 3.
+- 2026-11-16: política de senha: 10 a 128 caracteres, Argon2id (19 MiB, 2 iterações, 1 thread). Sem `MAIL_HOST` o e-mail não é enviado e o motivo vai para o log, sem o token.
+- 2026-11-16: `migrations/003_usuarios_senha_alterada.sql` adiciona `usuarios.senha_alterada_em`, usado para derrubar sessões antigas na troca de senha.
+- Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.

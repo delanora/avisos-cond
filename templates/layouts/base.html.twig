@@ -7,6 +7,16 @@
     <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+    {% if usuario is defined and usuario %}
+    <header class="topo">
+        <strong>{{ app_nome }}</strong>
+        <form method="post" action="/logout" class="topo-sair">
+            <span>{{ usuario.nome }}</span>
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="botao-secundario">Sair</button>
+        </form>
+    </header>
+    {% endif %}
     <main class="container">
         {% block conteudo %}{% endblock %}
     </main>

@@ -56,6 +56,7 @@ Existem três "superfícies" no sistema:
 - **Nginx**
 - **PostgreSQL 16+** via **PDO** (queries em SQL explícito, sem ORM)
 - **FastRoute** (roteamento) e **Twig** (templates com auto-escape)
+- **PHPMailer** (e-mail SMTP da recuperação de senha)
 - **HTMX + Alpine.js** no front, sem build step e sem Node
 - **Composer** apenas para autoload PSR-4 e as poucas bibliotecas acima
 - **Migrations** em arquivos `.sql` numerados, aplicados por `bin/migrate.php`
@@ -264,6 +265,8 @@ Resumo abaixo. O detalhamento item a item e o status real de cada um ficam em [`
 ## Segurança
 
 Resumo das regras (detalhes em `AGENTS.md`): isolamento rigoroso entre condomínios (tenants), Argon2id para senhas, CSRF em todo POST, escape de saída por padrão, validação de uploads por MIME real (somente imagens e vídeo), rate limit em login, recuperação de senha e token de TV.
+
+**Autenticação**: as senhas são guardadas somente como hash **Argon2id** (nunca em texto puro; mínimo de 10 caracteres). O login limita tentativas por e-mail e por IP, a sessão é renovada no login e destruída no logout, e trocar a senha ou desativar a conta derruba os acessos abertos. A recuperação de senha usa um link de uso único, válido por 30 minutos, e o token só existe no e-mail (no banco fica o hash). Para criar o primeiro superadmin: `php bin/create-admin.php`.
 
 ## Licença
 

@@ -1,0 +1,22 @@
+{% extends 'layouts/base.html.twig' %}
+
+{% block titulo %}Recuperar senha - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <section class="cartao">
+        <h1>Recuperar senha</h1>
+        {% if enviado %}
+            <p class="aviso">Se o e-mail informado estiver cadastrado, enviamos as instruções para redefinir a senha. O link vale por 30 minutos.</p>
+        {% else %}
+            {% if erro != '' %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
+            <form method="post" action="/esqueci-senha">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <label>E-mail
+                    <input type="email" name="email" value="{{ email }}" required maxlength="190" autocomplete="username" autofocus>
+                </label>
+                <button type="submit">Enviar instruções</button>
+            </form>
+        {% endif %}
+        <p><a href="/login">Voltar ao login</a></p>
+    </section>
+{% endblock %}

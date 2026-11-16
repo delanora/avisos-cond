@@ -6,6 +6,7 @@ namespace App\Support;
 
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
+use Twig\TwigFunction;
 
 /**
  * Renderização de templates Twig. O auto-escape HTML fica sempre ligado;
@@ -14,6 +15,9 @@ use Twig\Loader\FilesystemLoader;
 final class View
 {
     private Environment $twig;
+
+    /** @var callable(): string */
+    private $geradorCsrf;
 
     public function __construct(string $diretorio, string $nomeApp = 'Avisos-Cond', bool $debug = false)
     {
@@ -25,6 +29,19 @@ final class View
             'cache' => false,
         ]);
         $this->twig->addGlobal('app_nome', $nomeApp);
+
+        // Padrão que falha alto: um formulário renderizado sem CSRF configurado vira erro,
+        // em vez de sair sem token. A AppFactory define o gerador real com definirCsrf().
+        $this->geradorCsrf = static function (): never {
+            throw new \LogicException('A função csrf_token não foi configurada nesta View.');
+        };
+        $this->twig->addFunction(new TwigFunction('csrf_token', fn (): string => ($this->geradorCsrf)()));
+    }
+
+    /** Define de onde vem o valor de {{ csrf_token() }}. A saída continua sujeita ao auto-escape. */
+    public function definirCsrf(callable $gerador): void
+    {
+        $this->geradorCsrf = $gerador;
     }
 
     /** @param array<string, mixed> $dados */
