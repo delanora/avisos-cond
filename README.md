@@ -1,0 +1,206 @@
+# Avisos-Cond
+
+Sistema de **mural digital de avisos para condomínios**. O gerente cadastra os avisos em um painel web e eles são exibidos automaticamente em uma TV ou mini PC instalado no elevador (ou na portaria) de cada condomínio.
+
+Desenvolvido e operado pela **Embracore** como serviço para gerentes que administram um ou vários condomínios.
+
+---
+
+## Visão geral
+
+Existem três "superfícies" no sistema:
+
+1. **Painel Embracore** (`/admin`): uso interno do fornecedor. Gestão de gerentes, condomínios, dispositivos, planos e faturamento.
+2. **Painel do Gerente** (`/gerente`): o gerente vê apenas os condomínios aos quais está vinculado e gerencia os avisos de cada um.
+3. **Tela de exibição (TV)** (`/tv/{token}`): página pública, sem login, identificada por um token único por dispositivo. Mostra os avisos ativos em tela cheia, em rotação.
+
+```
+ Gerente ──► Painel /gerente ─┐
+                              ├──► PostgreSQL ◄── cron.php (agendador)
+ Embracore ─► Painel /admin ──┘        ▲
+                                       │ polling (version)
+ TV / mini PC (Chromium kiosk) ──► /tv/{token}
+```
+
+## Funcionalidades
+
+### Painel do Gerente
+- Lista dos condomínios vinculados (1 ou N) e seletor de condomínio ativo.
+- CRUD de avisos com título, texto, imagem/PDF opcional e tipo (comum, urgente, manutenção, assembleia).
+- Agendamento: data/hora de início e fim de exibição, com opção de recorrência.
+- Pré-visualização de como o aviso aparece na TV.
+- Aviso para um condomínio ou para vários de uma vez.
+- Modelos prontos de aviso (falta de água, manutenção de elevador, dedetização, assembleia).
+
+### Painel Embracore
+- CRUD de usuários gerentes e de usuários administradores.
+- CRUD de condomínios e vínculo gerente ↔ condomínios (N:N).
+- Gestão de dispositivos (TVs/mini PCs): geração de token, código de pareamento, status online/offline e último ping.
+- Planos, assinaturas e faturas por condomínio; painel de faturamento e inadimplência; suspensão automática da exibição.
+- Log de auditoria (quem fez o quê) e acesso de suporte como gerente (com registro).
+
+### Tela de exibição
+- Fullscreen, rotação automática, destaque em tela cheia para avisos urgentes.
+- Relógio, logo e cores do condomínio; widgets opcionais (clima, aniversariantes).
+- QR code opcional no aviso para abrir mais detalhes no celular.
+- Funciona offline (service worker com cache dos avisos e mídias).
+- Cada consulta ao servidor funciona também como **heartbeat** do dispositivo.
+
+## Stack
+
+- **PHP 8.3** (puro, sem framework full-stack) com **PHP-FPM**
+- **Nginx**
+- **PostgreSQL 16+** via **PDO** (queries em SQL explícito, sem ORM)
+- **FastRoute** (roteamento) e **Twig** (templates com auto-escape)
+- **HTMX + Alpine.js** no front, sem build step e sem Node
+- **Composer** apenas para autoload PSR-4 e as poucas bibliotecas acima
+- **Migrations** em arquivos `.sql` numerados, aplicados por `bin/migrate.php`
+- **Cron** do sistema chamando `bin/cron.php` a cada minuto
+- Cobrança via **Asaas** (boleto/Pix) com webhook
+
+Filosofia: poucas dependências, código explícito e fácil de auditar.
+
+## Estrutura do repositório
+
+```
+/public              front controller (index.php), assets, service worker
+/src
+  /Controllers       Admin, Gerente, Tv, Webhook
+  /Repositories      acesso ao banco (todo o SQL fica aqui)
+  /Services          Auth, Billing, Scheduler, Upload, Audit
+  /Middleware        Auth, Role, Csrf, RateLimit
+  /Support           helpers (Config, Db, Session, Response)
+/templates           Twig (admin, gerente, tv, layouts)
+/migrations          001_init.sql, 002_...sql
+/bin                 migrate.php, cron.php, create-admin.php
+/storage             uploads (fora do webroot), logs
+/tests               testes automatizados
+.env.example
+AGENTS.md            instruções para agentes de código
+README.md
+```
+
+## Perfis de usuário
+
+- **superadmin**: equipe Embracore, acesso total ao `/admin`.
+- **gerente**: acesso ao `/gerente`, restrito aos condomínios vinculados.
+- **zelador** (opcional, fase futura): só cria/edita avisos de um condomínio.
+
+## Modelo de dados (resumo)
+
+- `usuarios` (id, nome, email, senha_hash, papel, ativo)
+- `condominios` (id, nome, endereco, logo, cores, ativo, suspenso_ate)
+- `usuario_condominio` (usuario_id, condominio_id), relação N:N
+- `avisos` (id, condominio_id, titulo, corpo, tipo, midia, inicio_em, fim_em, ativo, criado_por)
+- `dispositivos` (id, condominio_id, nome, token, ultimo_ping, ativo)
+- `planos`, `assinaturas`, `faturas`
+- `auditoria` (usuario_id, acao, entidade, entidade_id, dados, criado_em)
+
+O esquema completo fica em `/migrations`.
+
+## Requisitos
+
+- Linux (Debian/Ubuntu recomendado)
+- PHP 8.3 com extensões: `pdo_pgsql`, `mbstring`, `fileinfo`, `curl`, `intl`
+- PostgreSQL 16+
+- Nginx + PHP-FPM
+- Composer 2
+
+## Instalação (desenvolvimento)
+
+```bash
+git clone <repo> avisos-cond && cd avisos-cond
+composer install
+cp .env.example .env          # ajuste as variáveis
+createdb avisos_cond          # ou crie o banco/usuário manualmente
+php bin/migrate.php           # aplica as migrations
+php bin/create-admin.php      # cria o primeiro superadmin
+php -S 127.0.0.1:8080 -t public public/index.php
+```
+
+## Configuração (`.env`)
+
+```
+APP_ENV=production
+APP_URL=https://avisos.exemplo.com.br
+APP_KEY=                      # string aleatória longa
+
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_NAME=avisos_cond
+DB_USER=avisos
+DB_PASS=
+
+SESSION_NAME=avisos_sess
+UPLOAD_DIR=/var/www/avisos-cond/storage/uploads
+UPLOAD_MAX_MB=10
+
+ASAAS_API_KEY=
+ASAAS_WEBHOOK_TOKEN=
+N8N_WEBHOOK_URL=              # alerta de dispositivo offline
+```
+
+## Deploy (produção)
+
+**Nginx** (trecho essencial):
+
+```nginx
+server {
+    server_name avisos.exemplo.com.br;
+    root /var/www/avisos-cond/public;
+    index index.php;
+
+    location / {
+        try_files $uri /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+    }
+
+    location /media/ {
+        internal;
+        alias /var/www/avisos-cond/storage/uploads/;
+    }
+
+    # TLS (certbot) e headers de segurança aqui
+}
+```
+
+**Cron** (agendador):
+
+```
+* * * * * www-data php /var/www/avisos-cond/bin/cron.php >> /var/www/avisos-cond/storage/logs/cron.log 2>&1
+```
+
+O `cron.php` publica/expira avisos agendados, marca dispositivos offline (e avisa o n8n), gera faturas e suspende condomínios inadimplentes.
+
+**Backup**: `pg_dump` diário do banco e cópia de `/storage/uploads`.
+
+## Instalando a tela no condomínio
+
+1. No painel Embracore, cadastre o dispositivo e copie a URL `https://avisos.exemplo.com.br/tv/{token}`.
+2. **Mini PC (Linux)**: Chromium em modo kiosk iniciado no boot:
+   ```bash
+   chromium --kiosk --noerrdialogs --disable-infobars \
+            --autoplay-policy=no-user-gesture-required \
+            "https://avisos.exemplo.com.br/tv/{token}"
+   ```
+3. **Smart TV**: abra a URL no navegador da TV, ou prefira um Fire Stick/Chromecast/mini PC, que costumam ser mais confiáveis que o navegador nativo.
+4. Desative suspensão de tela e economia de energia do dispositivo.
+
+## Roadmap
+
+- **MVP**: login, CRUD de condomínios, gerentes e avisos, tela da TV com rotação e cache offline.
+- **Fase 2**: heartbeat/status de dispositivos, agendamento avançado, auditoria, pareamento por código.
+- **Fase 3**: faturamento (Asaas), suspensão automática, widgets, notificações externas (WhatsApp/e-mail), perfil zelador.
+
+## Segurança
+
+Resumo das regras (detalhes em `AGENTS.md`): isolamento rigoroso entre condomínios (tenants), Argon2id para senhas, CSRF em todo POST, escape de saída por padrão, validação de uploads por MIME real, webhooks autenticados e idempotentes, limite de tentativas de login.
+
+## Licença
+
+Software proprietário da Embracore. Todos os direitos reservados.
