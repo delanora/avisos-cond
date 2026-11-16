@@ -81,6 +81,9 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 
 ### 1.8 Entrega do MVP
 - [ ] Configuração de Nginx/PHP-FPM e cron documentada e testada em servidor
+- [ ] Proxy reverso externo configurado (TLS, `X-Forwarded-*`, upload) e Nginx da VM com IP real (`set_real_ip_from`) e `HTTPS on`
+- [ ] Firewall da VM liberando a porta HTTP apenas para o IP do proxy
+- [ ] Teste: rate limit enxerga o IP real do cliente (não o do proxy)
 - [ ] Rotina de backup (pg_dump + `/storage/uploads`)
 - [ ] Teste em hardware real (mini PC com Chromium kiosk e TV)
 - [ ] README atualizado com o que foi entregue
@@ -122,5 +125,7 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: token da TV com 12 caracteres (~60 bits) compensado por rate limit por IP.
 - 2026-11-16: vínculos do gerente lidos do banco a cada requisição (sem cache em sessão).
 - 2026-11-16: cobrança removida do projeto (sem Asaas/webhook). Financeiro será só visualização + bloqueio manual pelo superadmin.
+- 2026-11-16: TLS e roteamento em Nginx proxy reverso externo (compartilhado); VM com Nginx + PHP-FPM recebendo HTTP só do proxy. Apache descartado (mídia via `X-Accel-Redirect`).
+- Pendente: IP do proxy reverso (substitui `IP_DO_PROXY` na configuração).
 - Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
 - Pendente: biblioteca de envio de e-mail (SMTP/PHPMailer) — exige justificativa por causa da regra de dependências.

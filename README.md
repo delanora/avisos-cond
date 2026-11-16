@@ -153,13 +153,31 @@ MAIL_FROM=
 
 ## Deploy (produção)
 
-**Nginx** (trecho essencial):
+### Arquitetura de rede
+
+O **TLS (HTTPS) e o roteamento ficam em um Nginx proxy reverso externo**, compartilhado com outros serviços e fora desta VM. A VM roda seu próprio Nginx + PHP-FPM, recebendo **HTTP puro somente do proxy** (libere a porta da VM apenas para o IP do proxy no firewall).
+
+```
+Cliente/TV ─HTTPS─► Nginx proxy (externo, TLS) ─HTTP─► Nginx da VM ─FastCGI─► PHP-FPM
+```
+
+**Nginx da VM** (trecho essencial):
 
 ```nginx
 server {
+    listen 80;
     server_name avisos.exemplo.com.br;
     root /var/www/avisos-cond/public;
     index index.php;
+
+    # IP real do cliente vindo do proxy (obrigatório: o rate limit usa o IP).
+    # Troque pelo IP do proxy reverso.
+    set_real_ip_from IP_DO_PROXY;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+
+    # Maior que UPLOAD_MAX_MB; alinhar com o proxy externo.
+    client_max_body_size 12m;
 
     location / {
         try_files $uri /index.php$is_args$args;
@@ -169,6 +187,9 @@ server {
         include fastcgi_params;
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        # Todo acesso real é HTTPS (TLS termina no proxy); sem isso os cookies
+        # Secure e as URLs geradas pela aplicação ficam incorretos.
+        fastcgi_param HTTPS on;
     }
 
     # Mídias: só acessíveis via X-Accel-Redirect, depois que a aplicação
@@ -179,8 +200,20 @@ server {
     }
 
     # O access_log das rotas /tv/ deve mascarar o token (ver AGENTS.md 6.8).
-    # TLS (certbot) e headers de segurança aqui
 }
+```
+
+**Nginx proxy externo** (o que esta aplicação exige dele, no `server`/`location` do domínio):
+
+```nginx
+proxy_pass http://IP_DA_VM;
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+client_max_body_size 12m;      # igual ao da VM
+proxy_read_timeout 120s;       # uploads de vídeo
+# HSTS e demais headers de segurança podem ficar aqui.
+# O access_log das rotas /tv/ também deve mascarar o token.
 ```
 
 **Cron** (agendador):

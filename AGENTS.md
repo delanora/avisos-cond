@@ -122,6 +122,13 @@ Regras de camada:
 - **Condomínio bloqueado manualmente** pelo superadmin (`condominios.bloqueado`): a TV mostra **somente o relógio com o horário atual**, sem avisos e sem anúncios.
 - **Aparência**: a TV usa a logo e o esquema de cores definidos pelo gerente para o condomínio; se não houver seleção, usa a logo e as cores padrão da Embracore.
 
+### 6.9 Proxy reverso e HTTPS
+- O TLS termina em um **Nginx proxy reverso externo** (compartilhado, fora da VM). A VM recebe HTTP puro somente do IP do proxy (firewall); a aplicação nunca é exposta direto à internet.
+- O Nginx da VM deve usar `set_real_ip_from <IP do proxy>`, `real_ip_header X-Forwarded-For` e `real_ip_recursive on`. Todo rate limit (login, recuperação de senha, token de TV inválido) usa o IP real; sem isso, todos os clientes pareceriam o mesmo IP e um bloqueio atingiria todo mundo.
+- Nunca confie em `X-Forwarded-For`/`X-Forwarded-Proto` vindos de outra origem que não o proxy. A aplicação não lê esses cabeçalhos diretamente: o Nginx já entrega o IP real em `REMOTE_ADDR` e `HTTPS=on` via FastCGI.
+- Cookies de sessão seguem `Secure`; HSTS fica no proxy. Mantenha `client_max_body_size` igual nos dois Nginx e acima de `UPLOAD_MAX_MB`.
+- Não use Apache: a mídia é servida com `X-Accel-Redirect` (Nginx).
+
 ## 7. Banco de dados e migrations
 
 - Migrations em `/migrations/NNN_descricao.sql`, numeradas com 3 dígitos, em ordem.
