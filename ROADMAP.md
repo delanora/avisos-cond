@@ -137,6 +137,7 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: VM com Debian 13: PHP 8.4, PostgreSQL 17, Nginx 1.26 e Composer 2.8 dos repositórios oficiais (PHP 8.3 não existe no Debian 13). Documentação passou a exigir PHP 8.3 ou superior.
 - 2026-11-16: Apache removido da VM (não era usado); porta 80 livre para o Nginx. O projeto está em `/var/www/html/avisos-cond`; o README prevê `/var/www/avisos-cond` em produção.
 - 2026-11-16: `001_init.sql` não tem `bloqueado`/`bloqueio_motivo`, `recorrencia` nem `codigo_pareamento`: entram em migrations aditivas das fases 2 e 3. Foi adicionado `avisos.midia_tipo` (imagem/video) para a TV saber como exibir a mídia; `atualizado_em` foi omitido (a auditoria cobrirá o histórico).
+- 2026-11-16: Nginx da VM no ar (`/etc/nginx/sites-available/avisos-cond`, porta 80, PHP-FPM 8.4), servindo `public/` e bloqueando `.env`, `.git`, `src`, `vendor`, `storage` etc. O PHP-FPM roda como `www-data`: `.env` fica `root:www-data` modo 640 e `storage/` pertence a `www-data`. Ainda faltam: `set_real_ip_from` com o IP do proxy, TLS/`APP_URL` https no proxy e firewall só para o proxy (itens da 1.8).
 - Pendente: IP do proxy reverso (substitui `IP_DO_PROXY` na configuração).
 - Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
 - 2026-11-16: PHPMailer adicionado (e-mail SMTP da recuperação de senha); justificativa no `AGENTS.md` seção 3.
