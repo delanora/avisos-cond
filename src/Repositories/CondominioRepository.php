@@ -38,6 +38,47 @@ final class CondominioRepository
         return $linha === false ? null : $this->normalizar($linha);
     }
 
+    /**
+     * Condomínios ATIVOS aos quais o usuário está vinculado. É daqui que vem, a cada requisição,
+     * a lista de condomínios permitidos do gerente (isolamento entre condomínios).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listarDoGerente(int $usuarioId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT c.id, c.nome, c.endereco, c.logo, c.cor_primaria, c.cor_secundaria, c.ativo, 0 AS total_gerentes
+             FROM condominios c
+             JOIN usuario_condominio uc ON uc.condominio_id = c.id
+             WHERE uc.usuario_id = :usuario AND c.ativo
+             ORDER BY lower(c.nome), c.id'
+        );
+        $stmt->execute(['usuario' => $usuarioId]);
+
+        return array_map($this->normalizar(...), $stmt->fetchAll());
+    }
+
+    /**
+     * Logo e cores do condomínio, só se ele estiver entre os permitidos.
+     *
+     * @param list<int> $permitidos
+     */
+    public function atualizarAparencia(array $permitidos, int $id, ?string $logo, ?string $corPrimaria, ?string $corSecundaria): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE condominios SET logo = :logo, cor_primaria = :primaria, cor_secundaria = :secundaria
+             WHERE id = :id AND id = ANY(:permitidos::bigint[])'
+        );
+        $stmt->bindValue('logo', $logo, $logo === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue('primaria', $corPrimaria, $corPrimaria === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue('secundaria', $corSecundaria, $corSecundaria === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue('id', $id, PDO::PARAM_INT);
+        $stmt->bindValue('permitidos', Pg::arrayDeInteiros($permitidos));
+        $stmt->execute();
+
+        return $stmt->rowCount() === 1;
+    }
+
     public function criar(string $nome, ?string $endereco, bool $ativo): int
     {
         $stmt = $this->pdo->prepare(

@@ -2,15 +2,41 @@
 {% import 'macros/ui.html.twig' as ui %}
 {% set menu = 'painel' %}
 
-{% block titulo %}Painel do gerente - {{ app_nome }}{% endblock %}
+{% block titulo %}Meus condomínios - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
     <section class="boas-vindas">
         <div class="boas-vindas-texto">
             <p class="eyebrow">Painel do gerente</p>
             <h1>{{ saudacao }}</h1>
-            <p>Em breve você vai cadastrar e acompanhar os avisos dos seus condomínios por aqui.</p>
+            <p>{% if condominios|length > 0 %}Escolha um condomínio para cuidar dos avisos que aparecem na TV.{% else %}Quando a Embracore vincular você a um condomínio, ele aparece aqui.{% endif %}</p>
         </div>
         <div class="boas-vindas-arte">{% include 'partials/ilustracao.html.twig' %}</div>
     </section>
+
+    {% if condominios|length == 0 %}
+        <div class="cartao vazio">
+            <span class="vazio-icone">{{ ui.icone('predio', 30) }}</span>
+            <h2>Nenhum condomínio por aqui ainda</h2>
+            <p>Você ainda não está vinculado a nenhum condomínio ativo. Fale com a equipe da Embracore para liberar o acesso.</p>
+        </div>
+    {% else %}
+        <div class="grade-cartoes">
+            {% for c in condominios %}
+                <article class="cartao condominio-cartao">
+                    <div class="pessoa">
+                        <span class="avatar av-{{ c.id % 6 }}" aria-hidden="true">{{ ui.icone('predio', 20) }}</span>
+                        <div>
+                            <span class="pessoa-nome">{{ c.nome }}</span>
+                            <span class="pessoa-sub">{{ c.endereco ?? 'Sem endereço cadastrado' }}</span>
+                        </div>
+                    </div>
+                    <div class="acoes">
+                        <a class="botao" href="/gerente/condominios/{{ c.id }}/avisos">{{ ui.icone('aviso', 18) }}Avisos</a>
+                        <a class="botao botao-secundario" href="/gerente/condominios/{{ c.id }}/aparencia">{{ ui.icone('paleta', 18) }}Aparência</a>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% endif %}
 {% endblock %}

@@ -112,6 +112,10 @@ Regras de camada:
 - Nome do arquivo gerado aleatoriamente; nunca use o nome enviado.
 - Armazene em `/storage/uploads`, **fora** do webroot. Sirva por rota autenticada/controlada ou por `X-Accel-Redirect` (Nginx `internal`). Para a TV, a mídia é servida por `/tv/{token}/media/{id}` (ver 6.8).
 - Nunca execute nem inclua arquivo enviado.
+- **Todo upload passa pelo `UploadService`**: erro do PHP, tamanho (`UPLOAD_MAX_MB`), extensão do nome enviado (só a última), MIME real (`finfo`) coerente com a extensão, categoria permitida (logo: só imagem) e, nas imagens, `getimagesize` coerente e com no máximo 10.000 px por lado. O nome gravado é `bin2hex(random_bytes(16))` + extensão; o enviado é descartado. O `move_uploaded_file` só aceita arquivos realmente enviados por HTTP (caminho forjado é recusado); os testes injetam outro "mover".
+- O arquivo só é guardado **depois** de validar o resto do formulário e do escopo do condomínio, e é apagado se a gravação no banco falhar. Trocar ou remover mídia apaga o arquivo antigo só depois de gravar; excluir o aviso apaga o arquivo. `UploadService::remover` só apaga nomes no padrão gerado por nós (sem `../`).
+- Mídia e logo são entregues por rotas protegidas (`/gerente/condominios/{id}/avisos/{id}/midia` e `/logo`) com `Content-Type` decidido pela extensão que gravamos, `nosniff` e `Cache-Control: private`; com `MEDIA_ACCEL` o Nginx entrega o arquivo (e reaplica `nosniff` e um CSP restritivo no `location /media/`).
+- Envios maiores que o limite recebem 413 (`TamanhoMiddleware`) em vez de um falso "sessão expirada" (o PHP descarta o corpo quando passa de `post_max_size`).
 
 ### 6.7 Integrações e financeiro
 - Não há integração de cobrança (Asaas ou outra) e não há webhooks: a cobrança é feita em um sistema à parte. O módulo financeiro deste projeto só **exibe** a situação do condomínio e permite **bloquear/desbloquear manualmente** a exibição.
@@ -143,6 +147,16 @@ Regras de camada:
 - O administrador não pode alterar o próprio papel, desativar a própria conta nem se excluir. Exclusões pedem confirmação em página própria (mostrando o que será apagado em cascata), sem JavaScript. Alterações de várias tabelas (ex.: usuário + vínculos) rodam em `Transaction`.
 - O hash da senha nunca sai do Service para telas ou listagens, e campos de senha nunca voltam preenchidos.
 - **Visual:** a marca vem do `DESIGN.md` (verde #00A67E e grafite #202124), e a linguagem visual atual é: barra superior **branca**, fundo claro quente (#F6F5F2), cartões brancos arredondados com sombra leve, fonte Inter hospedada em `public/assets/fonts` (licença OFL junto), ícones em traço (macro `macros/ui.html.twig`), avatares com inicial, saudação por horário (`Saudacao`), formulários em seções com rótulo acima do campo, estados vazios com ícone e texto amigável, sem gradientes e sem emojis. Layouts: `layouts/base.html.twig` (com login) e `layouts/acesso.html.twig` (entrar, recuperar senha e erros). No celular (≤ 768px) as tabelas viram lista de cartões. Todo CSS fica em `public/assets/app.css` (o CSP proíbe `style` inline e `<script>` inline): cores dinâmicas vão em atributos SVG (`fill`). Botões e links usam o verde escuro `--marca-700` por acessibilidade (contraste 4,5:1). Não use `{% set mensagem %}` ou outros nomes genéricos no layout, para não sobrescrever variáveis das páginas. Para conferir mudanças visuais, o Chromium está instalado na VM: renderize o HTML e tire capturas com `chromium --headless --no-sandbox --screenshot=... --virtual-time-budget=2500` (o tempo virtual evita fotografar a animação de entrada pela metade).
+
+### 6.11 Painel /gerente (multi-tenant)
+- As rotas são **escopadas pela URL**: `/gerente/condominios/{cid}/...`. Pipeline: `Auth` → `Role(gerente)` → `EscopoGerenteMiddleware` → (upload) `TamanhoMiddleware` → (escrita) `Csrf`.
+- `EscopoGerenteMiddleware` lê **do banco, a cada requisição**, os condomínios **ativos** vinculados ao gerente. Condomínio desativado pelo admin ou vínculo removido deixam de valer na hora. O superadmin recebe 403 nessas rotas (modo suporte fica para a Fase 2).
+- Todo controller começa com `EscopoGerente::exigir($request, $cid)`: condomínio fora da lista → `NaoEncontradoException` → **404** (nunca 403, para não revelar que ele existe).
+- Todo método de `AvisoRepository` recebe a lista de condomínios permitidos e filtra por **ela e pelo condomínio pedido** (`condominio_id = :cid AND condominio_id = ANY(:permitidos)`); aviso de outro condomínio pedido por ID resulta em `null`/`false`. Criação usa `INSERT ... SELECT ... WHERE :cid = ANY(:permitidos)`.
+- O `condominio_id` de um formulário é **ignorado**: o aviso nasce no condomínio da URL validada, e a edição nunca muda o dono do aviso.
+- Qualquer rota nova por condomínio entra em `GerenteIsolamentoTest` (gerente A × condomínio B → 404, sem alteração no banco nem nos arquivos, sem vazar dados) e ganha teste de repositório. Os testes foram validados com mutações (removendo os filtros, os testes falham).
+- Datas: o formulário usa `datetime-local` em horário de Brasília; `DataHora` converte de/para UTC (epoch). O texto do aviso é puro (escapado pelo Twig; quebras de linha mantidas por CSS `white-space: pre-line`).
+- As cores do condomínio chegam à tela por `/gerente/condominios/{cid}/tema.css` (variáveis `--tv-*`, validadas como `#RRGGBB`), porque o CSP não permite estilo inline. A cor do texto sobre a cor do condomínio é escolhida pelo maior contraste (`AparenciaService::corDoTexto`).
 
 ## 7. Banco de dados e migrations
 

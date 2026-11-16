@@ -6,15 +6,22 @@ namespace App;
 
 use App\Controllers\Admin\CondominiosController;
 use App\Controllers\Admin\UsuariosController;
+use App\Controllers\Gerente\AparenciaController;
+use App\Controllers\Gerente\AvisosController;
+use App\Controllers\Gerente\MidiaController;
+use App\Controllers\Gerente\TemaController;
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\GerenteController;
 use App\Controllers\HomeController;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
+use App\Middleware\EscopoGerenteMiddleware;
 use App\Middleware\Negado;
 use App\Middleware\RateLimitMiddleware;
 use App\Middleware\RoleMiddleware;
+use App\Middleware\TamanhoMiddleware;
+use App\Repositories\AvisoRepository;
 use App\Repositories\CondominioRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\RateLimitRepository;
@@ -22,12 +29,15 @@ use App\Repositories\UsuarioRepository;
 use App\Repositories\VinculoRepository;
 use App\Services\AparenciaService;
 use App\Services\AuthService;
+use App\Services\AvisoService;
 use App\Services\GestaoCondominiosService;
 use App\Services\GestaoUsuariosService;
 use App\Services\Mailer;
 use App\Services\PasswordHasher;
 use App\Services\PasswordResetService;
+use App\Services\PersonalizacaoService;
 use App\Services\RateLimiter;
+use App\Services\UploadService;
 use App\Services\UsuarioService;
 use App\Support\Config;
 use App\Support\Csrf;
@@ -56,6 +66,7 @@ final class AppFactory
         Logger $logger,
         string $diretorioTemplates,
         ?PasswordHasher $hasher = null,
+        ?callable $moverUpload = null,
     ): Application {
         $view = new View($diretorioTemplates, 'Avisos-Cond', $config->string('APP_ENV') === 'local');
         $csrf = new Csrf($sessao);
@@ -71,6 +82,14 @@ final class AppFactory
         $usuarioService = new UsuarioService($usuarios, $hasher);
         $gestaoUsuarios = new GestaoUsuariosService($usuarioService, $usuarios, $condominios, $vinculos, $hasher, $transacao);
         $gestaoCondominios = new GestaoCondominiosService($condominios, $usuarios, $vinculos, $transacao);
+
+        // Uploads: fora do webroot. Com MEDIA_ACCEL (ex.: /media/) o Nginx entrega os arquivos (X-Accel-Redirect).
+        $maximoUpload = max(1, $config->int('UPLOAD_MAX_MB', 10)) * 1048576;
+        $upload = new UploadService($config->obrigatorio('UPLOAD_DIR'), $maximoUpload, $moverUpload);
+        $aceleracao = $config->string('MEDIA_ACCEL') === '' ? null : $config->string('MEDIA_ACCEL');
+        $aparenciaService = new AparenciaService();
+        $avisoService = new AvisoService(new AvisoRepository($pdo), $upload);
+        $personalizacao = new PersonalizacaoService($condominios, $upload);
 
         $auth = new AuthService($usuarios, $hasher, $limitador);
         $recuperacao = new PasswordResetService(
@@ -88,6 +107,9 @@ final class AppFactory
         $mwAuth = new AuthMiddleware($sessao, $usuarios);
         $mwAdmin = new RoleMiddleware(['superadmin'], $negado);
         $mwGerente = new RoleMiddleware(['gerente'], $negado);
+        $mwEscopo = new EscopoGerenteMiddleware($condominios);
+        // Margem de 1 MB para os demais campos do formulário além do arquivo.
+        $mwTamanho = new TamanhoMiddleware($negado, $maximoUpload + 1048576);
         // Limite por IP nas rotas sensíveis: máx. de requisições por janela e tempo de bloqueio (segundos).
         $mwLimiteLogin = new RateLimitMiddleware($limitador, $negado, 'login', 30, 900, 900);
         $mwLimiteRecuperacao = new RateLimitMiddleware($limitador, $negado, 'recuperacao', 20, 3600, 3600);
@@ -97,11 +119,16 @@ final class AppFactory
         $gerente = new GerenteController($view);
         $admin = new AdminController($view, $gestaoUsuarios, $gestaoCondominios);
         $adminUsuarios = new UsuariosController($view, $sessao, $gestaoUsuarios, $gestaoCondominios);
-        $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios, new AparenciaService());
+        $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios, $aparenciaService);
+        $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $aparenciaService);
+        $gerenteAparencia = new AparenciaController($view, $sessao, $personalizacao, $aparenciaService);
+        $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
+        $gerenteTema = new TemaController($aparenciaService);
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTema, $mwEscopo, $mwTamanho,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -138,7 +165,28 @@ final class AppFactory
             $r->addRoute('GET', '/admin/condominios/{id:\d+}/excluir', $leitura([$adminCondominios, 'confirmarExclusao']));
             $r->addRoute('POST', '/admin/condominios/{id:\d+}/excluir', $escrita([$adminCondominios, 'excluir']));
 
-            $r->addRoute('GET', '/gerente', Pipeline::envolver([$gerente, 'painel'], $mwAuth, $mwGerente));
+            // Área do gerente: login → papel → condomínios permitidos (do banco) → (upload) tamanho → (escrita) CSRF.
+            $gLeitura = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwGerente, $mwEscopo);
+            $gEscrita = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwGerente, $mwEscopo, $mwCsrf);
+            $gUpload = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwGerente, $mwEscopo, $mwTamanho, $mwCsrf);
+
+            $r->addRoute('GET', '/gerente', $gLeitura([$gerente, 'painel']));
+
+            $c = '/gerente/condominios/{cid:\d+}';
+            $r->addRoute('GET', "{$c}/avisos", $gLeitura([$gerenteAvisos, 'lista']));
+            $r->addRoute('GET', "{$c}/avisos/novo", $gLeitura([$gerenteAvisos, 'novo']));
+            $r->addRoute('POST', "{$c}/avisos", $gUpload([$gerenteAvisos, 'criar']));
+            $r->addRoute('GET', "{$c}/avisos/{id:\d+}/editar", $gLeitura([$gerenteAvisos, 'editar']));
+            $r->addRoute('POST', "{$c}/avisos/{id:\d+}", $gUpload([$gerenteAvisos, 'atualizar']));
+            $r->addRoute('GET', "{$c}/avisos/{id:\d+}/excluir", $gLeitura([$gerenteAvisos, 'confirmarExclusao']));
+            $r->addRoute('POST', "{$c}/avisos/{id:\d+}/excluir", $gEscrita([$gerenteAvisos, 'excluir']));
+            $r->addRoute('GET', "{$c}/avisos/{id:\d+}/previa", $gLeitura([$gerenteAvisos, 'previa']));
+            $r->addRoute('GET', "{$c}/avisos/{id:\d+}/midia", $gLeitura([$gerenteMidia, 'aviso']));
+
+            $r->addRoute('GET', "{$c}/aparencia", $gLeitura([$gerenteAparencia, 'formulario']));
+            $r->addRoute('POST', "{$c}/aparencia", $gUpload([$gerenteAparencia, 'salvar']));
+            $r->addRoute('GET', "{$c}/logo", $gLeitura([$gerenteMidia, 'logo']));
+            $r->addRoute('GET', "{$c}/tema.css", $gLeitura([$gerenteTema, 'css']));
         });
 
         return new Application($dispatcher, $view, $logger, new SecurityHeaders());

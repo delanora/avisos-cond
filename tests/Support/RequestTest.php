@@ -42,6 +42,28 @@ final class RequestTest extends TestCase
         $this->assertSame('padrao', $novo->attribute('outro', 'padrao'));
     }
 
+    public function testFromGlobalsLeOsArquivosEnviados(): void
+    {
+        $antes = [$_SERVER, $_FILES];
+        $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/x'];
+        $_FILES = ['midia' => ['name' => 'a.png', 'tmp_name' => '/tmp/x', 'error' => 0, 'size' => 3, 'type' => 'image/png']];
+
+        try {
+            $r = Request::fromGlobals();
+        } finally {
+            [$_SERVER, $_FILES] = $antes;
+        }
+
+        $this->assertSame('a.png', $r->files['midia']['name']);
+    }
+
+    public function testComAtributoMantemOsArquivos(): void
+    {
+        $r = new Request('POST', '/', files: ['midia' => ['name' => 'a.png']]);
+
+        $this->assertSame(['midia' => ['name' => 'a.png']], $r->withAttribute('x', 1)->files);
+    }
+
     public function testFromGlobals(): void
     {
         $antes = [$_SERVER, $_GET, $_POST, $_COOKIE];

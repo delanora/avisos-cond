@@ -13,7 +13,14 @@
         'escudo': ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'],
         'alerta': ['M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z', 'M12 9v4', 'M12 17h.01'],
         'voltar': ['M19 12H5', 'M12 19l-7-7 7-7'],
-        'tv': ['M2 7h20v13H2z', 'M17 2l-5 5-5-5']
+        'tv': ['M2 7h20v13H2z', 'M17 2l-5 5-5-5'],
+        'seta-baixo': ['m6 9 6 6 6-6'],
+        'aviso': ['M3 11l18-8v18L3 13z', 'M11.6 16.8a3 3 0 1 1-5.8-1.6'],
+        'paleta': ['M12 22a10 10 0 1 1 10-10c0 3-2 4-4 4h-2a2 2 0 0 0-1.4 3.4c.6.6.4 2.6-2.6 2.6z', 'M7.5 10.5h.01', 'M12 7.5h.01', 'M16.5 10.5h.01'],
+        'olho': ['M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
+        'relogio': ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
+        'imagem': ['M3 3h18v18H3z', 'M8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z', 'M21 15l-5-5L5 21'],
+        'video': ['M23 7l-7 5 7 5z', 'M1 5h15v14H1z']
     } -%}
     <svg class="icone" width="{{ tamanho|default(20) }}" height="{{ tamanho|default(20) }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
         {%- for d in caminhos[nome] %}<path d="{{ d }}"/>{% endfor -%}

@@ -11,7 +11,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 - Decisões que mudam o escopo vão para "Decisões e pendências" ao final, com data.
 - Não invente itens: o escopo vem do `README.md` e do `AGENTS.md`. Se o escopo mudar, atualize os três arquivos juntos.
 
-**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.4 concluídos (estrutura base, banco, autenticação, painel `/admin`); próximo: 1.5 (painel `/gerente`).
+**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.5 concluídos (estrutura base, banco, autenticação, painel `/admin`, painel `/gerente`); próximo: 1.6 (dispositivos e tela da TV).
 
 ---
 
@@ -62,12 +62,13 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [ ] Você revisar o novo visual em um navegador real e pedir ajustes (cores, textos, ilustração)
 
 ### 1.5 Painel `/gerente`
-- [ ] Lista de condomínios vinculados (lidos do banco a cada requisição) e seletor ativo
-- [ ] CRUD de avisos (título, texto, tipo, imagem/vídeo, início/fim)
-- [ ] Upload seguro (JPEG/PNG/WebP/MP4, MIME real, nome aleatório, fora do webroot)
-- [ ] Personalização visual do condomínio (logo e cores)
-- [ ] Pré-visualização do aviso na TV
-- [ ] Testes de isolamento de tenant para avisos e personalização (gerente A × condomínio B → 404)
+- [x] Lista de condomínios vinculados (lidos do banco a cada requisição) e seletor para trocar de condomínio (2026-11-16)
+- [x] CRUD de avisos (título, texto, tipo, imagem/vídeo, início/fim), com situação (no ar, agendado, encerrado, desativado) (2026-11-16)
+- [x] Upload seguro (JPEG/PNG/WebP/MP4, MIME real, nome aleatório, fora do webroot, entrega por X-Accel-Redirect) (2026-11-16)
+- [x] Personalização visual do condomínio (logo e cores) (2026-11-16)
+- [x] Pré-visualização do aviso na TV (com tema do condomínio; urgente em destaque) (2026-11-16)
+- [x] Testes de isolamento de tenant para avisos e personalização (gerente A × condomínio B → 404), validados por mutação (2026-11-16)
+- [ ] Testar o upload e a prévia de **vídeo MP4** real em um Fire Stick e no navegador (os testes automáticos usam um MP4 mínimo)
 
 ### 1.6 Dispositivos e tela da TV
 - [ ] Cadastro de dispositivo e geração de token (12 caracteres, alfabeto sem ambíguos), revogável
@@ -147,4 +148,6 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: identidade visual dos painéis baseada no `DESIGN.md` (verde #00A67E, grafite #202124, cantos de 8px). Desvios: botões e links usam o verde escuro #007A5C (o branco sobre #00A67E tem contraste de só 3,1:1) e o verde elétrico #00FF00 não é usado (viola o teto de saturação do próprio DESIGN.md).
 - 2026-11-16: o administrador não pode alterar o próprio papel, desativar a própria conta nem se excluir (evita ficar sem acesso); a exclusão de usuário e de condomínio pede confirmação em página própria (sem JavaScript).
 - 2026-11-16: redesenho visual a pedido: barra superior branca, visual mais humano (Inter local, cartões arredondados, avatares, ícones, saudação por horário, login em duas colunas, telas de erro amigáveis). O Chromium foi instalado na VM só para conferir o visual por capturas de tela (pode ser removido com `apt remove chromium`).
+- 2026-11-16: bloco 1.5 decidiu: rotas do gerente escopadas pela URL (`/gerente/condominios/{id}/...`); gerente só enxerga condomínios **ativos** (admin desativa = some para o gerente); limite de upload único (`UPLOAD_MAX_MB`, hoje 10) para imagem e vídeo; avisos novos começam no próximo quarto de hora e duram 7 dias por padrão.
+- 2026-11-16: VM: `99-avisos.ini` no PHP-FPM (upload 12M/post 14M) e `location /media/` interno no Nginx com `MEDIA_ACCEL=/media/` no `.env`.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.

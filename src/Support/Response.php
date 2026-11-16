@@ -6,12 +6,31 @@ namespace App\Support;
 
 final class Response
 {
-    /** @param array<string, string> $headers */
+    /**
+     * @param array<string, string> $headers
+     * @param ?string               $arquivo caminho de um arquivo a enviar no lugar do corpo
+     */
     public function __construct(
         public readonly int $status = 200,
         public readonly string $body = '',
         public readonly array $headers = [],
+        public readonly ?string $arquivo = null,
     ) {
+    }
+
+    /**
+     * Resposta com o conteúdo de um arquivo. Em produção o Nginx pode entregá-lo (X-Accel-Redirect):
+     * informe o prefixo interno em $aceleracao e a resposta vai sem corpo, só com o cabeçalho.
+     */
+    public static function arquivo(string $caminho, string $tipoMime, ?string $aceleracao = null): self
+    {
+        $headers = ['Content-Type' => $tipoMime, 'X-Content-Type-Options' => 'nosniff'];
+
+        if ($aceleracao !== null) {
+            return new self(200, '', $headers + ['X-Accel-Redirect' => rtrim($aceleracao, '/') . '/' . basename($caminho)]);
+        }
+
+        return new self(200, '', $headers + ['Content-Length' => (string) filesize($caminho)], $caminho);
     }
 
     public static function html(string $html, int $status = 200): self
@@ -44,7 +63,7 @@ final class Response
         }
         $headers[$nome] = $valor;
 
-        return new self($this->status, $this->body, $headers);
+        return new self($this->status, $this->body, $headers, $this->arquivo);
     }
 
     public function hasHeader(string $nome): bool
@@ -64,6 +83,12 @@ final class Response
         foreach ($this->headers as $nome => $valor) {
             header($nome . ': ' . $valor);
         }
+        if ($this->arquivo !== null) {
+            readfile($this->arquivo);
+
+            return;
+        }
+
         echo $this->body;
     }
 }

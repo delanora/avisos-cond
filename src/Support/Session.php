@@ -54,6 +54,8 @@ final class Session
 
         ini_set('session.use_strict_mode', '1');
         ini_set('session.use_only_cookies', '1');
+        // Sem os cabeçalhos de cache que o PHP adiciona sozinho: o Cache-Control é definido pela aplicação.
+        ini_set('session.cache_limiter', '');
         session_name($this->nome);
         session_set_cookie_params($this->cookieParams());
         session_start();

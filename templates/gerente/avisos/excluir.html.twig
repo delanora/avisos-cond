@@ -1,0 +1,20 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% block titulo %}Excluir aviso - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/avisos">Avisos</a> {{ ui.icone('seta', 14) }} <span>Excluir</span></p>
+    <div class="pagina-topo"><h1>Excluir aviso</h1></div>
+
+    <div class="cartao formulario">
+        <p class="texto-confirmacao">Tem certeza de que deseja excluir o aviso <strong>{{ aviso.titulo }}</strong>?</p>
+        <p class="alerta alerta-erro">{{ ui.icone('alerta', 20) }}<span>Ele deixa de aparecer na TV e a foto ou o vídeo também são apagados. Esta ação não pode ser desfeita.</span></p>
+        <p class="campo-ajuda">Se quiser só parar a exibição, desmarque "Aviso ativo" na edição.</p>
+        <form method="post" action="/gerente/condominios/{{ condominio.id }}/avisos/{{ aviso.id }}/excluir" class="acoes">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="botao-perigo">{{ ui.icone('lixeira', 18) }}Excluir aviso</button>
+            <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/avisos">Cancelar</a>
+        </form>
+    </div>
+{% endblock %}

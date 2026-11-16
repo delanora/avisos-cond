@@ -23,20 +23,32 @@ abstract class AppHttpTestCase extends BancoMigradoTestCase
     protected FakeMailer $mailer;
     protected string $log;
 
+    /** Pasta de uploads do teste (fora do projeto, apagada no fim). */
+    protected string $uploads;
+
     protected function setUp(): void
     {
         parent::setUp();
         $_SESSION = [];
         $this->mailer = new FakeMailer();
         $this->log = tempnam(sys_get_temp_dir(), 'log');
-        $this->app = AppFactory::criar(
-            new Config(['APP_URL' => 'https://avisos.exemplo.com.br']),
+        $this->uploads = sys_get_temp_dir() . '/uploads_' . bin2hex(random_bytes(6));
+        $this->app = $this->novaApp();
+    }
+
+    /** @param array<string, string> $config configurações extras (ex.: MEDIA_ACCEL) */
+    protected function novaApp(array $config = []): Application
+    {
+        return AppFactory::criar(
+            new Config($config + ['APP_URL' => 'https://avisos.exemplo.com.br', 'UPLOAD_DIR' => $this->uploads, 'UPLOAD_MAX_MB' => '1']),
             $this->pdo,
             Session::emMemoria(),
             $this->mailer,
             new Logger($this->log),
             dirname(__DIR__) . '/templates',
-            $this->hasherRapido()
+            $this->hasherRapido(),
+            // Fora de um envio HTTP real, move_uploaded_file recusaria; nos testes basta copiar.
+            static fn (string $de, string $para): bool => copy($de, $para)
         );
     }
 
@@ -44,6 +56,11 @@ abstract class AppHttpTestCase extends BancoMigradoTestCase
     {
         $_SESSION = [];
         @unlink($this->log);
+        \Tests\Support\Amostras::limpar();
+        foreach (glob($this->uploads . '/*') ?: [] as $arquivo) {
+            @unlink($arquivo);
+        }
+        @rmdir($this->uploads);
     }
 
     protected function get(string $caminho, string $ip = '203.0.113.10'): Response
@@ -55,14 +72,18 @@ abstract class AppHttpTestCase extends BancoMigradoTestCase
         return $this->app->handle(new Request('GET', $rota, query: $query, server: ['REMOTE_ADDR' => $ip]));
     }
 
-    /** @param array<string, mixed> $corpo */
-    protected function post(string $caminho, array $corpo = [], bool $comCsrf = true, string $ip = '203.0.113.10'): Response
+    /**
+     * @param array<string, mixed> $corpo
+     * @param array<string, mixed> $arquivos entradas de $_FILES
+     * @param array<string, string> $servidor cabeçalhos/variáveis extras (ex.: CONTENT_LENGTH)
+     */
+    protected function post(string $caminho, array $corpo = [], bool $comCsrf = true, string $ip = '203.0.113.10', array $arquivos = [], array $servidor = []): Response
     {
         if ($comCsrf) {
             $corpo['_csrf'] = $this->tokenCsrf();
         }
 
-        return $this->app->handle(new Request('POST', $caminho, body: $corpo, server: ['REMOTE_ADDR' => $ip]));
+        return $this->app->handle(new Request('POST', $caminho, body: $corpo, server: $servidor + ['REMOTE_ADDR' => $ip], files: $arquivos));
     }
 
     protected function tokenCsrf(): string

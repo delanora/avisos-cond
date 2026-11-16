@@ -1,0 +1,61 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% block titulo %}Aparência - {{ condominio.nome }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <div class="pagina-topo">
+        <div>
+            <h1>Aparência na TV</h1>
+            <p>A logo e as cores do {{ condominio.nome }}. Sem personalização, a TV usa o padrão da Embracore.</p>
+        </div>
+    </div>
+
+    <form method="post" action="/gerente/condominios/{{ condominio.id }}/aparencia" enctype="multipart/form-data" class="cartao formulario">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+        <section class="formulario-secao">
+            <h2>Logo</h2>
+            <p class="secao-ajuda">Imagem JPG, PNG ou WebP. Funciona melhor com fundo transparente ou branco.</p>
+            <div class="aparencia">
+                <img src="{{ aparencia.logo }}" alt="Logo atual" height="40" class="aparencia-logo">
+                <span class="etiqueta">{{ aparencia.logo_padrao ? 'Logo padrão da Embracore' : 'Logo do condomínio' }}</span>
+            </div>
+            <div class="campo{% if erros.logo is defined %} campo-erro{% endif %}">
+                <label for="campo-logo">{{ aparencia.logo_padrao ? 'Enviar a logo do condomínio' : 'Trocar a logo' }}</label>
+                <input id="campo-logo" type="file" name="logo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"{% if erros.logo is defined %} aria-invalid="true"{% endif %}>
+                {% if erros.logo is defined %}<p class="erro-texto">{{ erros.logo }}</p>{% endif %}
+            </div>
+            {% if not aparencia.logo_padrao %}
+                <label class="opcao opcao-simples"><input type="checkbox" name="remover_logo" value="1"> Voltar para a logo padrão da Embracore</label>
+            {% endif %}
+        </section>
+
+        <section class="formulario-secao">
+            <h2>Cores</h2>
+            <p class="secao-ajuda">A cor principal aparece na barra da TV; a secundária nos detalhes.</p>
+            <div class="grade-2">
+                <div class="campo{% if erros.cor_primaria is defined %} campo-erro{% endif %}">
+                    <label for="campo-cor_primaria">Cor principal</label>
+                    <input id="campo-cor_primaria" type="color" name="cor_primaria" value="{{ valores.cor_primaria }}">
+                    {% if erros.cor_primaria is defined %}<p class="erro-texto">{{ erros.cor_primaria }}</p>{% endif %}
+                </div>
+                <div class="campo{% if erros.cor_secundaria is defined %} campo-erro{% endif %}">
+                    <label for="campo-cor_secundaria">Cor secundária</label>
+                    <input id="campo-cor_secundaria" type="color" name="cor_secundaria" value="{{ valores.cor_secundaria }}">
+                    {% if erros.cor_secundaria is defined %}<p class="erro-texto">{{ erros.cor_secundaria }}</p>{% endif %}
+                </div>
+            </div>
+            <label class="opcao opcao-simples">
+                <input type="checkbox" name="usar_padrao" value="1"{% if valores.usar_padrao %} checked{% endif %}>
+                Usar as cores padrão da Embracore
+            </label>
+            <p class="campo-ajuda">Com esta opção marcada, as cores escolhidas acima são ignoradas.</p>
+        </section>
+
+        <div class="acoes">
+            <button type="submit">Salvar aparência</button>
+            <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/avisos">Voltar aos avisos</a>
+        </div>
+    </form>
+{% endblock %}

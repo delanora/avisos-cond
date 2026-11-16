@@ -25,11 +25,11 @@ Existem três "superfícies" no sistema:
 ## Funcionalidades
 
 ### Painel do Gerente
-- Lista dos condomínios vinculados (1 ou N) e seletor de condomínio ativo.
-- CRUD de avisos com título, texto, imagem ou vídeo curto opcional (sem PDF) e tipo (comum, urgente, manutenção, assembleia).
+- Lista dos condomínios vinculados (1 ou N, só os ativos; lida do banco a cada requisição) e seletor para trocar de condomínio. Com um só condomínio, o gerente vai direto para os avisos.
+- CRUD de avisos com título, texto, imagem ou vídeo curto opcional (sem PDF) e tipo (comum, urgente, manutenção, assembleia). A lista mostra a situação de cada aviso: no ar, agendado, encerrado ou desativado.
 - Cada aviso é criado individualmente para um condomínio (não há publicação em lote para vários).
 - Agendamento: data/hora de início e fim de exibição, com opção de recorrência.
-- Pré-visualização de como o aviso aparece na TV.
+- Pré-visualização de como o aviso aparece na TV, com a logo e as cores do condomínio (aviso urgente em destaque).
 - Modelos prontos de aviso (falta de água, manutenção de elevador, dedetização, assembleia).
 - Personalização visual de cada condomínio: logo e esquema de cores. Sem seleção, a TV usa a logo e as cores padrão da Embracore.
 - Recuperação de senha por e-mail.
@@ -144,6 +144,7 @@ DB_PASS=
 SESSION_NAME=avisos_sess
 UPLOAD_DIR=/var/www/avisos-cond/storage/uploads
 UPLOAD_MAX_MB=10
+MEDIA_ACCEL=/media/           # entrega de mídia pelo Nginx (X-Accel-Redirect); vazio = o PHP envia o arquivo
 
 MAIL_HOST=                    # SMTP para recuperação de senha
 MAIL_PORT=587
@@ -199,11 +200,15 @@ server {
         fastcgi_param HTTPS on;
     }
 
-    # Mídias: só acessíveis via X-Accel-Redirect, depois que a aplicação
-    # valida o token (/tv/{token}/media/{id}) ou a sessão do gerente.
+    # Mídias: só acessíveis via X-Accel-Redirect, depois que a aplicação valida o acesso
+    # (sessão do gerente em /gerente/..., token em /tv/{token}/media/{id}). Requer MEDIA_ACCEL=/media/ no .env.
+    # O Nginx cuida de Range (necessário para vídeo) e cache.
     location /media/ {
         internal;
         alias /var/www/avisos-cond/storage/uploads/;
+        # No X-Accel-Redirect o Nginx descarta os cabeçalhos de segurança da aplicação: reaplicamos.
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Content-Security-Policy "default-src 'none'; sandbox" always;
     }
 
     # O access_log das rotas /tv/ deve mascarar o token (ver AGENTS.md 6.8).
@@ -222,6 +227,8 @@ proxy_read_timeout 120s;       # uploads de vídeo
 # HSTS e demais headers de segurança podem ficar aqui.
 # O access_log das rotas /tv/ também deve mascarar o token.
 ```
+
+**PHP-FPM** (uploads): o padrão do PHP (2 MB) é menor que `UPLOAD_MAX_MB`. Crie `/etc/php/8.4/fpm/conf.d/99-avisos.ini` com `upload_max_filesize = 12M`, `post_max_size = 14M` e `max_file_uploads = 5` (sempre acima de `UPLOAD_MAX_MB`) e reinicie o `php8.4-fpm`. A aplicação valida o limite exato e mostra uma mensagem clara; envios maiores que o corpo permitido recebem erro 413.
 
 **Cron** (agendador):
 

@@ -6,13 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block titulo %}{{ app_nome }}{% endblock %}</title>
     <link rel="stylesheet" href="/assets/app.css">
+    {% block cabecalho %}{% endblock %}
 </head>
 <body>
     {% set menu = menu is defined ? menu : '' %}
     <header class="topo">
         <div class="topo-interno">
             <a class="topo-marca" href="/" aria-label="{{ app_nome }} - página inicial">{% include 'partials/logo.html.twig' %}</a>
+            {% if usuario.papel == 'gerente' and condominio is defined and condominio %}
+                {# Condomínio atual; com mais de um, vira um menu para trocar (sem JavaScript). #}
+                <details class="seletor">
+                    <summary>{{ ui.icone('predio', 18) }}<span>{{ condominio.nome }}</span>{% if condominios|length > 1 %}{{ ui.icone('seta-baixo', 16) }}{% endif %}</summary>
+                    {% if condominios|length > 1 %}
+                    <ul class="seletor-lista">
+                        {% for c in condominios %}
+                            <li><a href="/gerente/condominios/{{ c.id }}/avisos"{% if c.id == condominio.id %} aria-current="true"{% endif %}>{{ c.nome }}</a></li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </details>
+            {% endif %}
             <nav class="menu" aria-label="Menu principal">
+                {% if usuario.papel == 'gerente' %}
+                    <a href="/gerente"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('painel', 18) }}Condomínios</a>
+                    {% if condominio is defined and condominio %}
+                        <a href="/gerente/condominios/{{ condominio.id }}/avisos"{% if menu == 'avisos' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('aviso', 18) }}Avisos</a>
+                        <a href="/gerente/condominios/{{ condominio.id }}/aparencia"{% if menu == 'aparencia' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a>
+                    {% endif %}
+                {% endif %}
                 {% if usuario.papel == 'superadmin' %}
                     <a href="/admin"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('painel', 18) }}Início</a>
                     <a href="/admin/usuarios"{% if menu == 'usuarios' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('usuarios', 18) }}Usuários</a>

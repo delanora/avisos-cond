@@ -1,0 +1,25 @@
+{# Um aviso do jeito que aparece na TV. Recebe: aviso, tipos, aparencia, url_midia, hora. Medidas em "em": a TV real usa 1.0417vw por em. #}
+<div class="tv-moldura">
+    <div class="tv tv-{{ aviso.tipo }}">
+        <header class="tv-topo">
+            <span class="tv-logo"><img src="{{ aparencia.logo }}" alt="Logo do condomínio"></span>
+            <span class="tv-relogio">{{ hora|slice(11, 5) }}</span>
+        </header>
+        <div class="tv-corpo{% if aviso.midia %} tv-com-midia{% endif %}">
+            <div class="tv-texto-bloco">
+                <span class="tv-tipo">{{ tipos[aviso.tipo] }}</span>
+                <h2 class="tv-titulo">{{ aviso.titulo }}</h2>
+                {% if aviso.corpo != '' %}<p class="tv-texto">{{ aviso.corpo }}</p>{% endif %}
+            </div>
+            {% if aviso.midia %}
+                <div class="tv-midia">
+                    {% if aviso.midia_tipo == 'imagem' %}
+                        <img src="{{ url_midia }}" alt="">
+                    {% else %}
+                        <video src="{{ url_midia }}" controls muted preload="metadata"></video>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>

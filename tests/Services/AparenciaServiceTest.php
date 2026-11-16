@@ -38,6 +38,41 @@ final class AparenciaServiceTest extends TestCase
         $this->assertTrue($a['personalizada']);
     }
 
+    public function testLogoPersonalizadaUsaAUrlDeEntregaEmVezDoNomeDoArquivo(): void
+    {
+        $a = (new AparenciaService())->resolver(['logo' => 'a1b2c3.png'], '/gerente/condominios/7/logo');
+
+        $this->assertSame('/gerente/condominios/7/logo', $a['logo']);
+        $this->assertFalse($a['logo_padrao']);
+    }
+
+    public function testSemLogoAUrlDeEntregaNaoSeAplica(): void
+    {
+        $a = (new AparenciaService())->resolver(['logo' => null], '/gerente/condominios/7/logo');
+
+        $this->assertSame('/assets/logo-embracore.svg', $a['logo']);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function contrastes(): array
+    {
+        return [
+            'verde da marca pede texto escuro' => ['#00A67E', '#1D2125'],
+            'grafite pede texto branco' => ['#202124', '#FFFFFF'],
+            'branco pede texto escuro' => ['#FFFFFF', '#1D2125'],
+            'preto pede texto branco' => ['#000000', '#FFFFFF'],
+            'azul escuro pede branco' => ['#1E3A8A', '#FFFFFF'],
+            'amarelo pede escuro' => ['#FACC15', '#1D2125'],
+            'inválida cai em branco' => ['azul', '#FFFFFF'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('contrastes')]
+    public function testCorDoTextoEscolheOMaiorContraste(string $fundo, string $esperado): void
+    {
+        $this->assertSame($esperado, AparenciaService::corDoTexto($fundo));
+    }
+
     public function testCorInvalidaCaiParaOPadraoEmVezDeSerUsada(): void
     {
         $a = (new AparenciaService())->resolver(['logo' => null, 'cor_primaria' => 'red" onload="x', 'cor_secundaria' => '#12']);

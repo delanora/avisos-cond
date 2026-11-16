@@ -12,6 +12,7 @@ final class Request
      * @param array<string, string> $server
      * @param array<string, string> $cookies
      * @param array<string, mixed>  $attributes dados anexados pelos middlewares (ex.: usuário autenticado)
+     * @param array<string, mixed>  $files $_FILES (uploads)
      */
     public function __construct(
         public readonly string $method,
@@ -21,6 +22,7 @@ final class Request
         public readonly array $server = [],
         public readonly array $cookies = [],
         public readonly array $attributes = [],
+        public readonly array $files = [],
     ) {
     }
 
@@ -34,6 +36,7 @@ final class Request
             $this->server,
             $this->cookies,
             [...$this->attributes, $nome => $valor],
+            $this->files,
         );
     }
 
@@ -54,6 +57,8 @@ final class Request
             $_POST,
             $_SERVER,
             $_COOKIE,
+            [],
+            $_FILES,
         );
     }
 
