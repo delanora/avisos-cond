@@ -26,24 +26,28 @@ Existem três "superfícies" no sistema:
 
 ### Painel do Gerente
 - Lista dos condomínios vinculados (1 ou N) e seletor de condomínio ativo.
-- CRUD de avisos com título, texto, imagem/PDF opcional e tipo (comum, urgente, manutenção, assembleia).
+- CRUD de avisos com título, texto, imagem ou vídeo curto opcional (sem PDF) e tipo (comum, urgente, manutenção, assembleia).
+- Cada aviso é criado individualmente para um condomínio (não há publicação em lote para vários).
 - Agendamento: data/hora de início e fim de exibição, com opção de recorrência.
 - Pré-visualização de como o aviso aparece na TV.
-- Aviso para um condomínio ou para vários de uma vez.
 - Modelos prontos de aviso (falta de água, manutenção de elevador, dedetização, assembleia).
+- Personalização visual de cada condomínio: logo e esquema de cores. Sem seleção, a TV usa a logo e as cores padrão da Embracore.
+- Recuperação de senha por e-mail.
 
 ### Painel Embracore
 - CRUD de usuários gerentes e de usuários administradores.
 - CRUD de condomínios e vínculo gerente ↔ condomínios (N:N).
-- Gestão de dispositivos (TVs/mini PCs): geração de token, código de pareamento, status online/offline e último ping.
-- Planos, assinaturas e faturas por condomínio; painel de faturamento e inadimplência; suspensão automática da exibição.
+- Gestão de dispositivos (TVs/mini PCs): geração de token e último ping (MVP); código de pareamento e painel de status online/offline (Fase 2).
+- Planos, assinaturas e faturas por condomínio; painel de faturamento e inadimplência; suspensão automática da exibição (a TV passa a mostrar somente o relógio).
 - Log de auditoria (quem fez o quê) e acesso de suporte como gerente (com registro).
 
 ### Tela de exibição
 - Fullscreen, rotação automática, destaque em tela cheia para avisos urgentes.
-- Relógio, logo e cores do condomínio; widgets opcionais (clima, aniversariantes).
+- Relógio, logo e cores do condomínio; widget opcional de clima.
+- Exibe somente fotos e vídeos (sem PDF).
+- Acesso por URL com token curto (12 caracteres), fácil de digitar no dispositivo.
 - QR code opcional no aviso para abrir mais detalhes no celular.
-- Funciona offline (service worker com cache dos avisos e mídias).
+- Funciona offline (service worker com cache dos avisos e mídias). Offline, a TV decide o que exibir pelo horário (`inicio_em`/`fim_em`), corrigindo o relógio do aparelho com a hora do servidor recebida na última sincronização.
 - Cada consulta ao servidor funciona também como **heartbeat** do dispositivo.
 
 ## Stack
@@ -77,6 +81,7 @@ Filosofia: poucas dependências, código explícito e fácil de auditar.
 /tests               testes automatizados
 .env.example
 AGENTS.md            instruções para agentes de código
+ROADMAP.md           progresso do projeto, do início à conclusão (mantido junto com o código)
 README.md
 ```
 
@@ -89,12 +94,17 @@ README.md
 ## Modelo de dados (resumo)
 
 - `usuarios` (id, nome, email, senha_hash, papel, ativo)
-- `condominios` (id, nome, endereco, logo, cores, ativo, suspenso_ate)
+- `condominios` (id, nome, endereco, logo, cor_primaria, cor_secundaria, ativo, suspenso_ate); logo e cores nulas = padrão Embracore
 - `usuario_condominio` (usuario_id, condominio_id), relação N:N
-- `avisos` (id, condominio_id, titulo, corpo, tipo, midia, inicio_em, fim_em, ativo, criado_por)
-- `dispositivos` (id, condominio_id, nome, token, ultimo_ping, ativo)
+- `avisos` (id, condominio_id, titulo, corpo, tipo, midia, inicio_em, fim_em, recorrencia, ativo, criado_por); cada aviso pertence a um único condomínio
+- `modelos_aviso` (modelos prontos de aviso)
+- `dispositivos` (id, condominio_id, nome, token, ultimo_ping, ativo; `codigo_pareamento` na Fase 2)
 - `planos`, `assinaturas`, `faturas`
+- `asaas_eventos` (ID do evento já processado, para idempotência do webhook)
+- `password_resets` (usuario_id, token_hash, expira_em, usado_em)
+- `rate_limits` (contadores de tentativas de login, recuperação de senha e token de TV inválido)
 - `auditoria` (usuario_id, acao, entidade, entidade_id, dados, criado_em)
+- `schema_migrations` (versões de migrations aplicadas)
 
 O esquema completo fica em `/migrations`.
 
@@ -135,9 +145,14 @@ SESSION_NAME=avisos_sess
 UPLOAD_DIR=/var/www/avisos-cond/storage/uploads
 UPLOAD_MAX_MB=10
 
+MAIL_HOST=                    # SMTP para recuperação de senha
+MAIL_PORT=587
+MAIL_USER=
+MAIL_PASS=
+MAIL_FROM=
+
 ASAAS_API_KEY=
 ASAAS_WEBHOOK_TOKEN=
-N8N_WEBHOOK_URL=              # alerta de dispositivo offline
 ```
 
 ## Deploy (produção)
@@ -160,11 +175,14 @@ server {
         fastcgi_param SCRIPT_FILENAME $document_root/index.php;
     }
 
+    # Mídias: só acessíveis via X-Accel-Redirect, depois que a aplicação
+    # valida o token (/tv/{token}/media/{id}) ou a sessão do gerente.
     location /media/ {
         internal;
         alias /var/www/avisos-cond/storage/uploads/;
     }
 
+    # O access_log das rotas /tv/ deve mascarar o token (ver AGENTS.md 6.8).
     # TLS (certbot) e headers de segurança aqui
 }
 ```
@@ -175,7 +193,7 @@ server {
 * * * * * www-data php /var/www/avisos-cond/bin/cron.php >> /var/www/avisos-cond/storage/logs/cron.log 2>&1
 ```
 
-O `cron.php` publica/expira avisos agendados, marca dispositivos offline (e avisa o n8n), gera faturas e suspende condomínios inadimplentes.
+O `cron.php` publica/expira avisos agendados e, nas fases seguintes, marca dispositivos offline, gera faturas e suspende condomínios inadimplentes. Não pode haver duas execuções simultâneas (usa lock) e todas as tarefas são idempotentes.
 
 **Backup**: `pg_dump` diário do banco e cópia de `/storage/uploads`.
 
@@ -193,13 +211,15 @@ O `cron.php` publica/expira avisos agendados, marca dispositivos offline (e avis
 
 ## Roadmap
 
-- **MVP**: login, CRUD de condomínios, gerentes e avisos, tela da TV com rotação e cache offline.
-- **Fase 2**: heartbeat/status de dispositivos, agendamento avançado, auditoria, pareamento por código.
-- **Fase 3**: faturamento (Asaas), suspensão automática, widgets, notificações externas (WhatsApp/e-mail), perfil zelador.
+Resumo abaixo. O detalhamento item a item e o status real de cada um ficam em [`ROADMAP.md`](ROADMAP.md), atualizado a cada commit.
+
+- **MVP**: login com rate limit, recuperação de senha, CRUD de condomínios, gerentes e avisos, personalização visual (logo/cores), dispositivos (cadastro, token e heartbeat), tela da TV com rotação e cache offline.
+- **Fase 2**: painel de status online/offline dos dispositivos, agendamento avançado, auditoria, pareamento por código.
+- **Fase 3**: faturamento (Asaas), suspensão automática (TV mostra só o relógio), widget de clima, notificações externas (WhatsApp/e-mail), perfil zelador.
 
 ## Segurança
 
-Resumo das regras (detalhes em `AGENTS.md`): isolamento rigoroso entre condomínios (tenants), Argon2id para senhas, CSRF em todo POST, escape de saída por padrão, validação de uploads por MIME real, webhooks autenticados e idempotentes, limite de tentativas de login.
+Resumo das regras (detalhes em `AGENTS.md`): isolamento rigoroso entre condomínios (tenants), Argon2id para senhas, CSRF em todo POST, escape de saída por padrão, validação de uploads por MIME real (somente imagens e vídeo), webhooks autenticados e idempotentes, rate limit em login, recuperação de senha e token de TV.
 
 ## Licença
 

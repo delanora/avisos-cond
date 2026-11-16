@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instruções para agentes de código que trabalham neste repositório. Leia este arquivo inteiro antes de qualquer alteração e leia também o `README.md` para o contexto do produto.
+Instruções para agentes de código que trabalham neste repositório. Leia este arquivo inteiro antes de qualquer alteração e leia também o `README.md` para o contexto do produto e o `ROADMAP.md` para saber o que já foi feito e o que falta.
 
 ## 1. Contexto do projeto
 
@@ -15,6 +15,8 @@ Três superfícies: `/admin` (Embracore), `/gerente` (gerente) e `/tv/{token}` (
 3. **Isolamento entre condomínios é a regra de segurança nº 1.** Um gerente nunca pode ler ou alterar dados de condomínio ao qual não está vinculado. Veja a seção 6.
 4. **Não invente requisitos.** Se algo estiver ambíguo, implemente o mínimo coerente com este documento e o README, e registre a dúvida no final da sua resposta.
 5. **Mudanças pequenas e verificáveis.** Um assunto por vez, com testes.
+6. **Commits frequentes e push por feature concluída.** Faça commit sempre que houver alterações (feature, correção ou atualização de código/documentação), com mensagem em português explicando o que foi feito. Faça `git push` sempre que uma feature for finalizada (testes passando).
+7. **`ROADMAP.md` sempre fiel ao código.** Ele é a fonte de verdade do progresso. Toda mudança que conclua, inicie, adie, adicione ou remova um item do projeto deve atualizar o `ROADMAP.md` **no mesmo commit** do código. Só marque `[x]` o que estiver implementado, testado e commitado; use `[~]` para em andamento. Antes de começar uma tarefa, confira no `ROADMAP.md` onde ela se encaixa; se não estiver listada, não invente: registre a dúvida (princípio 4) e, se o escopo realmente mudar, atualize `README.md`, `AGENTS.md` e `ROADMAP.md` juntos.
 
 ## 3. Stack e versões
 
@@ -65,7 +67,8 @@ Regras de camada:
 
 ### 6.1 Isolamento de tenants (crítico)
 - O `condominio_id` **nunca** é confiável quando vem do request (form, query, JSON).
-- No contexto do gerente, a lista de condomínios permitidos vem **da sessão/banco** (tabela `usuario_condominio`), nunca do cliente.
+- No contexto do gerente, a lista de condomínios permitidos é lida **do banco** (tabela `usuario_condominio`) a **cada requisição** em `/gerente/*`, nunca do cliente e nunca de cache na sessão. Assim, um vínculo removido pelo admin vale imediatamente. O custo é uma consulta indexada por chave, desprezível.
+- Cada aviso pertence a **um único** condomínio. O gerente cria avisos individualmente para cada condomínio; não existe publicação em lote para vários condomínios.
 - Todo método de Repository que acessa dados de condomínio recebe os IDs permitidos e usa `WHERE condominio_id = ANY(:ids)` (ou equivalente). Não existe consulta de `avisos`, `dispositivos`, `faturas` etc. sem esse filtro no contexto do gerente.
 - Ao receber um ID de recurso (`/gerente/avisos/42/editar`), verifique que o recurso pertence a um condomínio permitido **antes** de qualquer leitura ou escrita. Resposta para recurso fora do escopo: `404`.
 - Toda funcionalidade nova que toque dados por condomínio **precisa** de teste de isolamento (veja seção 9).
@@ -76,7 +79,10 @@ Regras de camada:
 - Cookies de sessão: `HttpOnly`, `Secure`, `SameSite=Lax`, nome definido em `.env`.
 - Limite de tentativas de login por IP e por usuário (tabela ou cache), com atraso/bloqueio temporário.
 - Mensagens de login genéricas ("credenciais inválidas"), sem revelar se o e-mail existe.
-- Reset de senha com token aleatório (`random_bytes`), armazenado com hash, de uso único e com expiração curta.
+- Recuperação de senha ("esqueci minha senha") para gerentes e superadmins: token aleatório (`random_bytes`), armazenado **apenas com hash** na tabela `password_resets`, de uso único e com expiração curta (ex.: 30 min). Ao concluir a troca, invalide o token e as demais sessões do usuário.
+- A resposta do pedido de recuperação é sempre a mesma ("se o e-mail existir, enviaremos instruções"), exista ou não a conta.
+- **Rate limit anti-bruteforce** (middleware `RateLimit`, contadores em tabela do PostgreSQL, sem Redis): aplica-se ao login (por IP **e** por e-mail), ao pedido de recuperação de senha (por IP e por e-mail) e à troca de senha por token (por IP). Excedido o limite: bloqueio temporário com resposta `429` e mensagem genérica. Nunca logar a senha tentada.
+- O envio de e-mail (recuperação de senha) usa SMTP configurado no `.env`. Se for necessária uma biblioteca (ex.: PHPMailer), justifique conforme a regra de dependências (seção 2.2).
 
 ### 6.3 Autorização
 - Middleware `Role` protege rotas por papel (`superadmin`, `gerente`). `/admin/*` só `superadmin`; `/gerente/*` só `gerente` (ou superadmin em modo suporte, com registro em auditoria).
@@ -93,9 +99,10 @@ Regras de camada:
 - Usuário do banco da aplicação sem privilégios de DDL em produção (migrations rodam com outro usuário).
 
 ### 6.6 Uploads
-- Valide tamanho, extensão **e** MIME real com `finfo`. Tipos permitidos: JPEG, PNG, WebP, PDF (e vídeo curto MP4, se habilitado).
+- Valide tamanho, extensão **e** MIME real com `finfo`. Tipos permitidos: **imagens** (JPEG, PNG, WebP) e **vídeo curto** (MP4). **PDF não é permitido**: a TV/mini PC exibe somente fotos e vídeos. SVG também não (risco de XSS).
+- A logo do condomínio segue as mesmas regras (somente JPEG, PNG ou WebP).
 - Nome do arquivo gerado aleatoriamente; nunca use o nome enviado.
-- Armazene em `/storage/uploads`, **fora** do webroot. Sirva por rota autenticada/controlada ou por `X-Accel-Redirect` (Nginx `internal`).
+- Armazene em `/storage/uploads`, **fora** do webroot. Sirva por rota autenticada/controlada ou por `X-Accel-Redirect` (Nginx `internal`). Para a TV, a mídia é servida por `/tv/{token}/media/{id}` (ver 6.8).
 - Nunca execute nem inclua arquivo enviado.
 
 ### 6.7 Webhooks e integrações
@@ -104,9 +111,14 @@ Regras de camada:
 - Chamadas externas com timeout definido.
 
 ### 6.8 Tela da TV (`/tv/{token}`)
-- Token com no mínimo 32 caracteres aleatórios (`bin2hex(random_bytes(24))`), único por dispositivo, revogável.
+- O "login" da TV/mini PC é feito **somente pela URL com token** (`/tv/{token}`), sem usuário e senha. O token precisa ser curto o bastante para ser digitado no dispositivo: **12 caracteres** aleatórios (~60 bits), gerados com `random_int` a partir de um alfabeto de 32 símbolos sem caracteres ambíguos (sem `0 O 1 I L`), único por dispositivo, revogável. Por ser mais curto que o ideal, a segurança depende também do rate limit abaixo.
+- Rate limit por IP para tokens inválidos em `/tv/*` (bloqueio temporário com `429`), para impedir adivinhação por força bruta.
 - A rota expõe **somente** os avisos ativos do condomínio do dispositivo. Nenhum dado de gerentes, faturas ou outros condomínios.
 - Token inválido ou dispositivo inativo: resposta `404` sem detalhes.
+- **Mídias da TV**: o Nginx serve `/media/` como `internal`, então a TV nunca acessa o arquivo direto. Ela pede `/tv/{token}/media/{id}`; o controller valida o token, confere que a mídia pertence a um aviso ativo do condomínio do dispositivo e responde com `X-Accel-Redirect`.
+- **Token em logs e Referrer**: o token aparece na URL, então (a) configure o Nginx para mascarar o token no `access_log` das rotas `/tv/`, (b) nunca registre o token em logs da aplicação, e (c) envie `Referrer-Policy: no-referrer` nessas rotas.
+- **Condomínio suspenso por inadimplência** (ou dispositivo cuja assinatura esteja suspensa): a TV mostra **somente o relógio com o horário atual**, sem avisos e sem anúncios.
+- **Aparência**: a TV usa a logo e o esquema de cores definidos pelo gerente para o condomínio; se não houver seleção, usa a logo e as cores padrão da Embracore.
 
 ## 7. Banco de dados e migrations
 
@@ -122,6 +134,7 @@ Regras de camada:
 - O endpoint retorna JSON com `version` (hash do conjunto de avisos ativos e suas mídias) e a lista de avisos. O JS só atualiza a exibição quando `version` muda.
 - Cada consulta atualiza `dispositivos.ultimo_ping`; isso é o heartbeat.
 - Service worker (`/public/sw.js`) faz cache do HTML, dos assets, dos avisos e das mídias para funcionar offline. Ao voltar a conexão, ressincroniza.
+- **Offline e relógio do dispositivo:** sem internet, a TV não consegue perguntar ao servidor o que está ativo; ela usa a lista em cache e decide o que exibir pelo relógio local. Por isso o JSON de `/tv/{token}/state` deve incluir, em cada aviso, `inicio_em` e `fim_em` (UTC, ISO 8601) e, no topo, `server_time`. O JS calcula `deslocamento = server_time - Date.now()` a cada resposta bem-sucedida e usa `Date.now() + deslocamento` para filtrar os avisos: o que venceu durante a queda sai da tela e o agendado entra no horário certo. Isso protege contra mini PCs com relógio errado (sem NTP/bateria de BIOS). Se nunca houve resposta do servidor, usa o relógio local sem correção.
 - Avisos do tipo `urgente` têm prioridade e destaque em tela cheia.
 - Não use WebSocket/SSE no PHP-FPM: ele prende workers. Polling é a decisão de arquitetura.
 
@@ -153,7 +166,8 @@ Uma tarefa só está concluída quando:
 4. Migrations novas são aditivas e aplicam do zero e sobre o estado anterior.
 5. Nenhum segredo, token ou senha foi commitado.
 6. O `README.md` foi atualizado se houve mudança de configuração, comando ou arquitetura.
-7. Dúvidas e decisões assumidas estão listadas na resposta final.
+7. O `ROADMAP.md` foi atualizado no mesmo commit (itens concluídos marcados com data; novas decisões/pendências registradas).
+8. Dúvidas e decisões assumidas estão listadas na resposta final.
 
 ## 12. O que NÃO fazer
 
@@ -166,6 +180,8 @@ Uma tarefa só está concluída quando:
 - Não logar senhas, tokens, chaves de API ou dados sensíveis.
 - Não implementar SSE/WebSocket no lado PHP.
 - Não refatorar partes não relacionadas à tarefa.
+- Não aceitar PDF nem SVG em uploads; a TV exibe somente fotos e vídeos.
+- Não implementar integração com n8n (decisão adiada); não implementar widget de aniversariantes (removido por questões de LGPD).
 
 ## 13. Ordem sugerida de implementação (MVP)
 
@@ -175,6 +191,12 @@ Uma tarefa só está concluída quando:
 4. Painel `/admin`: CRUD de gerentes, condomínios e vínculos.
 5. Painel `/gerente`: seletor de condomínio e CRUD de avisos (com testes de isolamento).
 6. Tela `/tv/{token}`: página, endpoint de estado, rotação, service worker.
-7. Dispositivos: cadastro, token, heartbeat e status.
-8. `bin/cron.php`: publicação/expiração de avisos e detecção de dispositivos offline.
-9. Auditoria, faturamento (Asaas) e demais itens das fases 2 e 3.
+7. Dispositivos: cadastro, token e heartbeat (`ultimo_ping`). O painel de status online/offline fica para a Fase 2.
+8. `bin/cron.php`: publicação/expiração de avisos. A detecção de dispositivos offline entra na Fase 2.
+9. Recuperação de senha e personalização visual do condomínio (logo e cores) podem ser feitas junto dos passos 3 e 5.
+10. Auditoria, faturamento (Asaas) e demais itens das fases 2 e 3.
+
+### Cron (`bin/cron.php`)
+- Roda a cada minuto, então **nunca pode haver duas execuções simultâneas**: use `flock` num arquivo de lock ou `pg_try_advisory_lock` e encerre silenciosamente se não obtiver o lock.
+- Todas as tarefas devem ser **idempotentes** (ex.: geração de faturas não pode duplicar a fatura do mesmo período; publicar/expirar aviso já tratado não faz nada).
+- Falha em uma tarefa é registrada em log e não impede as demais.
