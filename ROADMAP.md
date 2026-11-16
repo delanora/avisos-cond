@@ -11,7 +11,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 - Decisões que mudam o escopo vão para "Decisões e pendências" ao final, com data.
 - Não invente itens: o escopo vem do `README.md` e do `AGENTS.md`. Se o escopo mudar, atualize os três arquivos juntos.
 
-**Status atual:** Fase 1 em andamento. Blocos 1.1 (estrutura base), 1.2 (banco de dados) e 1.3 (autenticação e segurança) concluídos; próximo: 1.4 (painel `/admin`).
+**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.4 concluídos (estrutura base, banco, autenticação, painel `/admin`); próximo: 1.5 (painel `/gerente`).
 
 ---
 
@@ -52,10 +52,13 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [ ] Validar o envio real do e-mail de recuperação com um servidor SMTP configurado (os testes usam um mailer falso)
 
 ### 1.4 Painel `/admin` (Embracore)
-- [ ] CRUD de gerentes e administradores
-- [ ] CRUD de condomínios
-- [ ] Vínculo gerente ↔ condomínios (N:N)
-- [ ] Logo/cores padrão da Embracore (usadas quando o condomínio não personaliza)
+- [x] CRUD de gerentes e administradores (criar, editar, ativar/desativar, redefinir senha, excluir com confirmação) (2026-11-16)
+- [x] CRUD de condomínios (exclusão mostra o que será apagado em cascata) (2026-11-16)
+- [x] Vínculo gerente ↔ condomínios (N:N), editável pelo usuário e pelo condomínio (2026-11-16)
+- [x] Logo/cores padrão da Embracore (usadas quando o condomínio não personaliza) (`AparenciaService`) (2026-11-16)
+- [ ] Trocar `public/assets/logo-embracore.svg` (provisória) pela logo oficial da Embracore
+- [ ] Hospedar a fonte Inter localmente em `public/assets` (o CSP não permite CDN; hoje cai na fonte do sistema)
+- [ ] Revisar o visual do painel em um navegador real (a VM não tem navegador; só o HTML foi testado)
 
 ### 1.5 Painel `/gerente`
 - [ ] Lista de condomínios vinculados (lidos do banco a cada requisição) e seletor ativo
@@ -139,4 +142,6 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: PHPMailer adicionado (e-mail SMTP da recuperação de senha); justificativa no `AGENTS.md` seção 3.
 - 2026-11-16: política de senha: 10 a 128 caracteres, Argon2id (19 MiB, 2 iterações, 1 thread). Sem `MAIL_HOST` o e-mail não é enviado e o motivo vai para o log, sem o token.
 - 2026-11-16: `migrations/003_usuarios_senha_alterada.sql` adiciona `usuarios.senha_alterada_em`, usado para derrubar sessões antigas na troca de senha.
+- 2026-11-16: identidade visual dos painéis baseada no `DESIGN.md` (verde #00A67E, grafite #202124, cantos de 8px). Desvios: botões e links usam o verde escuro #007A5C (o branco sobre #00A67E tem contraste de só 3,1:1) e o verde elétrico #00FF00 não é usado (viola o teto de saturação do próprio DESIGN.md).
+- 2026-11-16: o administrador não pode alterar o próprio papel, desativar a própria conta nem se excluir (evita ficar sem acesso); a exclusão de usuário e de condomínio pede confirmação em página própria (sem JavaScript).
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.

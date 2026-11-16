@@ -1,0 +1,25 @@
+{% extends 'layouts/base.html.twig' %}
+{% set menu = 'condominios' %}
+
+{% block titulo %}Excluir condomínio - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/admin/condominios">Condomínios</a> / Excluir</p>
+    <h1>Excluir condomínio</h1>
+
+    <div class="cartao formulario">
+        <p>Tem certeza de que deseja excluir o condomínio <strong>{{ alvo.nome }}</strong>?</p>
+        <p class="alerta alerta-erro">Esta ação não pode ser desfeita. Serão apagados junto:</p>
+        <ul>
+            <li>{{ dependencias.avisos }} {{ dependencias.avisos == 1 ? 'aviso' : 'avisos' }}</li>
+            <li>{{ dependencias.dispositivos }} {{ dependencias.dispositivos == 1 ? 'dispositivo (a TV deixa de funcionar)' : 'dispositivos (as TVs deixam de funcionar)' }}</li>
+            <li>{{ dependencias.gerentes }} {{ dependencias.gerentes == 1 ? 'vínculo com gerente' : 'vínculos com gerentes' }} (as contas dos gerentes continuam)</li>
+        </ul>
+        <p>Para apenas parar a exibição, desmarque "Condomínio ativo" na edição.</p>
+        <form method="post" action="/admin/condominios/{{ alvo.id }}/excluir" class="acoes">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="botao-perigo">Excluir condomínio</button>
+            <a class="botao botao-secundario" href="/admin/condominios">Cancelar</a>
+        </form>
+    </div>
+{% endblock %}

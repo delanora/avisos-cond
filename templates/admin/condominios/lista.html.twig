@@ -1,0 +1,45 @@
+{% extends 'layouts/base.html.twig' %}
+{% set menu = 'condominios' %}
+
+{% block titulo %}Condomínios - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <div class="pagina-topo">
+        <h1>Condomínios</h1>
+        <a class="botao" href="/admin/condominios/novo">Novo condomínio</a>
+    </div>
+
+    {% if condominios|length == 0 %}
+        <p class="cartao vazio">Nenhum condomínio cadastrado.</p>
+    {% else %}
+        <div class="tabela-rolagem">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Endereço</th>
+                        <th>Gerentes</th>
+                        <th>Aparência</th>
+                        <th>Situação</th>
+                        <th><span class="sr-only">Ações</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for c in condominios %}
+                    <tr>
+                        <td>{{ c.nome }}</td>
+                        <td>{{ c.endereco ?? '-' }}</td>
+                        <td>{{ c.total_gerentes }}</td>
+                        <td>{{ c.personalizada ? 'Personalizada' : 'Padrão Embracore' }}</td>
+                        <td><span class="etiqueta {{ c.ativo ? 'etiqueta-ok' : '' }}">{{ c.ativo ? 'Ativo' : 'Inativo' }}</span></td>
+                        <td class="acoes-celula">
+                            <a href="/admin/condominios/{{ c.id }}/editar">Editar</a>
+                            <a href="/admin/condominios/{{ c.id }}/excluir">Excluir</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+{% endblock %}

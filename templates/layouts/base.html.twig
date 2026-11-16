@@ -7,9 +7,19 @@
     <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+    {% set menu = menu is defined ? menu : '' %}
     {% if usuario is defined and usuario %}
     <header class="topo">
-        <strong>{{ app_nome }}</strong>
+        <a class="topo-marca" href="/"><img src="/assets/logo-embracore.svg" alt="{{ app_nome }}"></a>
+        {% if usuario.papel == 'superadmin' %}
+        <nav class="topo-menu" aria-label="Menu principal">
+            <a href="/admin"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>Painel</a>
+            <a href="/admin/usuarios"{% if menu == 'usuarios' %} class="ativo" aria-current="page"{% endif %}>Usuários</a>
+            <a href="/admin/condominios"{% if menu == 'condominios' %} class="ativo" aria-current="page"{% endif %}>Condomínios</a>
+        </nav>
+        {% else %}
+        <nav class="topo-menu" aria-label="Menu principal"></nav>
+        {% endif %}
         <form method="post" action="/logout" class="topo-sair">
             <span>{{ usuario.nome }}</span>
             <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -18,6 +28,9 @@
     </header>
     {% endif %}
     <main class="container">
+        {# Nome próprio para não sobrescrever variáveis das páginas (ex.: "mensagem" da página de erro). #}
+        {% set layout_flash = flash() %}
+        {% if layout_flash != '' %}<p class="alerta alerta-sucesso" role="status">{{ layout_flash }}</p>{% endif %}
         {% block conteudo %}{% endblock %}
     </main>
 </body>

@@ -19,6 +19,9 @@ final class View
     /** @var callable(): string */
     private $geradorCsrf;
 
+    /** @var callable(): string */
+    private $geradorFlash;
+
     public function __construct(string $diretorio, string $nomeApp = 'Avisos-Cond', bool $debug = false)
     {
         $this->twig = new Environment(new FilesystemLoader($diretorio), [
@@ -36,12 +39,22 @@ final class View
             throw new \LogicException('A função csrf_token não foi configurada nesta View.');
         };
         $this->twig->addFunction(new TwigFunction('csrf_token', fn (): string => ($this->geradorCsrf)()));
+
+        // Sem sessão configurada, não há mensagem a mostrar.
+        $this->geradorFlash = static fn (): string => '';
+        $this->twig->addFunction(new TwigFunction('flash', fn (): string => ($this->geradorFlash)()));
     }
 
     /** Define de onde vem o valor de {{ csrf_token() }}. A saída continua sujeita ao auto-escape. */
     public function definirCsrf(callable $gerador): void
     {
         $this->geradorCsrf = $gerador;
+    }
+
+    /** Define de onde vem a mensagem de {{ flash() }}. */
+    public function definirFlash(callable $gerador): void
+    {
+        $this->geradorFlash = $gerador;
     }
 
     /** @param array<string, mixed> $dados */

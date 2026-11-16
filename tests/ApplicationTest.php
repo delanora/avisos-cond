@@ -41,6 +41,9 @@ final class ApplicationTest extends TestCase
                 throw new \RuntimeException('segredo-interno-123');
             });
             $r->addRoute('GET', '/invalido', static fn (): string => 'nao e Response');
+            $r->addRoute('GET', '/sumiu', static function (): Response {
+                throw new \App\Support\NaoEncontradoException('registro-que-nao-existe');
+            });
         });
 
         return new Application($dispatcher, $view, new Logger($this->log), new SecurityHeaders());
@@ -98,6 +101,16 @@ final class ApplicationTest extends TestCase
         $log = (string) file_get_contents($this->log);
         $this->assertStringContainsString('segredo-interno-123', $log);
         $this->assertStringContainsString('GET /quebra', $log);
+    }
+
+    public function testNaoEncontradoViraPagina404SemRegistrarComoErro(): void
+    {
+        $r = $this->app()->handle(new Request('GET', '/sumiu'));
+
+        $this->assertSame(404, $r->status);
+        $this->assertStringContainsString('<h1>404</h1>', $r->body);
+        $this->assertStringNotContainsString('registro-que-nao-existe', $r->body);
+        $this->assertSame('', (string) file_get_contents($this->log));
     }
 
     public function testHandlerQueNaoRetornaResponseViraErro500(): void

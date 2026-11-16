@@ -35,7 +35,7 @@ Existem três "superfícies" no sistema:
 - Recuperação de senha por e-mail.
 
 ### Painel Embracore
-- CRUD de usuários gerentes e de usuários administradores.
+- CRUD de usuários gerentes e de usuários administradores (ativar/desativar, redefinir senha, excluir com confirmação).
 - CRUD de condomínios e vínculo gerente ↔ condomínios (N:N).
 - Gestão de dispositivos (Fire Sticks, mini PCs e outras TVs): geração de token e último ping (MVP); código de pareamento e painel de status online/offline (Fase 2).
 - Situação financeira por condomínio: **somente visualização** (situação, valor, vencimento, observações cadastrados manualmente) e **bloqueio/desbloqueio manual** da exibição (a TV passa a mostrar somente o relógio). A cobrança em si (boletos, Pix, faturas) é feita em um sistema à parte, fora deste projeto.
@@ -81,6 +81,7 @@ Filosofia: poucas dependências, código explícito e fácil de auditar.
 /tests               testes automatizados
 .env.example
 AGENTS.md            instruções para agentes de código
+DESIGN.md            identidade visual (cores, tipografia, componentes) usada nos painéis
 ROADMAP.md           progresso do projeto, do início à conclusão (mantido junto com o código)
 README.md
 ```

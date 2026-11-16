@@ -61,6 +61,24 @@ final class ViewTest extends TestCase
         }
     }
 
+    public function testFlashPadraoEVazioEPodeSerDefinido(): void
+    {
+        $dir = sys_get_temp_dir() . '/tpl_' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        file_put_contents($dir . '/msg.twig', '[{{ flash() }}]');
+
+        try {
+            $view = new View($dir);
+            $this->assertSame('[]', $view->render('msg.twig'));
+
+            $view->definirFlash(static fn (): string => '<b>oi</b>');
+            $this->assertSame('[&lt;b&gt;oi&lt;/b&gt;]', $view->render('msg.twig'));
+        } finally {
+            unlink($dir . '/msg.twig');
+            rmdir($dir);
+        }
+    }
+
     public function testVariavelInexistenteGeraErro(): void
     {
         $this->expectException(RuntimeError::class);

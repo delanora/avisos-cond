@@ -54,6 +54,17 @@ final class SessionTest extends TestCase
         $this->assertFalse($s->has('usuario'));
     }
 
+    public function testFlashApareceUmaUnicaVez(): void
+    {
+        $s = new Session('x', false);
+
+        $this->assertSame('', $s->pegarFlash());
+
+        $s->flash('Salvo com sucesso.');
+        $this->assertSame('Salvo com sucesso.', $s->pegarFlash());
+        $this->assertSame('', $s->pegarFlash());
+    }
+
     public function testDestroyLimpaOsDados(): void
     {
         $s = new Session('x', false);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App;
 
 use App\Support\Logger;
+use App\Support\NaoEncontradoException;
 use App\Support\Request;
 use App\Support\Response;
 use App\Support\SecurityHeaders;
@@ -33,6 +34,9 @@ final class Application
     {
         try {
             $resposta = $this->despachar($request);
+        } catch (NaoEncontradoException) {
+            // Recurso inexistente ou fora do escopo: 404 sem detalhes e sem registrar como erro.
+            $resposta = $this->paginaDeErro(404, 'Página não encontrada.');
         } catch (Throwable $erro) {
             $this->logger->error('Erro ao processar ' . $request->method . ' ' . $request->path, $erro);
             $resposta = $this->paginaDeErro(500, 'Ocorreu um erro inesperado. Tente novamente mais tarde.');

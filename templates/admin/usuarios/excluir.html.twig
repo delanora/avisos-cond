@@ -1,0 +1,21 @@
+{% extends 'layouts/base.html.twig' %}
+{% set menu = 'usuarios' %}
+
+{% block titulo %}Excluir usuário - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/admin/usuarios">Usuários</a> / Excluir</p>
+    <h1>Excluir usuário</h1>
+
+    {% if erro != '' %}<p class="alerta alerta-erro" role="alert">{{ erro }}</p>{% endif %}
+
+    <div class="cartao formulario">
+        <p>Tem certeza de que deseja excluir <strong>{{ alvo.nome }}</strong> ({{ alvo.email }})?</p>
+        <p>Os vínculos com condomínios serão removidos e o acesso termina imediatamente. Os avisos que esta pessoa criou continuam no sistema. Para apenas bloquear o acesso, use "Conta ativa" na edição do usuário.</p>
+        <form method="post" action="/admin/usuarios/{{ alvo.id }}/excluir" class="acoes">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="botao-perigo">Excluir usuário</button>
+            <a class="botao botao-secundario" href="/admin/usuarios">Cancelar</a>
+        </form>
+    </div>
+{% endblock %}

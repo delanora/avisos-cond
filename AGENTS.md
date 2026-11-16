@@ -137,6 +137,13 @@ Regras de camada:
 - Cookies de sessão seguem `Secure`; HSTS fica no proxy. Mantenha `client_max_body_size` igual nos dois Nginx e acima de `UPLOAD_MAX_MB`.
 - Não use Apache: a mídia é servida com `X-Accel-Redirect` (Nginx).
 
+### 6.10 Painel /admin e identidade visual
+- Todas as rotas `/admin/*` passam por `Auth` → `Role(superadmin)` e, nas escritas, `Csrf`. Os testes (`AdminTest`) percorrem **todas** as rotas e exigem: visitante → redirecionado ao login; gerente → 403 e nenhum dado alterado. Rota nova em `/admin` entra nessa lista de testes.
+- Recurso inexistente: o Service lança `NaoEncontradoException` e a `Application` responde `404` sem registrar como erro (também é o padrão para recurso fora do escopo do gerente).
+- O administrador não pode alterar o próprio papel, desativar a própria conta nem se excluir. Exclusões pedem confirmação em página própria (mostrando o que será apagado em cascata), sem JavaScript. Alterações de várias tabelas (ex.: usuário + vínculos) rodam em `Transaction`.
+- O hash da senha nunca sai do Service para telas ou listagens, e campos de senha nunca voltam preenchidos.
+- **Visual:** siga o `DESIGN.md` (cores, tipografia, cantos de 8px, rótulo acima do campo, sem gradientes, sombras leves, sem emojis, menu com indicador na página ativa, layout que colapsa abaixo de 768px). Todo CSS fica em `public/assets/app.css` (o CSP proíbe `style` inline e `<script>` inline): cores dinâmicas vão em atributos SVG (`fill`). Botões e links usam o verde escuro `--primaria-escura` por acessibilidade (contraste 4,5:1). Não use `{% set mensagem %}` ou outros nomes genéricos no layout, para não sobrescrever variáveis das páginas.
+
 ## 7. Banco de dados e migrations
 
 - Migrations em `/migrations/NNN_descricao.sql`, numeradas com 3 dígitos, em ordem.

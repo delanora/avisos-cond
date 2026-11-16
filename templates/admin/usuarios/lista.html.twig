@@ -1,0 +1,45 @@
+{% extends 'layouts/base.html.twig' %}
+{% set menu = 'usuarios' %}
+
+{% block titulo %}Usuários - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <div class="pagina-topo">
+        <h1>Usuários</h1>
+        <a class="botao" href="/admin/usuarios/novo">Novo usuário</a>
+    </div>
+
+    {% if usuarios|length == 0 %}
+        <p class="cartao vazio">Nenhum usuário cadastrado.</p>
+    {% else %}
+        <div class="tabela-rolagem">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Papel</th>
+                        <th>Condomínios</th>
+                        <th>Situação</th>
+                        <th><span class="sr-only">Ações</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for u in usuarios %}
+                    <tr>
+                        <td>{{ u.nome }}</td>
+                        <td>{{ u.email }}</td>
+                        <td><span class="etiqueta etiqueta-papel">{{ u.papel == 'superadmin' ? 'Administrador' : 'Gerente' }}</span></td>
+                        <td>{{ u.papel == 'gerente' ? u.total_condominios : '-' }}</td>
+                        <td><span class="etiqueta {{ u.ativo ? 'etiqueta-ok' : '' }}">{{ u.ativo ? 'Ativo' : 'Inativo' }}</span></td>
+                        <td class="acoes-celula">
+                            <a href="/admin/usuarios/{{ u.id }}/editar">Editar</a>
+                            {% if u.id != usuario.id %}<a href="/admin/usuarios/{{ u.id }}/excluir">Excluir</a>{% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+{% endblock %}

@@ -69,6 +69,21 @@ final class Session
         $_SESSION[$chave] = $valor;
     }
 
+    /** Mensagem exibida uma única vez na próxima página (ex.: "Usuário criado"). */
+    public function flash(string $mensagem): void
+    {
+        $_SESSION['flash'] = $mensagem;
+    }
+
+    /** Devolve a mensagem guardada e a remove da sessão. */
+    public function pegarFlash(): string
+    {
+        $mensagem = $_SESSION['flash'] ?? '';
+        unset($_SESSION['flash']);
+
+        return is_string($mensagem) ? $mensagem : '';
+    }
+
     public function has(string $chave): bool
     {
         return isset($_SESSION[$chave]);

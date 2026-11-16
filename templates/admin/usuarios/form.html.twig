@@ -1,0 +1,71 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/form.html.twig' as f %}
+{% set menu = 'usuarios' %}
+
+{% block titulo %}{{ editando ? 'Editar usuário' : 'Novo usuário' }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/admin/usuarios">Usuários</a> / {{ editando ? 'Editar' : 'Novo' }}</p>
+    <h1>{{ editando ? 'Editar usuário' : 'Novo usuário' }}</h1>
+
+    {% if erros.geral is defined %}<p class="alerta alerta-erro" role="alert">{{ erros.geral }}</p>{% endif %}
+
+    <form method="post" action="{{ acao }}" class="cartao formulario">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+        {{ f.campo('nome', 'Nome', 'text', valores.nome, erros.nome|default(''), {obrigatorio: true, max: 150, autocomplete: 'name'}) }}
+        {{ f.campo('email', 'E-mail', 'email', valores.email, erros.email|default(''), {obrigatorio: true, max: 190, autocomplete: 'off'}) }}
+
+        <div class="campo{% if erros.papel is defined %} campo-erro{% endif %}">
+            <label for="campo-papel">Papel</label>
+            <select id="campo-papel" name="papel"{% if editando and usuario_proprio %} disabled{% endif %}>
+                <option value="gerente"{% if valores.papel == 'gerente' %} selected{% endif %}>Gerente (acessa só os condomínios vinculados)</option>
+                <option value="superadmin"{% if valores.papel == 'superadmin' %} selected{% endif %}>Administrador (equipe Embracore)</option>
+            </select>
+            {% if editando and usuario_proprio %}
+                <input type="hidden" name="papel" value="{{ valores.papel }}">
+                <p class="campo-ajuda">Você não pode alterar o seu próprio papel.</p>
+            {% endif %}
+            {% if erros.papel is defined %}<p class="erro-texto">{{ erros.papel }}</p>{% endif %}
+        </div>
+
+        {% if editando %}
+        <div class="campo">
+            <label class="opcao">
+                <input type="checkbox" name="ativo" value="1"{% if valores.ativo %} checked{% endif %}{% if usuario_proprio %} disabled{% endif %}>
+                Conta ativa
+            </label>
+            {% if usuario_proprio %}
+                <input type="hidden" name="ativo" value="1">
+                <p class="campo-ajuda">Você não pode desativar a sua própria conta.</p>
+            {% else %}
+                <p class="campo-ajuda">Conta inativa não consegue entrar no sistema.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {{ f.campo('senha', editando ? 'Nova senha (deixe em branco para manter a atual)' : 'Senha', 'password', '', erros.senha|default(''), {obrigatorio: not editando, min: 10, max: 128, autocomplete: 'new-password', ajuda: 'Mínimo de 10 caracteres.'}) }}
+        {{ f.campo('confirmacao', 'Confirme a senha', 'password', '', '', {obrigatorio: not editando, min: 10, max: 128, autocomplete: 'new-password'}) }}
+
+        <fieldset class="campo{% if erros.condominios is defined %} campo-erro{% endif %}">
+            <legend>Condomínios vinculados</legend>
+            <p class="campo-ajuda">Vale apenas para gerentes; administradores têm acesso ao painel da Embracore.</p>
+            <div class="opcoes">
+                {% for c in condominios %}
+                    <label class="opcao">
+                        <input type="checkbox" name="condominios[]" value="{{ c.id }}"{% if c.id in valores.condominios %} checked{% endif %}>
+                        {{ c.nome }}{% if not c.ativo %} <span class="etiqueta">inativo</span>{% endif %}
+                    </label>
+                {% else %}
+                    <p class="campo-ajuda">Nenhum condomínio cadastrado ainda.</p>
+                {% endfor %}
+            </div>
+            {% if erros.condominios is defined %}<p class="erro-texto">{{ erros.condominios }}</p>{% endif %}
+        </fieldset>
+
+        <div class="acoes">
+            <button type="submit">{{ editando ? 'Salvar alterações' : 'Criar usuário' }}</button>
+            <a class="botao botao-secundario" href="/admin/usuarios">Cancelar</a>
+        </div>
+    </form>
+{% endblock %}

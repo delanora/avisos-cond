@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Controllers\Admin\CondominiosController;
+use App\Controllers\Admin\UsuariosController;
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\GerenteController;
@@ -13,20 +15,27 @@ use App\Middleware\CsrfMiddleware;
 use App\Middleware\Negado;
 use App\Middleware\RateLimitMiddleware;
 use App\Middleware\RoleMiddleware;
+use App\Repositories\CondominioRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\RateLimitRepository;
 use App\Repositories\UsuarioRepository;
+use App\Repositories\VinculoRepository;
+use App\Services\AparenciaService;
 use App\Services\AuthService;
+use App\Services\GestaoCondominiosService;
+use App\Services\GestaoUsuariosService;
 use App\Services\Mailer;
 use App\Services\PasswordHasher;
 use App\Services\PasswordResetService;
 use App\Services\RateLimiter;
+use App\Services\UsuarioService;
 use App\Support\Config;
 use App\Support\Csrf;
 use App\Support\Logger;
 use App\Support\Pipeline;
 use App\Support\SecurityHeaders;
 use App\Support\Session;
+use App\Support\Transaction;
 use App\Support\View;
 use FastRoute\RouteCollector;
 use PDO;
@@ -51,10 +60,17 @@ final class AppFactory
         $view = new View($diretorioTemplates, 'Avisos-Cond', $config->string('APP_ENV') === 'local');
         $csrf = new Csrf($sessao);
         $view->definirCsrf(static fn (): string => $csrf->token());
+        $view->definirFlash(static fn (): string => $sessao->pegarFlash());
 
         $usuarios = new UsuarioRepository($pdo);
         $hasher ??= new PasswordHasher();
         $limitador = new RateLimiter(new RateLimitRepository($pdo));
+        $condominios = new CondominioRepository($pdo);
+        $vinculos = new VinculoRepository($pdo);
+        $transacao = new Transaction($pdo);
+        $usuarioService = new UsuarioService($usuarios, $hasher);
+        $gestaoUsuarios = new GestaoUsuariosService($usuarioService, $usuarios, $condominios, $vinculos, $hasher, $transacao);
+        $gestaoCondominios = new GestaoCondominiosService($condominios, $usuarios, $vinculos, $transacao);
 
         $auth = new AuthService($usuarios, $hasher, $limitador);
         $recuperacao = new PasswordResetService(
@@ -80,10 +96,12 @@ final class AppFactory
         $home = new HomeController();
         $admin = new AdminController($view);
         $gerente = new GerenteController($view);
+        $adminUsuarios = new UsuariosController($view, $sessao, $gestaoUsuarios, $gestaoCondominios);
+        $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios, new AparenciaService());
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
-            $authController, $home, $admin, $gerente,
+            $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -98,7 +116,28 @@ final class AppFactory
             $r->addRoute('POST', "/redefinir-senha/{$token}", Pipeline::envolver([$authController, 'redefinir'], $mwLimiteRecuperacao, $mwCsrf));
 
             $r->addRoute('GET', '/', Pipeline::envolver([$home, 'index'], $mwAuth));
-            $r->addRoute('GET', '/admin', Pipeline::envolver([$admin, 'painel'], $mwAuth, $mwAdmin));
+            // Área do superadmin: login → papel → (nas escritas) CSRF.
+            $leitura = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwAdmin);
+            $escrita = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwAdmin, $mwCsrf);
+
+            $r->addRoute('GET', '/admin', $leitura([$admin, 'painel']));
+
+            $r->addRoute('GET', '/admin/usuarios', $leitura([$adminUsuarios, 'lista']));
+            $r->addRoute('GET', '/admin/usuarios/novo', $leitura([$adminUsuarios, 'novo']));
+            $r->addRoute('POST', '/admin/usuarios', $escrita([$adminUsuarios, 'criar']));
+            $r->addRoute('GET', '/admin/usuarios/{id:\d+}/editar', $leitura([$adminUsuarios, 'editar']));
+            $r->addRoute('POST', '/admin/usuarios/{id:\d+}', $escrita([$adminUsuarios, 'atualizar']));
+            $r->addRoute('GET', '/admin/usuarios/{id:\d+}/excluir', $leitura([$adminUsuarios, 'confirmarExclusao']));
+            $r->addRoute('POST', '/admin/usuarios/{id:\d+}/excluir', $escrita([$adminUsuarios, 'excluir']));
+
+            $r->addRoute('GET', '/admin/condominios', $leitura([$adminCondominios, 'lista']));
+            $r->addRoute('GET', '/admin/condominios/novo', $leitura([$adminCondominios, 'novo']));
+            $r->addRoute('POST', '/admin/condominios', $escrita([$adminCondominios, 'criar']));
+            $r->addRoute('GET', '/admin/condominios/{id:\d+}/editar', $leitura([$adminCondominios, 'editar']));
+            $r->addRoute('POST', '/admin/condominios/{id:\d+}', $escrita([$adminCondominios, 'atualizar']));
+            $r->addRoute('GET', '/admin/condominios/{id:\d+}/excluir', $leitura([$adminCondominios, 'confirmarExclusao']));
+            $r->addRoute('POST', '/admin/condominios/{id:\d+}/excluir', $escrita([$adminCondominios, 'excluir']));
+
             $r->addRoute('GET', '/gerente', Pipeline::envolver([$gerente, 'painel'], $mwAuth, $mwGerente));
         });
 

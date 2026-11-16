@@ -1,0 +1,53 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/form.html.twig' as f %}
+{% set menu = 'condominios' %}
+
+{% block titulo %}{{ editando ? 'Editar condomínio' : 'Novo condomínio' }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/admin/condominios">Condomínios</a> / {{ editando ? 'Editar' : 'Novo' }}</p>
+    <h1>{{ editando ? 'Editar condomínio' : 'Novo condomínio' }}</h1>
+
+    <form method="post" action="{{ acao }}" class="cartao formulario">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+        {{ f.campo('nome', 'Nome', 'text', valores.nome, erros.nome|default(''), {obrigatorio: true, max: 150}) }}
+        {{ f.campo('endereco', 'Endereço', 'text', valores.endereco, erros.endereco|default(''), {max: 255, autocomplete: 'off'}) }}
+
+        <div class="campo">
+            <label class="opcao">
+                <input type="checkbox" name="ativo" value="1"{% if valores.ativo %} checked{% endif %}>
+                Condomínio ativo
+            </label>
+        </div>
+
+        <fieldset class="campo{% if erros.gerentes is defined %} campo-erro{% endif %}">
+            <legend>Gerentes vinculados</legend>
+            <p class="campo-ajuda">Cada gerente só enxerga os condomínios aos quais está vinculado.</p>
+            <div class="opcoes">
+                {% for g in gerentes %}
+                    <label class="opcao">
+                        <input type="checkbox" name="gerentes[]" value="{{ g.id }}"{% if g.id in valores.gerentes %} checked{% endif %}>
+                        {{ g.nome }} ({{ g.email }}){% if not g.ativo %} <span class="etiqueta">inativo</span>{% endif %}
+                    </label>
+                {% else %}
+                    <p class="campo-ajuda">Nenhum gerente cadastrado ainda.</p>
+                {% endfor %}
+            </div>
+            {% if erros.gerentes is defined %}<p class="erro-texto">{{ erros.gerentes }}</p>{% endif %}
+        </fieldset>
+
+        {% if editando %}
+        <div class="campo">
+            <p class="rotulo">Aparência na TV</p>
+            {% include 'partials/aparencia.html.twig' %}
+            <p class="campo-ajuda">Logo e cores são definidas pelo gerente do condomínio. Sem personalização, vale o padrão da Embracore.</p>
+        </div>
+        {% endif %}
+
+        <div class="acoes">
+            <button type="submit">{{ editando ? 'Salvar alterações' : 'Criar condomínio' }}</button>
+            <a class="botao botao-secundario" href="/admin/condominios">Cancelar</a>
+        </div>
+    </form>
+{% endblock %}

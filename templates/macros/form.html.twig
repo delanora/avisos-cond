@@ -1,0 +1,15 @@
+{# Campo de texto com rótulo acima e erro abaixo. Senhas nunca voltam preenchidas. #}
+{% macro campo(nome, rotulo, tipo, valor, erro, opcoes) %}
+    <div class="campo{% if erro != '' %} campo-erro{% endif %}">
+        <label for="campo-{{ nome }}">{{ rotulo }}</label>
+        <input id="campo-{{ nome }}" type="{{ tipo }}" name="{{ nome }}"
+               {% if tipo != 'password' %}value="{{ valor }}"{% endif %}
+               {% if opcoes.obrigatorio|default(false) %}required{% endif %}
+               {% if opcoes.max|default(0) > 0 %}maxlength="{{ opcoes.max }}"{% endif %}
+               {% if opcoes.min|default(0) > 0 %}minlength="{{ opcoes.min }}"{% endif %}
+               {% if opcoes.autocomplete|default('') != '' %}autocomplete="{{ opcoes.autocomplete }}"{% endif %}
+               {% if erro != '' %}aria-invalid="true" aria-describedby="erro-{{ nome }}"{% endif %}>
+        {% if opcoes.ajuda|default('') != '' %}<p class="campo-ajuda">{{ opcoes.ajuda }}</p>{% endif %}
+        {% if erro != '' %}<p class="erro-texto" id="erro-{{ nome }}">{{ erro }}</p>{% endif %}
+    </div>
+{% endmacro %}
