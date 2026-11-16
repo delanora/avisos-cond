@@ -1,3 +1,4 @@
+{% import 'macros/ui.html.twig' as ui %}
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -8,29 +9,33 @@
 </head>
 <body>
     {% set menu = menu is defined ? menu : '' %}
-    {% if usuario is defined and usuario %}
     <header class="topo">
-        <a class="topo-marca" href="/"><img src="/assets/logo-embracore.svg" alt="{{ app_nome }}"></a>
-        {% if usuario.papel == 'superadmin' %}
-        <nav class="topo-menu" aria-label="Menu principal">
-            <a href="/admin"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>Painel</a>
-            <a href="/admin/usuarios"{% if menu == 'usuarios' %} class="ativo" aria-current="page"{% endif %}>Usuários</a>
-            <a href="/admin/condominios"{% if menu == 'condominios' %} class="ativo" aria-current="page"{% endif %}>Condomínios</a>
-        </nav>
-        {% else %}
-        <nav class="topo-menu" aria-label="Menu principal"></nav>
-        {% endif %}
-        <form method="post" action="/logout" class="topo-sair">
-            <span>{{ usuario.nome }}</span>
-            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-            <button type="submit" class="botao-secundario">Sair</button>
-        </form>
+        <div class="topo-interno">
+            <a class="topo-marca" href="/" aria-label="{{ app_nome }} - página inicial">{% include 'partials/logo.html.twig' %}</a>
+            <nav class="menu" aria-label="Menu principal">
+                {% if usuario.papel == 'superadmin' %}
+                    <a href="/admin"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('painel', 18) }}Início</a>
+                    <a href="/admin/usuarios"{% if menu == 'usuarios' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('usuarios', 18) }}Usuários</a>
+                    <a href="/admin/condominios"{% if menu == 'condominios' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('predio', 18) }}Condomínios</a>
+                {% endif %}
+            </nav>
+            <div class="perfil">
+                <div class="perfil-dados">
+                    <span class="perfil-nome">{{ usuario.nome }}</span>
+                    <span class="perfil-papel">{{ usuario.papel == 'superadmin' ? 'Administrador' : 'Gerente' }}</span>
+                </div>
+                {{ ui.avatar(usuario.nome, usuario.id) }}
+                <form method="post" action="/logout">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                    <button type="submit" class="botao-secundario botao-sutil">{{ ui.icone('sair', 16) }}Sair</button>
+                </form>
+            </div>
+        </div>
     </header>
-    {% endif %}
     <main class="container">
         {# Nome próprio para não sobrescrever variáveis das páginas (ex.: "mensagem" da página de erro). #}
         {% set layout_flash = flash() %}
-        {% if layout_flash != '' %}<p class="alerta alerta-sucesso" role="status">{{ layout_flash }}</p>{% endif %}
+        {% if layout_flash != '' %}<p class="alerta alerta-sucesso" role="status">{{ ui.icone('ok', 20) }}<span>{{ layout_flash }}</span></p>{% endif %}
         {% block conteudo %}{% endblock %}
     </main>
 </body>

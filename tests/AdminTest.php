@@ -130,6 +130,66 @@ final class AdminTest extends AppHttpTestCase
         }
     }
 
+    // ---------- Painel inicial ----------
+
+    public function testPainelMostraSaudacaoComOPrimeiroNomeENumeros(): void
+    {
+        $this->criarUsuario('admin@exemplo.com.br', 'superadmin');
+        $this->pdo->exec("UPDATE usuarios SET nome = 'Felipe Delanora' WHERE papel = 'superadmin'");
+        $this->logar('admin@exemplo.com.br');
+        $this->criarUsuario('g1@exemplo.com.br');
+        $this->criarUsuario('g2@exemplo.com.br');
+        $this->criarCondominio('A');
+        $ativo = $this->criarCondominio('B');
+        $this->pdo->exec("UPDATE condominios SET ativo = false WHERE id <> {$ativo}");
+
+        $corpo = $this->get('/admin')->body;
+
+        $this->assertMatchesRegularExpression('#<h1>(Bom dia|Boa tarde|Boa noite), Felipe</h1>#', $corpo);
+        $this->assertStringNotContainsString('Delanora</h1>', $corpo);
+        $this->assertStringContainsString('Painel Embracore', $corpo);
+        $this->assertMatchesRegularExpression('#numero-valor">2</span><span class="numero-rotulo">condomínios \(1 ativo\)#', $corpo);
+        $this->assertMatchesRegularExpression('#numero-valor">2</span><span class="numero-rotulo">gerentes#', $corpo);
+        $this->assertMatchesRegularExpression('#numero-valor">1</span><span class="numero-rotulo">administrador<#', $corpo);
+        $this->assertStringContainsString('href="/admin/condominios/novo"', $corpo);
+        $this->assertStringContainsString('href="/admin/usuarios/novo"', $corpo);
+    }
+
+    public function testPainelDoGerenteTambemSaudaPeloPrimeiroNome(): void
+    {
+        $this->criarUsuario('maria@exemplo.com.br');
+        $this->pdo->exec("UPDATE usuarios SET nome = 'Maria Souza Lima'");
+        $this->logar('maria@exemplo.com.br');
+
+        $corpo = $this->get('/gerente')->body;
+
+        $this->assertMatchesRegularExpression('#<h1>(Bom dia|Boa tarde|Boa noite), Maria</h1>#', $corpo);
+        $this->assertStringContainsString('Painel do gerente', $corpo);
+    }
+
+    public function testBarraSuperiorMostraNomePapelEAvatarDoUsuario(): void
+    {
+        $this->criarUsuario('admin@exemplo.com.br', 'superadmin');
+        $this->pdo->exec("UPDATE usuarios SET nome = 'ágata Costa'");
+        $this->logar('admin@exemplo.com.br');
+
+        $corpo = $this->get('/admin')->body;
+
+        $this->assertStringContainsString('<span class="perfil-nome">ágata Costa</span>', $corpo);
+        $this->assertStringContainsString('<span class="perfil-papel">Administrador</span>', $corpo);
+        $this->assertMatchesRegularExpression('#<span class="avatar av-\d" aria-hidden="true">á</span>#u', $corpo);
+        $this->assertStringContainsString('class="logo-marca"', $corpo);
+    }
+
+    public function testErrosUsamATelaAmigavelComTituloPorCodigo(): void
+    {
+        $corpo = $this->get('/pagina-que-nao-existe')->body;
+
+        $this->assertStringContainsString('class="erro-codigo">404<', $corpo);
+        $this->assertStringContainsString('<h1>Não encontramos essa página</h1>', $corpo);
+        $this->assertStringContainsString('Voltar ao início', $corpo);
+    }
+
     // ---------- Navegação ----------
 
     public function testMenuDoAdminMarcaAPaginaAtual(): void
@@ -137,8 +197,9 @@ final class AdminTest extends AppHttpTestCase
         $this->logarComoAdmin();
 
         $usuarios = $this->get('/admin/usuarios')->body;
-        $this->assertMatchesRegularExpression('#<a href="/admin/usuarios" class="ativo" aria-current="page">Usuários</a>#', $usuarios);
-        $this->assertStringContainsString('<a href="/admin/condominios">Condomínios</a>', $usuarios);
+        $this->assertMatchesRegularExpression('#<a href="/admin/usuarios" class="ativo" aria-current="page">.*?Usuários</a>#s', $usuarios);
+        $this->assertMatchesRegularExpression('#<a href="/admin/condominios">.*?Condomínios</a>#s', $usuarios);
+        $this->assertDoesNotMatchRegularExpression('#<a href="/admin/condominios" class="ativo"#', $usuarios);
 
         $this->assertMatchesRegularExpression('#<a href="/admin/condominios" class="ativo"#', $this->get('/admin/condominios')->body);
         $this->assertMatchesRegularExpression('#<a href="/admin" class="ativo"#', $this->get('/admin')->body);
@@ -373,7 +434,7 @@ final class AdminTest extends AppHttpTestCase
     {
         $this->logarComoAdmin();
 
-        $this->assertStringContainsString('Nenhum condomínio cadastrado.', $this->get('/admin/condominios')->body);
+        $this->assertStringContainsString('Nenhum condomínio cadastrado', $this->get('/admin/condominios')->body);
     }
 
     // ---------- Condomínios ----------

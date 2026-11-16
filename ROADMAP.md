@@ -57,8 +57,9 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] Vínculo gerente ↔ condomínios (N:N), editável pelo usuário e pelo condomínio (2026-11-16)
 - [x] Logo/cores padrão da Embracore (usadas quando o condomínio não personaliza) (`AparenciaService`) (2026-11-16)
 - [ ] Trocar `public/assets/logo-embracore.svg` (provisória) pela logo oficial da Embracore
-- [ ] Hospedar a fonte Inter localmente em `public/assets` (o CSP não permite CDN; hoje cai na fonte do sistema)
-- [ ] Revisar o visual do painel em um navegador real (a VM não tem navegador; só o HTML foi testado)
+- [x] Hospedar a fonte Inter localmente em `public/assets/fonts` (licença OFL incluída) (2026-11-16)
+- [x] Redesenho visual dos painéis e das telas de acesso (barra branca, cartões, ícones, avatares, saudação, login em duas colunas), conferido por capturas de tela no Chromium (2026-11-16)
+- [ ] Você revisar o novo visual em um navegador real e pedir ajustes (cores, textos, ilustração)
 
 ### 1.5 Painel `/gerente`
 - [ ] Lista de condomínios vinculados (lidos do banco a cada requisição) e seletor ativo
@@ -145,4 +146,5 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: `migrations/003_usuarios_senha_alterada.sql` adiciona `usuarios.senha_alterada_em`, usado para derrubar sessões antigas na troca de senha.
 - 2026-11-16: identidade visual dos painéis baseada no `DESIGN.md` (verde #00A67E, grafite #202124, cantos de 8px). Desvios: botões e links usam o verde escuro #007A5C (o branco sobre #00A67E tem contraste de só 3,1:1) e o verde elétrico #00FF00 não é usado (viola o teto de saturação do próprio DESIGN.md).
 - 2026-11-16: o administrador não pode alterar o próprio papel, desativar a própria conta nem se excluir (evita ficar sem acesso); a exclusão de usuário e de condomínio pede confirmação em página própria (sem JavaScript).
+- 2026-11-16: redesenho visual a pedido: barra superior branca, visual mais humano (Inter local, cartões arredondados, avatares, ícones, saudação por horário, login em duas colunas, telas de erro amigáveis). O Chromium foi instalado na VM só para conferir o visual por capturas de tela (pode ser removido com `apt remove chromium`).
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.

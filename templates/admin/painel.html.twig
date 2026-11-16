@@ -1,20 +1,48 @@
 {% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
 {% set menu = 'painel' %}
 
-{% block titulo %}Painel Embracore - {{ app_nome }}{% endblock %}
+{% block titulo %}Início - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
-    <h1>Painel Embracore</h1>
-    <p>Bem-vindo(a), {{ usuario.nome }}. Gerencie os gerentes, os condomínios e os vínculos entre eles.</p>
+    <section class="boas-vindas">
+        <div class="boas-vindas-texto">
+            <p class="eyebrow">Painel Embracore</p>
+            <h1>{{ saudacao }}</h1>
+            <p>Aqui você cuida dos condomínios e das pessoas que cuidam deles. Escolha por onde quer começar.</p>
+        </div>
+        <div class="boas-vindas-arte">{% include 'partials/ilustracao.html.twig' %}</div>
+    </section>
 
-    <div class="atalhos">
-        <a class="cartao atalho" href="/admin/usuarios">
-            <h2>Usuários</h2>
-            <p>Cadastre gerentes e administradores, defina a quais condomínios cada gerente tem acesso e redefina senhas.</p>
+    <section class="cartao cartao-sem-espaco numeros" aria-label="Resumo">
+        <div class="numero">
+            <span class="numero-icone">{{ ui.icone('predio', 24) }}</span>
+            <div><span class="numero-valor">{{ total_condominios }}</span><span class="numero-rotulo">{{ total_condominios == 1 ? 'condomínio' : 'condomínios' }} ({{ condominios_ativos }} {{ condominios_ativos == 1 ? 'ativo' : 'ativos' }})</span></div>
+        </div>
+        <div class="numero">
+            <span class="numero-icone">{{ ui.icone('usuarios', 24) }}</span>
+            <div><span class="numero-valor">{{ total_gerentes }}</span><span class="numero-rotulo">{{ total_gerentes == 1 ? 'gerente' : 'gerentes' }}</span></div>
+        </div>
+        <div class="numero">
+            <span class="numero-icone">{{ ui.icone('escudo', 24) }}</span>
+            <div><span class="numero-valor">{{ total_admins }}</span><span class="numero-rotulo">{{ total_admins == 1 ? 'administrador' : 'administradores' }}</span></div>
+        </div>
+    </section>
+
+    <section class="atalhos" aria-label="Atalhos">
+        <a class="cartao atalho" href="/admin/condominios/novo">
+            <div class="atalho-texto">
+                <h2>Cadastrar um condomínio</h2>
+                <p>Comece pelo condomínio e depois escolha quem vai gerenciar os avisos dele.</p>
+            </div>
+            <span class="atalho-seta">{{ ui.icone('seta', 22) }}</span>
         </a>
-        <a class="cartao atalho" href="/admin/condominios">
-            <h2>Condomínios</h2>
-            <p>Cadastre condomínios e escolha os gerentes responsáveis.</p>
+        <a class="cartao atalho" href="/admin/usuarios/novo">
+            <div class="atalho-texto">
+                <h2>Adicionar um gerente</h2>
+                <p>Crie o acesso e escolha os condomínios dele.</p>
+            </div>
+            <span class="atalho-seta">{{ ui.icone('seta', 22) }}</span>
         </a>
-    </div>
+    </section>
 {% endblock %}

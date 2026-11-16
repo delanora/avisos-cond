@@ -1,45 +1,62 @@
 {% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
 {% set menu = 'condominios' %}
 
 {% block titulo %}Condomínios - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
     <div class="pagina-topo">
-        <h1>Condomínios</h1>
-        <a class="botao" href="/admin/condominios/novo">Novo condomínio</a>
+        <div>
+            <h1>Condomínios</h1>
+            <p>Os condomínios atendidos e os gerentes responsáveis por cada um.</p>
+        </div>
+        <a class="botao" href="/admin/condominios/novo">{{ ui.icone('plus', 18) }}Novo condomínio</a>
     </div>
 
     {% if condominios|length == 0 %}
-        <p class="cartao vazio">Nenhum condomínio cadastrado.</p>
+        <div class="cartao vazio">
+            <span class="vazio-icone">{{ ui.icone('predio', 30) }}</span>
+            <h2>Nenhum condomínio cadastrado</h2>
+            <p>Cadastre o primeiro condomínio para começar a publicar avisos.</p>
+            <a class="botao" href="/admin/condominios/novo">{{ ui.icone('plus', 18) }}Novo condomínio</a>
+        </div>
     {% else %}
-        <div class="tabela-rolagem">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Endereço</th>
-                        <th>Gerentes</th>
-                        <th>Aparência</th>
-                        <th>Situação</th>
-                        <th><span class="sr-only">Ações</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for c in condominios %}
-                    <tr>
-                        <td>{{ c.nome }}</td>
-                        <td>{{ c.endereco ?? '-' }}</td>
-                        <td>{{ c.total_gerentes }}</td>
-                        <td>{{ c.personalizada ? 'Personalizada' : 'Padrão Embracore' }}</td>
-                        <td><span class="etiqueta {{ c.ativo ? 'etiqueta-ok' : '' }}">{{ c.ativo ? 'Ativo' : 'Inativo' }}</span></td>
-                        <td class="acoes-celula">
-                            <a href="/admin/condominios/{{ c.id }}/editar">Editar</a>
-                            <a href="/admin/condominios/{{ c.id }}/excluir">Excluir</a>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        <div class="cartao cartao-sem-espaco">
+            <div class="tabela-rolagem">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Condomínio</th>
+                            <th class="esconde-movel">Gerentes</th>
+                            <th class="esconde-movel">Aparência</th>
+                            <th>Situação</th>
+                            <th><span class="sr-only">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for c in condominios %}
+                        <tr>
+                            <td class="pessoa-celula">
+                                <div class="pessoa">
+                                    <span class="avatar av-{{ c.id % 6 }}" aria-hidden="true">{{ ui.icone('predio', 20) }}</span>
+                                    <div>
+                                        <span class="pessoa-nome">{{ c.nome }}</span>
+                                        <span class="pessoa-sub">{{ c.endereco ?? 'Sem endereço cadastrado' }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="celula-suave esconde-movel">{{ c.total_gerentes }}</td>
+                            <td class="celula-suave esconde-movel">{{ c.personalizada ? 'Personalizada' : 'Padrão Embracore' }}</td>
+                            <td><span class="etiqueta {{ c.ativo ? 'etiqueta-ok' : 'etiqueta-off' }}">{{ c.ativo ? 'Ativo' : 'Inativo' }}</span></td>
+                            <td class="acoes-celula">
+                                <a class="botao-icone" href="/admin/condominios/{{ c.id }}/editar" title="Editar" aria-label="Editar {{ c.nome }}">{{ ui.icone('editar', 18) }}</a>
+                                <a class="botao-icone perigo" href="/admin/condominios/{{ c.id }}/excluir" title="Excluir" aria-label="Excluir {{ c.nome }}">{{ ui.icone('lixeira', 18) }}</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     {% endif %}
 {% endblock %}

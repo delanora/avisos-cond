@@ -31,7 +31,7 @@ final class RateLimitMiddlewareTest extends BancoMigradoTestCase
     {
         return $mw->process(
             new Request('POST', '/login', server: ['REMOTE_ADDR' => $ip]),
-            static fn (): Response => Response::html('ok')
+            static fn (): Response => Response::html('PASSOU-PELO-MIDDLEWARE')
         );
     }
 
@@ -46,7 +46,7 @@ final class RateLimitMiddlewareTest extends BancoMigradoTestCase
         $r = $this->chamar($mw, '203.0.113.1');
         $this->assertSame(429, $r->status);
         $this->assertSame('600', $r->headers['Retry-After']);
-        $this->assertStringNotContainsString('ok', $r->body);
+        $this->assertStringNotContainsString('PASSOU-PELO-MIDDLEWARE', $r->body);
 
         // Continua bloqueado nas tentativas seguintes.
         $this->assertSame(429, $this->chamar($mw, '203.0.113.1')->status);

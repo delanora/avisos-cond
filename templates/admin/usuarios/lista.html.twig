@@ -1,45 +1,64 @@
 {% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
 {% set menu = 'usuarios' %}
 
 {% block titulo %}Usuários - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
     <div class="pagina-topo">
-        <h1>Usuários</h1>
-        <a class="botao" href="/admin/usuarios/novo">Novo usuário</a>
+        <div>
+            <h1>Usuários</h1>
+            <p>Gerentes e administradores que têm acesso ao sistema.</p>
+        </div>
+        <a class="botao" href="/admin/usuarios/novo">{{ ui.icone('plus', 18) }}Novo usuário</a>
     </div>
 
     {% if usuarios|length == 0 %}
-        <p class="cartao vazio">Nenhum usuário cadastrado.</p>
+        <div class="cartao vazio">
+            <span class="vazio-icone">{{ ui.icone('usuarios', 30) }}</span>
+            <h2>Nenhum usuário cadastrado</h2>
+            <p>Crie o primeiro acesso para começar.</p>
+            <a class="botao" href="/admin/usuarios/novo">{{ ui.icone('plus', 18) }}Novo usuário</a>
+        </div>
     {% else %}
-        <div class="tabela-rolagem">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>E-mail</th>
-                        <th>Papel</th>
-                        <th>Condomínios</th>
-                        <th>Situação</th>
-                        <th><span class="sr-only">Ações</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for u in usuarios %}
-                    <tr>
-                        <td>{{ u.nome }}</td>
-                        <td>{{ u.email }}</td>
-                        <td><span class="etiqueta etiqueta-papel">{{ u.papel == 'superadmin' ? 'Administrador' : 'Gerente' }}</span></td>
-                        <td>{{ u.papel == 'gerente' ? u.total_condominios : '-' }}</td>
-                        <td><span class="etiqueta {{ u.ativo ? 'etiqueta-ok' : '' }}">{{ u.ativo ? 'Ativo' : 'Inativo' }}</span></td>
-                        <td class="acoes-celula">
-                            <a href="/admin/usuarios/{{ u.id }}/editar">Editar</a>
-                            {% if u.id != usuario.id %}<a href="/admin/usuarios/{{ u.id }}/excluir">Excluir</a>{% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        <div class="cartao cartao-sem-espaco">
+            <div class="tabela-rolagem">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pessoa</th>
+                            <th>Papel</th>
+                            <th class="esconde-movel">Condomínios</th>
+                            <th>Situação</th>
+                            <th><span class="sr-only">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for u in usuarios %}
+                        <tr>
+                            <td class="pessoa-celula">
+                                <div class="pessoa">
+                                    {{ ui.avatar(u.nome, u.id) }}
+                                    <div>
+                                        <span class="pessoa-nome">{{ u.nome }}</span>
+                                        <span class="pessoa-sub">{{ u.email }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="etiqueta etiqueta-papel">{{ u.papel == 'superadmin' ? 'Administrador' : 'Gerente' }}</span></td>
+                            <td class="celula-suave esconde-movel">{{ u.papel == 'gerente' ? u.total_condominios : '-' }}</td>
+                            <td><span class="etiqueta {{ u.ativo ? 'etiqueta-ok' : 'etiqueta-off' }}">{{ u.ativo ? 'Ativo' : 'Inativo' }}</span></td>
+                            <td class="acoes-celula">
+                                <a class="botao-icone" href="/admin/usuarios/{{ u.id }}/editar" title="Editar" aria-label="Editar {{ u.nome }}">{{ ui.icone('editar', 18) }}</a>
+                                {% if u.id != usuario.id %}
+                                    <a class="botao-icone perigo" href="/admin/usuarios/{{ u.id }}/excluir" title="Excluir" aria-label="Excluir {{ u.nome }}">{{ ui.icone('lixeira', 18) }}</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     {% endif %}
 {% endblock %}

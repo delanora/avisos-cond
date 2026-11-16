@@ -1,16 +1,16 @@
 {# Mostra logo e cores do condomínio. As cores vão em atributos SVG (o CSP bloqueia style inline). #}
 <div class="aparencia">
     {% if aparencia.logo_padrao %}
-        <img src="{{ aparencia.logo }}" alt="Logo padrão" height="32">
+        <img src="{{ aparencia.logo }}" alt="Logo padrão" height="28">
     {% else %}
         <span class="etiqueta">Logo personalizada</span>
     {% endif %}
     <span class="aparencia-cor">
-        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="4" fill="{{ aparencia.cor_primaria }}"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="{{ aparencia.cor_primaria }}"/></svg>
         {{ aparencia.cor_primaria }}
     </span>
     <span class="aparencia-cor">
-        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="4" fill="{{ aparencia.cor_secundaria }}"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="{{ aparencia.cor_secundaria }}"/></svg>
         {{ aparencia.cor_secundaria }}
     </span>
     <span class="etiqueta">{{ aparencia.personalizada ? 'Personalizada pelo gerente' : 'Padrão Embracore' }}</span>

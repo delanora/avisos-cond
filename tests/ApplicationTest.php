@@ -70,7 +70,7 @@ final class ApplicationTest extends TestCase
 
         $this->assertSame(404, $r->status);
         // Garante que é o template de erro (e não o texto simples de contingência).
-        $this->assertStringContainsString('<h1>404</h1>', $r->body);
+        $this->assertStringContainsString('class="erro-codigo">404<', $r->body);
         $this->assertStringContainsString('Página não encontrada', $r->body);
     }
 
@@ -92,7 +92,7 @@ final class ApplicationTest extends TestCase
         $r = $this->app()->handle(new Request('GET', '/quebra'));
 
         $this->assertSame(500, $r->status);
-        $this->assertStringContainsString('<h1>500</h1>', $r->body);
+        $this->assertStringContainsString('class="erro-codigo">500<', $r->body);
         $this->assertStringContainsString('erro inesperado', $r->body);
         $this->assertStringNotContainsString('segredo-interno-123', $r->body);
         $this->assertStringNotContainsString('RuntimeException', $r->body);
@@ -108,7 +108,7 @@ final class ApplicationTest extends TestCase
         $r = $this->app()->handle(new Request('GET', '/sumiu'));
 
         $this->assertSame(404, $r->status);
-        $this->assertStringContainsString('<h1>404</h1>', $r->body);
+        $this->assertStringContainsString('class="erro-codigo">404<', $r->body);
         $this->assertStringNotContainsString('registro-que-nao-existe', $r->body);
         $this->assertSame('', (string) file_get_contents($this->log));
     }

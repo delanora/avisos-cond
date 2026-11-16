@@ -33,12 +33,12 @@ final class CsrfMiddlewareTest extends TestCase
     {
         $mw = new CsrfMiddleware($this->csrf, new Negado(new View(dirname(__DIR__, 2) . '/templates')));
 
-        return $mw->process($request, static fn (): Response => Response::html('ok'));
+        return $mw->process($request, static fn (): Response => Response::html('PASSOU-PELO-MIDDLEWARE'));
     }
 
     public function testRequisicoesDeLeituraNaoPrecisamDeToken(): void
     {
-        $this->assertSame('ok', $this->executar(new Request('GET', '/'))->body);
+        $this->assertSame('PASSOU-PELO-MIDDLEWARE', $this->executar(new Request('GET', '/'))->body);
     }
 
     /** @return array<string, array{string}> */
@@ -53,7 +53,7 @@ final class CsrfMiddlewareTest extends TestCase
         $r = $this->executar(new Request($metodo, '/'));
 
         $this->assertSame(403, $r->status);
-        $this->assertStringNotContainsString('ok', $r->body);
+        $this->assertStringNotContainsString('PASSOU-PELO-MIDDLEWARE', $r->body);
     }
 
     #[DataProvider('metodosDeEscrita')]
@@ -61,14 +61,14 @@ final class CsrfMiddlewareTest extends TestCase
     {
         $r = $this->executar(new Request($metodo, '/', body: ['_csrf' => $this->csrf->token()]));
 
-        $this->assertSame('ok', $r->body);
+        $this->assertSame('PASSOU-PELO-MIDDLEWARE', $r->body);
     }
 
     public function testTokenNoCabecalhoDoHtmxPassa(): void
     {
         $r = $this->executar(new Request('POST', '/', server: ['HTTP_X_CSRF_TOKEN' => $this->csrf->token()]));
 
-        $this->assertSame('ok', $r->body);
+        $this->assertSame('PASSOU-PELO-MIDDLEWARE', $r->body);
     }
 
     public function testTokenErradoOuDeOutraSessaoEBloqueado(): void

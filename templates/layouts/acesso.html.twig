@@ -1,0 +1,28 @@
+{# Telas sem login (entrar, recuperar senha, erros): marca à esquerda, conteúdo à direita. #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}{{ app_nome }}{% endblock %}</title>
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+    <div class="acesso">
+        <aside class="acesso-marca">
+            <div class="logo">{% include 'partials/logo.html.twig' %}</div>
+            <div>
+                <h2>Os avisos do seu condomínio, sempre à vista.</h2>
+                <p>Cadastre um aviso e ele aparece na TV do elevador. Simples para quem administra, claro para quem mora.</p>
+            </div>
+            <div class="acesso-arte">{% include 'partials/ilustracao.html.twig' %}</div>
+        </aside>
+        <main class="acesso-conteudo">
+            <div class="acesso-caixa">
+                <div class="acesso-topo-mobile">{% include 'partials/logo.html.twig' %}</div>
+                {% block formulario %}{% endblock %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

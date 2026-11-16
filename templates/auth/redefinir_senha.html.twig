@@ -1,25 +1,29 @@
-{% extends 'layouts/base.html.twig' %}
+{% extends 'layouts/acesso.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
 
 {% block titulo %}Nova senha - {{ app_nome }}{% endblock %}
 
-{% block conteudo %}
-    <section class="cartao">
-        <h1>Nova senha</h1>
-        {% if token_valido %}
-            {% if erro != '' %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
-            <form method="post" action="/redefinir-senha/{{ token }}">
-                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-                <label>Nova senha (mínimo 10 caracteres)
-                    <input type="password" name="senha" required minlength="10" maxlength="128" autocomplete="new-password" autofocus>
-                </label>
-                <label>Confirme a nova senha
-                    <input type="password" name="confirmacao" required minlength="10" maxlength="128" autocomplete="new-password">
-                </label>
-                <button type="submit">Salvar nova senha</button>
-            </form>
-        {% else %}
-            <p class="erro" role="alert">{{ erro != '' ? erro : 'Este link é inválido ou expirou. Peça um novo link de recuperação.' }}</p>
-            <p><a href="/esqueci-senha">Pedir novo link</a></p>
-        {% endif %}
-    </section>
+{% block formulario %}
+    {% if token_valido %}
+        <h1>Crie uma nova senha</h1>
+        <p class="lead">Escolha uma senha com pelo menos 10 caracteres. Depois é só entrar de novo.</p>
+        {% if erro != '' %}<p class="alerta alerta-erro" role="alert">{{ ui.icone('alerta', 20) }}<span>{{ erro }}</span></p>{% endif %}
+        <form method="post" action="/redefinir-senha/{{ token }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <div class="campo">
+                <label for="campo-senha">Nova senha</label>
+                <input id="campo-senha" type="password" name="senha" required minlength="10" maxlength="128" autocomplete="new-password" autofocus>
+            </div>
+            <div class="campo">
+                <label for="campo-confirmacao">Confirme a nova senha</label>
+                <input id="campo-confirmacao" type="password" name="confirmacao" required minlength="10" maxlength="128" autocomplete="new-password">
+            </div>
+            <button type="submit" class="botao-largo">Salvar nova senha</button>
+        </form>
+    {% else %}
+        <h1>Link inválido ou expirado</h1>
+        <p class="alerta alerta-erro" role="alert">{{ ui.icone('alerta', 20) }}<span>{{ erro != '' ? erro : 'Este link é inválido ou expirou. Peça um novo link de recuperação.' }}</span></p>
+        <a class="botao botao-largo" href="/esqueci-senha">Pedir novo link</a>
+    {% endif %}
+    <p class="acesso-rodape"><a href="/login">Voltar ao login</a></p>
 {% endblock %}

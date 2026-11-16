@@ -1,8 +1,21 @@
-{% extends 'layouts/base.html.twig' %}
+{% extends 'layouts/acesso.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% set titulos = {
+    403: 'Acesso não permitido',
+    404: 'Não encontramos essa página',
+    405: 'Ação não permitida',
+    429: 'Calma, são muitas tentativas',
+    500: 'Algo deu errado'
+} %}
 
 {% block titulo %}Erro {{ codigo }} - {{ app_nome }}{% endblock %}
 
-{% block conteudo %}
-    <h1>{{ codigo }}</h1>
-    <p>{{ mensagem }}</p>
+{% block formulario %}
+    <div class="erro-pagina">
+        <p class="erro-codigo">{{ codigo }}</p>
+        <h1>{{ titulos[codigo]|default('Algo deu errado') }}</h1>
+        <p class="lead">{{ mensagem }}</p>
+        <a class="botao" href="/">{{ ui.icone('voltar', 18) }}Voltar ao início</a>
+    </div>
 {% endblock %}

@@ -1,20 +1,28 @@
 {% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
 {% set menu = 'usuarios' %}
 
 {% block titulo %}Excluir usuário - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
-    <p class="migalha"><a href="/admin/usuarios">Usuários</a> / Excluir</p>
-    <h1>Excluir usuário</h1>
+    <p class="migalha"><a href="/admin/usuarios">Usuários</a> {{ ui.icone('seta', 14) }} <span>Excluir</span></p>
+    <div class="pagina-topo"><h1>Excluir usuário</h1></div>
 
-    {% if erro != '' %}<p class="alerta alerta-erro" role="alert">{{ erro }}</p>{% endif %}
+    {% if erro != '' %}<p class="alerta alerta-erro" role="alert">{{ ui.icone('alerta', 20) }}<span>{{ erro }}</span></p>{% endif %}
 
     <div class="cartao formulario">
-        <p>Tem certeza de que deseja excluir <strong>{{ alvo.nome }}</strong> ({{ alvo.email }})?</p>
-        <p>Os vínculos com condomínios serão removidos e o acesso termina imediatamente. Os avisos que esta pessoa criou continuam no sistema. Para apenas bloquear o acesso, use "Conta ativa" na edição do usuário.</p>
+        <div class="pessoa">
+            {{ ui.avatar(alvo.nome, alvo.id) }}
+            <div>
+                <span class="pessoa-nome">{{ alvo.nome }}</span>
+                <span class="pessoa-sub">{{ alvo.email }}</span>
+            </div>
+        </div>
+        <p class="texto-confirmacao">Tem certeza de que deseja excluir <strong>{{ alvo.nome }}</strong>? Os vínculos com condomínios serão removidos e o acesso termina na hora. Os avisos que esta pessoa criou continuam no sistema.</p>
+        <p class="campo-ajuda">Se quiser apenas bloquear o acesso, use "Conta ativa" na edição do usuário.</p>
         <form method="post" action="/admin/usuarios/{{ alvo.id }}/excluir" class="acoes">
             <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-            <button type="submit" class="botao-perigo">Excluir usuário</button>
+            <button type="submit" class="botao-perigo">{{ ui.icone('lixeira', 18) }}Excluir usuário</button>
             <a class="botao botao-secundario" href="/admin/usuarios">Cancelar</a>
         </form>
     </div>

@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Support\Request;
 use App\Support\Response;
+use App\Support\Saudacao;
 use App\Support\View;
 
 /** Painel do gerente. Provisório: condomínios e avisos vêm no ROADMAP 1.5. */
@@ -18,8 +19,11 @@ final class GerenteController
     /** @param array<string, string> $vars */
     public function painel(Request $request, array $vars): Response
     {
+        $usuario = $request->attribute('usuario');
+
         return Response::html($this->view->render('gerente/painel.html.twig', [
-            'usuario' => $request->attribute('usuario'),
+            'usuario' => $usuario,
+            'saudacao' => Saudacao::para($usuario['nome']),
         ]));
     }
 }

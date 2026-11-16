@@ -1,22 +1,26 @@
-{% extends 'layouts/base.html.twig' %}
+{% extends 'layouts/acesso.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
 
 {% block titulo %}Entrar - {{ app_nome }}{% endblock %}
 
-{% block conteudo %}
-    <section class="cartao">
-        <h1>Entrar</h1>
-        {% if aviso != '' %}<p class="aviso">{{ aviso }}</p>{% endif %}
-        {% if erro != '' %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
-        <form method="post" action="/login">
-            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-            <label>E-mail
-                <input type="email" name="email" value="{{ email }}" required maxlength="190" autocomplete="username" autofocus>
-            </label>
-            <label>Senha
-                <input type="password" name="senha" required autocomplete="current-password">
-            </label>
-            <button type="submit">Entrar</button>
-        </form>
-        <p><a href="/esqueci-senha">Esqueci minha senha</a></p>
-    </section>
+{% block formulario %}
+    <h1>Bem-vindo de volta</h1>
+    <p class="lead">Entre com seu e-mail e senha para continuar.</p>
+
+    {% if aviso != '' %}<p class="alerta alerta-sucesso" role="status">{{ ui.icone('ok', 20) }}<span>{{ aviso }}</span></p>{% endif %}
+    {% if erro != '' %}<p class="alerta alerta-erro" role="alert">{{ ui.icone('alerta', 20) }}<span>{{ erro }}</span></p>{% endif %}
+
+    <form method="post" action="/login">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div class="campo">
+            <label for="campo-email">E-mail</label>
+            <input id="campo-email" type="email" name="email" value="{{ email }}" required maxlength="190" autocomplete="username" autofocus>
+        </div>
+        <div class="campo">
+            <label for="campo-senha">Senha</label>
+            <input id="campo-senha" type="password" name="senha" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="botao-largo">Entrar</button>
+    </form>
+    <p class="acesso-rodape"><a href="/esqueci-senha">Esqueci minha senha</a></p>
 {% endblock %}

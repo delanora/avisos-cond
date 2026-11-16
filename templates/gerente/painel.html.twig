@@ -1,8 +1,16 @@
 {% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+{% set menu = 'painel' %}
 
 {% block titulo %}Painel do gerente - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
-    <h1>Painel do gerente</h1>
-    <p>Bem-vindo(a), {{ usuario.nome }}.</p>
+    <section class="boas-vindas">
+        <div class="boas-vindas-texto">
+            <p class="eyebrow">Painel do gerente</p>
+            <h1>{{ saudacao }}</h1>
+            <p>Em breve você vai cadastrar e acompanhar os avisos dos seus condomínios por aqui.</p>
+        </div>
+        <div class="boas-vindas-arte">{% include 'partials/ilustracao.html.twig' %}</div>
+    </section>
 {% endblock %}

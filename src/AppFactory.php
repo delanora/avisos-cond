@@ -94,8 +94,8 @@ final class AppFactory
 
         $authController = new AuthController($view, $sessao, $auth, $recuperacao);
         $home = new HomeController();
-        $admin = new AdminController($view);
         $gerente = new GerenteController($view);
+        $admin = new AdminController($view, $gestaoUsuarios, $gestaoCondominios);
         $adminUsuarios = new UsuariosController($view, $sessao, $gestaoUsuarios, $gestaoCondominios);
         $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios, new AparenciaService());
 
