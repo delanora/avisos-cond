@@ -1,0 +1,45 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/form.html.twig' as f %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% block titulo %}{{ editando ? 'Editar modelo' : 'Novo modelo' }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/modelos">Modelos de aviso</a> {{ ui.icone('seta', 14) }} <span>{{ editando ? 'Editar' : 'Novo' }}</span></p>
+    <div class="pagina-topo"><h1>{{ editando ? 'Editar modelo' : 'Novo modelo' }}</h1></div>
+
+    <form method="post" action="{{ acao }}" class="cartao formulario">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <section class="formulario-secao">
+            {{ f.campo('nome', 'Nome do modelo', 'text', valores.nome, erros.nome|default(''), {obrigatorio: true, max: 60}) }}
+            <p class="campo-ajuda">É o nome que você vê na lista de modelos (não aparece na TV).</p>
+        </section>
+
+        <section class="formulario-secao">
+            <h2>Aviso</h2>
+            {{ f.campo('titulo', 'Título', 'text', valores.titulo, erros.titulo|default(''), {obrigatorio: true, max: 150}) }}
+
+            <div class="campo{% if erros.corpo is defined %} campo-erro{% endif %}">
+                <label for="campo-corpo">Texto do aviso</label>
+                <textarea id="campo-corpo" name="corpo" rows="6" maxlength="2000"{% if erros.corpo is defined %} aria-invalid="true"{% endif %}>{{ valores.corpo }}</textarea>
+                <p class="campo-ajuda">Use trechos entre colchetes, como [data] e [hora], para lembrar o que preencher em cada aviso.</p>
+                {% if erros.corpo is defined %}<p class="erro-texto">{{ erros.corpo }}</p>{% endif %}
+            </div>
+
+            <div class="campo{% if erros.tipo is defined %} campo-erro{% endif %}">
+                <label for="campo-tipo">Tipo sugerido</label>
+                <select id="campo-tipo" name="tipo">
+                    {% for t in tipos %}
+                        <option value="{{ t.chave }}"{% if valores.tipo == t.chave %} selected{% endif %}>{{ t.nome }}{% if t.fixo %} (fixo){% endif %}</option>
+                    {% endfor %}
+                </select>
+                {% if erros.tipo is defined %}<p class="erro-texto">{{ erros.tipo }}</p>{% endif %}
+            </div>
+        </section>
+
+        <div class="acoes">
+            <button type="submit">{{ editando ? 'Salvar modelo' : 'Criar modelo' }}</button>
+            <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/modelos">Cancelar</a>
+        </div>
+    </form>
+{% endblock %}

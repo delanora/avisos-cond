@@ -1,0 +1,51 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% block titulo %}Modelos de aviso - {{ condominio.nome }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/avisos">Avisos</a> {{ ui.icone('seta', 14) }} <span>Modelos de aviso</span></p>
+    <div class="pagina-topo">
+        <div>
+            <h1>Modelos de aviso</h1>
+            <p>Textos prontos para criar avisos mais rápido. Ao criar um aviso, escolha um modelo e ajuste o que precisar.</p>
+        </div>
+        <a class="botao" href="/gerente/condominios/{{ condominio.id }}/modelos/novo">{{ ui.icone('plus', 18) }}Novo modelo</a>
+    </div>
+
+    <div class="cartao cartao-sem-espaco">
+        <div class="tabela-rolagem">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Modelo</th>
+                        <th class="esconde-movel">Tipo</th>
+                        <th><span class="sr-only">Ações</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for m in modelos %}
+                    <tr>
+                        <td>
+                            <div class="pessoa">
+                                <div>
+                                    <span class="pessoa-nome">{{ m.nome }}</span>
+                                    <span class="pessoa-sub">{% if m.sistema %}Modelo do sistema · {% endif %}{{ m.titulo }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="celula-suave esconde-movel">{{ m.tipo }}</td>
+                        <td class="acoes-celula">
+                            <a class="botao-icone" href="/gerente/condominios/{{ condominio.id }}/avisos/novo?modelo={{ m.id }}" title="Criar aviso com este modelo" aria-label="Criar aviso com o modelo {{ m.nome }}">{{ ui.icone('plus', 18) }}</a>
+                            {% if not m.sistema %}
+                                <a class="botao-icone" href="/gerente/condominios/{{ condominio.id }}/modelos/{{ m.id }}/editar" title="Editar" aria-label="Editar {{ m.nome }}">{{ ui.icone('editar', 18) }}</a>
+                                <a class="botao-icone perigo" href="/gerente/condominios/{{ condominio.id }}/modelos/{{ m.id }}/excluir" title="Excluir" aria-label="Excluir {{ m.nome }}">{{ ui.icone('lixeira', 18) }}</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

@@ -16,6 +16,21 @@
         {% endif %}
     </div>
 
+    {% if not editando and modelos|length > 0 %}
+        <form method="get" action="{{ acao }}/novo" class="cartao formulario modelo-escolha">
+            <div class="campo">
+                <label for="campo-modelo">Começar de um modelo</label>
+                <div class="modelo-linha">
+                    <select id="campo-modelo" name="modelo">
+                        {% for m in modelos %}<option value="{{ m.id }}">{{ m.nome }}</option>{% endfor %}
+                    </select>
+                    <button type="submit" class="botao-secundario">Usar modelo</button>
+                </div>
+                <p class="campo-ajuda">Preenche título, texto e tipo; você ajusta o que quiser. <a href="/gerente/condominios/{{ condominio.id }}/modelos">Gerenciar modelos</a></p>
+            </div>
+        </form>
+    {% endif %}
+
     <form method="post" action="{{ acao }}" enctype="multipart/form-data" class="cartao formulario">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
 
@@ -41,6 +56,8 @@
                 <p class="campo-ajuda">Tipos <strong>fixos</strong> ficam sempre à vista numa faixa no topo da TV, mostrando só o texto; com vários, a faixa é dividida entre eles. Os demais passam em carrossel, com foto ou vídeo. Os tipos Fixo e Urgente já vêm prontos.</p>
                 {% if erros.tipo is defined %}<p class="erro-texto">{{ erros.tipo }}</p>{% endif %}
             </div>
+
+            <label class="opcao opcao-simples"><input type="checkbox" name="salvar_modelo" value="1"{% if valores.salvar_modelo %} checked{% endif %}> Salvar título, texto e tipo como um modelo, para usar em outros avisos</label>
 
             <details class="novo-tipo"{% if valores.novo_tipo_nome != '' or erros.novo_tipo_nome is defined or erros.novo_tipo_cor is defined %} open{% endif %}>
                 <summary>{{ ui.icone('plus', 16) }}Criar um tipo novo</summary>

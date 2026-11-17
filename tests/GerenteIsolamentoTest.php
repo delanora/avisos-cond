@@ -24,6 +24,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
     private int $avisoB;
     private string $midiaB;
     private int $tipoB;
+    private int $modeloB;
 
     protected function setUp(): void
     {
@@ -43,6 +44,8 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         $this->post('/gerente/aparencia', ['cor_primaria' => '#AA0000']);
         $this->post("/gerente/condominios/{$this->condB}/tipos", ['nome' => 'Tipo Secreto Beta', 'cor' => '#00BB77', 'fixo' => '1']);
         $this->tipoB = (int) $this->pdo->query("SELECT id FROM tipos_aviso WHERE chave = 'tipo-secreto-beta'")->fetchColumn();
+        $this->post("/gerente/condominios/{$this->condB}/modelos", ['nome' => 'Modelo Secreto Beta', 'titulo' => 'Titulo Secreto Beta', 'corpo' => 'Corpo Secreto Beta', 'tipo' => 'comum']);
+        $this->modeloB = (int) $this->pdo->query("SELECT id FROM modelos_aviso WHERE nome = 'Modelo Secreto Beta'")->fetchColumn();
         $this->midiaB = (string) $this->pdo->query("SELECT midia FROM avisos WHERE id = {$this->avisoB}")->fetchColumn();
 
         // Dados do condomínio A, criados pelo gerente A; depois o "navegador" fica logado como A.
@@ -68,6 +71,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         sort($arquivos);
 
         return [
+            'modelos' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(condominio_id, 0) || '|' || nome || '|' || titulo || '|' || corpo || '|' || tipo, ';' ORDER BY id) FROM modelos_aviso")->fetchColumn(),
             'tipos' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(condominio_id, 0) || '|' || chave || '|' || nome || '|' || coalesce(cor, '') || '|' || fixo::text, ';' ORDER BY id) FROM tipos_aviso")->fetchColumn(),
             'avisos' => $this->pdo->query("SELECT string_agg(id || '|' || condominio_id || '|' || titulo || '|' || corpo || '|' || tipo || '|' || ativo::text || '|' || coalesce(midia, ''), ';' ORDER BY id) FROM avisos")->fetchColumn(),
             'condominios' => $this->pdo->query("SELECT string_agg(id || '|' || nome || '|' || ativo::text, ';' ORDER BY id) FROM condominios")->fetchColumn(),
@@ -98,6 +102,8 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
             ['POST', "{$b}/avisos"], ['POST', "{$b}/avisos/{$this->avisoB}"], ['POST', "{$b}/avisos/{$this->avisoB}/excluir"],
             ['GET', "{$b}/tipos"], ['GET', "{$b}/tipos/novo"], ['GET', "{$b}/tipos/{$this->tipoB}/editar"], ['GET', "{$b}/tipos/{$this->tipoB}/excluir"], ['GET', "{$b}/tipos.css"],
             ['POST', "{$b}/tipos"], ['POST', "{$b}/tipos/{$this->tipoB}"], ['POST', "{$b}/tipos/{$this->tipoB}/excluir"],
+            ['GET', "{$b}/modelos"], ['GET', "{$b}/modelos/novo"], ['GET', "{$b}/modelos/{$this->modeloB}/editar"], ['GET', "{$b}/modelos/{$this->modeloB}/excluir"],
+            ['POST', "{$b}/modelos"], ['POST', "{$b}/modelos/{$this->modeloB}"], ['POST', "{$b}/modelos/{$this->modeloB}/excluir"],
         ];
     }
 
@@ -114,7 +120,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
 
     private function assertSemVazamento(string $corpo, string $contexto): void
     {
-        foreach (['SEGREDO-DO-BETA', 'Condomínio Beta', 'Tipo Secreto Beta', 'tipo-secreto-beta', '#00BB77', $this->midiaB, '#AA0000'] as $segredo) {
+        foreach (['SEGREDO-DO-BETA', 'Condomínio Beta', 'Tipo Secreto Beta', 'tipo-secreto-beta', 'Modelo Secreto Beta', 'Titulo Secreto Beta', 'Corpo Secreto Beta', '#00BB77', $this->midiaB, '#AA0000'] as $segredo) {
             $this->assertStringNotContainsString($segredo, $corpo, "Vazou '{$segredo}' em {$contexto}");
         }
     }
@@ -219,6 +225,26 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         // Nem editado/apagado pelo A, mesmo usando o id dele na URL do condomínio do A.
         foreach ([['GET', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}/editar"], ['POST', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}"], ['POST', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}/excluir"]] as [$metodo, $caminho]) {
             $this->assertSame(404, $this->chamar($metodo, $caminho)->status, "{$metodo} {$caminho}");
+        }
+        $this->assertSame($antes, $this->fotografia());
+    }
+
+    public function testModeloDoBNaoEhListadoNemUsadoNemEditadoPeloA(): void
+    {
+        $antes = $this->fotografia();
+
+        foreach (["/gerente/condominios/{$this->condA}/avisos/novo", "/gerente/condominios/{$this->condA}/modelos"] as $caminho) {
+            $r = $this->get($caminho);
+            $this->assertSame(200, $r->status, $caminho);
+            $this->assertSemVazamento($r->body, $caminho);
+        }
+
+        // Usar o modelo do B na tela de aviso do A, ou mexer nele pelo id, é 404 e não muda nada.
+        foreach ([['GET', "/gerente/condominios/{$this->condA}/avisos/novo?modelo={$this->modeloB}"], ['GET', "/gerente/condominios/{$this->condA}/modelos/{$this->modeloB}/editar"],
+                  ['POST', "/gerente/condominios/{$this->condA}/modelos/{$this->modeloB}"], ['POST', "/gerente/condominios/{$this->condA}/modelos/{$this->modeloB}/excluir"]] as [$metodo, $caminho]) {
+            $r = $this->chamar($metodo, $caminho);
+            $this->assertSame(404, $r->status, "{$metodo} {$caminho}");
+            $this->assertSemVazamento($r->body, "{$metodo} {$caminho}");
         }
         $this->assertSame($antes, $this->fotografia());
     }

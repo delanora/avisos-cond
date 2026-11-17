@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers\Gerente;
 
 use App\Services\AvisoService;
+use App\Services\ModeloAvisoService;
 use App\Services\TipoAvisoService;
 use App\Services\ValidacaoException;
 use App\Support\DataHora;
@@ -22,6 +23,7 @@ final class AvisosController
         private readonly Session $sessao,
         private readonly AvisoService $avisos,
         private readonly TipoAvisoService $tipos,
+        private readonly ModeloAvisoService $modelos,
     ) {
     }
 
@@ -45,8 +47,14 @@ final class AvisosController
         // Sugestão: começa no próximo quarto de hora e dura uma semana.
         $inicio = (int) (ceil(time() / 900) * 900);
 
+        // "Começar de um modelo": ?modelo=ID preenche título, texto e tipo (modelo de outro condomínio é 404).
+        $modelo = ctype_digit((string) ($request->query['modelo'] ?? ''))
+            ? $this->modelos->paraUsar(EscopoGerente::permitidos($request), $condominio['id'], (int) $request->query['modelo'])
+            : null;
+
         return $this->formulario($request, $condominio, null, [
-            'titulo' => '', 'corpo' => '', 'tipo' => 'comum', 'ativo' => true,
+            'titulo' => $modelo['titulo'] ?? '', 'corpo' => $modelo['corpo'] ?? '', 'tipo' => $modelo['tipo'] ?? 'comum', 'ativo' => true,
+            'salvar_modelo' => false,
             'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
             'inicio_em' => DataHora::paraFormulario($inicio),
             'fim_em' => DataHora::paraFormulario($inicio + 7 * 86400),
@@ -60,7 +68,7 @@ final class AvisosController
 
         try {
             // O condomínio vem SEMPRE da URL validada; qualquer "condominio_id" no corpo é ignorado.
-            $this->avisos->criar(
+            $id = $this->avisos->criar(
                 EscopoGerente::permitidos($request),
                 $condominio['id'],
                 $request->body,
@@ -70,6 +78,7 @@ final class AvisosController
         } catch (ValidacaoException $e) {
             return $this->formulario($request, $condominio, null, $this->valoresEnviados($request), $e->erros, 422);
         }
+        $this->guardarComoModeloSePedido($request, $condominio['id'], $id);
 
         $this->sessao->flash('Aviso criado com sucesso.');
 
@@ -86,6 +95,7 @@ final class AvisosController
             'titulo' => $aviso['titulo'],
             'corpo' => $aviso['corpo'],
             'tipo' => $aviso['tipo'],
+            'salvar_modelo' => false,
             'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
             'ativo' => $aviso['ativo'],
             'inicio_em' => DataHora::paraFormulario($aviso['inicio_epoch']),
@@ -107,6 +117,7 @@ final class AvisosController
 
             return $this->formulario($request, $condominio, $aviso, $this->valoresEnviados($request), $e->erros, 422);
         }
+        $this->guardarComoModeloSePedido($request, $condominio['id'], $id);
 
         $this->sessao->flash('Aviso atualizado com sucesso.');
 
@@ -150,6 +161,17 @@ final class AvisosController
         ]));
     }
 
+    /** "Salvar este aviso como modelo": guarda título, texto e tipo do aviso que acabou de ser salvo. */
+    private function guardarComoModeloSePedido(Request $request, int $condominioId, int $avisoId): void
+    {
+        if (($request->body['salvar_modelo'] ?? '') !== '1') {
+            return;
+        }
+        $permitidos = EscopoGerente::permitidos($request);
+        $aviso = $this->avisos->buscar($permitidos, $condominioId, $avisoId);
+        $this->modelos->criarDoAviso($permitidos, $condominioId, $aviso['titulo'], $aviso['corpo'], $aviso['tipo']);
+    }
+
     /** @return array<string, mixed> */
     private function valoresEnviados(Request $request): array
     {
@@ -159,6 +181,7 @@ final class AvisosController
             'titulo' => trim($texto('titulo')),
             'corpo' => trim($texto('corpo')),
             'tipo' => $texto('tipo'),
+            'salvar_modelo' => $texto('salvar_modelo') === '1',
             'novo_tipo_nome' => trim($texto('novo_tipo_nome')),
             'novo_tipo_cor' => $texto('novo_tipo_cor') !== '' ? $texto('novo_tipo_cor') : '#2F6FED',
             'novo_tipo_fixo' => $texto('novo_tipo_fixo') === '1',
@@ -186,6 +209,7 @@ final class AvisosController
             'valores' => $valores,
             'erros' => $erros,
             'tipos' => $this->tipos->listar(EscopoGerente::permitidos($request), $condominio['id']),
+            'modelos' => $aviso === null ? $this->modelos->listar(EscopoGerente::permitidos($request), $condominio['id']) : [],
             'menu' => 'avisos',
         ]), $status);
     }
