@@ -163,6 +163,8 @@ Regras de camada:
 
 - **Modelos de aviso** (`modelos_aviso`, migration 010): texto pronto (nome, título, texto e tipo sugerido) para começar um aviso. Quatro são **do sistema** (Falta de água, Manutenção do elevador, Dedetização, Assembleia; não editáveis) e o gerente cria os **dele por condomínio** (`/gerente/condominios/{cid}/modelos`, ou marcando "Salvar como modelo" no formulário do aviso). Para usar: `/avisos/novo?modelo=ID` (GET, sem JavaScript) preenche o formulário; modelo de outro condomínio é 404. Mesmo isolamento dos tipos (`condominio_id = :cid AND = ANY(:permitidos)`, testes em `GerenteIsolamentoTest` validados por mutação). Se o tipo sugerido deixar de existir, o aviso começa como `comum`.
 
+- **Repetição do aviso** (migration 011: `avisos.dias_semana`, `hora_inicio`, `hora_fim`): dentro do período (`inicio_em`–`fim_em`) o aviso pode aparecer só em certos **dias da semana** (bitmask, bit 0 = domingo; nulo = todos) e numa **janela de horário** diária `[início, fim)` (as duas horas juntas ou nenhuma, sem atravessar a meia-noite), sempre em horário de Brasília. A regra vive em `App\Support\Recorrencia` (painel: situação "Fora do horário") e no `tv.js` (`recorrenciaAtiva`, pelo relógio corrigido, também offline); as duas implementações precisam concordar (testes em `RecorrenciaTest` e `tests/js/logica.html`). O `/state` manda `repete: {dias, inicio, fim}` (ou `null`) em cada aviso; o servidor continua entregando todo aviso do período e a TV decide o que está no ar.
+
 ## 7. Banco de dados e migrations
 
 - Migrations em `/migrations/NNN_descricao.sql`, numeradas com 3 dígitos, em ordem.

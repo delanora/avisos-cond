@@ -296,4 +296,94 @@ final class AvisoServiceTest extends BancoMigradoTestCase
         $this->assertSame('encerrado', AvisoService::situacao($aviso, 2000)['codigo'], 'O fim já não conta.');
         $this->assertSame('desativado', AvisoService::situacao(['ativo' => false] + $aviso, 1500)['codigo']);
     }
+
+    // ---------- Repetição (Fase 2, 2.2c) ----------
+
+    public function testCriaAvisoComDiasEJanelaDeHorario(): void
+    {
+        $id = $this->servico()->criar([$this->a], $this->a, $this->dados(['dias' => ['2', '5'], 'hora_inicio' => '07:00', 'hora_fim' => '09:30']), null, $this->usuario);
+
+        $aviso = $this->servico()->buscar([$this->a], $this->a, $id);
+
+        $this->assertSame([0b0100100, '07:00', '09:30'], [$aviso['dias_semana'], $aviso['hora_inicio'], $aviso['hora_fim']]);
+    }
+
+    public function testSemRepeticaoFicaTudoNuloENosSeteDiasTambem(): void
+    {
+        $a = $this->servico()->criar([$this->a], $this->a, $this->dados(), null, $this->usuario);
+        $b = $this->servico()->criar([$this->a], $this->a, $this->dados(['dias' => ['0', '1', '2', '3', '4', '5', '6']]), null, $this->usuario);
+
+        foreach ([$a, $b] as $id) {
+            $aviso = $this->servico()->buscar([$this->a], $this->a, $id);
+            $this->assertSame([null, null, null], [$aviso['dias_semana'], $aviso['hora_inicio'], $aviso['hora_fim']]);
+        }
+    }
+
+    /** @return array<string, array{array<string, mixed>, string}> */
+    public static function repeticoesInvalidas(): array
+    {
+        return [
+            'só a hora inicial' => [['hora_inicio' => '08:00'], 'hora_fim'],
+            'só a hora final' => [['hora_fim' => '08:00'], 'hora_fim'],
+            'fim antes do início' => [['hora_inicio' => '09:00', 'hora_fim' => '08:00'], 'hora_fim'],
+            'fim igual ao início' => [['hora_inicio' => '09:00', 'hora_fim' => '09:00'], 'hora_fim'],
+            'atravessando a meia-noite' => [['hora_inicio' => '22:00', 'hora_fim' => '02:00'], 'hora_fim'],
+            'hora inválida' => [['hora_inicio' => '25:00', 'hora_fim' => '26:00'], 'hora_fim'],
+            'texto no lugar da hora' => [['hora_inicio' => 'abc', 'hora_fim' => 'def'], 'hora_fim'],
+            'dia fora de 0 a 6' => [['dias' => ['7']], 'dias'],
+            'dia não numérico' => [['dias' => ['segunda']], 'dias'],
+            'dia como lista aninhada' => [['dias' => [['1']]], 'dias'],
+        ];
+    }
+
+    /** @param array<string, mixed> $alteracao */
+    #[\PHPUnit\Framework\Attributes\DataProvider('repeticoesInvalidas')]
+    public function testRepeticaoInvalidaNaoGravaNada(array $alteracao, string $campo): void
+    {
+        try {
+            $this->servico()->criar([$this->a], $this->a, $this->dados($alteracao), null, $this->usuario);
+            $this->fail('Deveria falhar.');
+        } catch (ValidacaoException $e) {
+            $this->assertArrayHasKey($campo, $e->erros);
+        }
+        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM avisos')->fetchColumn());
+    }
+
+    public function testAtualizarMudaERemoveARepeticao(): void
+    {
+        $id = $this->servico()->criar([$this->a], $this->a, $this->dados(['dias' => ['1'], 'hora_inicio' => '08:00', 'hora_fim' => '09:00']), null, $this->usuario);
+
+        $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(['dias' => ['3', '4']]), null);
+        $depois = $this->servico()->buscar([$this->a], $this->a, $id);
+        $this->assertSame([0b0011000, null, null], [$depois['dias_semana'], $depois['hora_inicio'], $depois['hora_fim']]);
+
+        $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(), null);
+        $limpo = $this->servico()->buscar([$this->a], $this->a, $id);
+        $this->assertSame([null, null, null], [$limpo['dias_semana'], $limpo['hora_inicio'], $limpo['hora_fim']]);
+    }
+
+    public function testSituacaoForaDoHorarioDentroDoPeriodo(): void
+    {
+        // 2026-11-17 é terça; 12:00 UTC = 09:00 em Brasília.
+        $agora = gmmktime(12, 0, 0, 11, 17, 2026);
+        $base = ['ativo' => true, 'inicio_epoch' => $agora - 86400, 'fim_epoch' => $agora + 86400];
+
+        $this->assertSame('no-ar', AvisoService::situacao($base + ['dias_semana' => 0b0000100, 'hora_inicio' => '08:00', 'hora_fim' => '10:00'], $agora)['codigo']);
+        $this->assertSame('fora-do-horario', AvisoService::situacao($base + ['dias_semana' => 0b0000100, 'hora_inicio' => '10:00', 'hora_fim' => '11:00'], $agora)['codigo']);
+        $this->assertSame('fora-do-horario', AvisoService::situacao($base + ['dias_semana' => 0b0001000, 'hora_inicio' => null, 'hora_fim' => null], $agora)['codigo']);
+        $this->assertSame('encerrado', AvisoService::situacao(['fim_epoch' => $agora - 1] + $base + ['dias_semana' => 0b0001000], $agora)['codigo'], 'Período encerrado vem antes.');
+        $this->assertSame('agendado', AvisoService::situacao(['inicio_epoch' => $agora + 1] + $base + ['dias_semana' => 0b0001000], $agora)['codigo']);
+    }
+
+    public function testListarTrazOResumoDaRepeticao(): void
+    {
+        $this->servico()->criar([$this->a], $this->a, $this->dados(['dias' => ['2', '5'], 'hora_inicio' => '07:00', 'hora_fim' => '09:00']), null, $this->usuario);
+        $this->servico()->criar([$this->a], $this->a, $this->dados(['titulo' => 'Sem repetir']), null, $this->usuario);
+
+        $lista = $this->servico()->listar([$this->a], $this->a);
+
+        $porTitulo = array_column($lista, 'repeticao', 'titulo');
+        $this->assertSame('Ter e Sex · 07:00 às 09:00', $porTitulo['Falta de água']);
+        $this->assertNull($porTitulo['Sem repetir']);
+    }
 }

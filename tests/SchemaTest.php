@@ -174,6 +174,37 @@ final class SchemaTest extends DatabaseTestCase
         $this->assertSame(5, $this->contar('avisos'));
     }
 
+    /** @return array<string, array{string}> */
+    public static function repeticoesInvalidasNoBanco(): array
+    {
+        return [
+            'dias zero' => ['dias_semana = 0'],
+            'dias acima de 127' => ['dias_semana = 128'],
+            'só a hora inicial' => ["hora_inicio = '08:00'"],
+            'só a hora final' => ["hora_fim = '08:00'"],
+            'fim antes do início' => ["hora_inicio = '09:00', hora_fim = '08:00'"],
+            'fim igual ao início' => ["hora_inicio = '09:00', hora_fim = '09:00'"],
+        ];
+    }
+
+    #[DataProvider('repeticoesInvalidasNoBanco')]
+    public function testRepeticaoIncoerenteEhRejeitadaPeloBanco(string $alteracao): void
+    {
+        $id = $this->aviso($this->condominio());
+
+        $this->expectException(PDOException::class);
+        $this->pdo->exec("UPDATE avisos SET {$alteracao} WHERE id = {$id}");
+    }
+
+    public function testRepeticaoValidaEhAceita(): void
+    {
+        $id = $this->aviso($this->condominio());
+
+        $this->pdo->exec("UPDATE avisos SET dias_semana = 127, hora_inicio = '00:00', hora_fim = '23:59' WHERE id = {$id}");
+
+        $this->assertSame(127, (int) $this->pdo->query("SELECT dias_semana FROM avisos WHERE id = {$id}")->fetchColumn());
+    }
+
     public function testAvisoTipoInvalidoEhRejeitado(): void
     {
         $this->expectException(PDOException::class);

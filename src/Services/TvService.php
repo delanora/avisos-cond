@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Repositories\AvisoRepository;
 use App\Repositories\DispositivoRepository;
 use App\Support\NaoEncontradoException;
+use App\Support\Recorrencia;
 
 /** O que a TV de um condomínio exibe: o estado (JSON) e as mídias. Nada de gerentes, financeiro ou outros condomínios. */
 final class TvService
@@ -50,6 +51,12 @@ final class TvService
                     // Fixo = vai para a faixa do topo (só texto); a cor do tipo vira etiqueta e cartão (tom claro) na TV.
                     'fixo' => $linha['fixo'],
                     'visual' => AparenciaService::coresDoTipo($linha['tipo_cor']),
+                    // Dias da semana (0 = domingo) e janela de horário em Brasília; a TV aplica pelo relógio corrigido.
+                    'repete' => Recorrencia::temRepeticao($linha['dias_semana'], $linha['hora_inicio']) ? [
+                        'dias' => $linha['dias_semana'] === null ? null : Recorrencia::listaDeDias($linha['dias_semana']),
+                        'inicio' => $linha['hora_inicio'],
+                        'fim' => $linha['hora_fim'],
+                    ] : null,
                     'inicio_em' => gmdate('Y-m-d\TH:i:s\Z', $linha['inicio_epoch']),
                     'fim_em' => gmdate('Y-m-d\TH:i:s\Z', $linha['fim_epoch']),
                     'midia' => $linha['midia'] === null ? null : [

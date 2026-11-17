@@ -694,6 +694,75 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('Aviso do tipo Zeladoria (fixo)', $corpo);
     }
 
+    // ---------- Repetição do aviso ----------
+
+    public function testFormularioTemSecaoDeRepeticaoComDiasEHorarios(): void
+    {
+        $this->entrar();
+
+        $corpo = $this->get($this->base() . '/avisos/novo')->body;
+
+        $this->assertStringContainsString('Repetição (opcional)', $corpo);
+        foreach (['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as $i => $dia) {
+            $this->assertStringContainsString("name=\"dias[]\" value=\"{$i}\"><span>{$dia}</span>", $corpo);
+        }
+        $this->assertStringContainsString('type="time" name="hora_inicio"', $corpo);
+        $this->assertStringContainsString('type="time" name="hora_fim"', $corpo);
+    }
+
+    public function testCriarAvisoComRepeticaoGuardaMostraNaListaEReabreNaEdicao(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['titulo' => 'Coleta de lixo', 'dias' => ['2', '5'], 'hora_inicio' => '07:00', 'hora_fim' => '09:00']));
+
+        $this->assertSame(303, $r->status);
+        $linha = $this->pdo->query("SELECT dias_semana, to_char(hora_inicio, 'HH24:MI') AS hi, to_char(hora_fim, 'HH24:MI') AS hf FROM avisos")->fetch();
+        $this->assertSame([36, '07:00', '09:00'], [(int) $linha['dias_semana'], $linha['hi'], $linha['hf']]);
+        $this->assertStringContainsString('Ter e Sex · 07:00 às 09:00', $this->get($this->base() . '/avisos')->body);
+
+        $id = (int) $this->pdo->query('SELECT id FROM avisos')->fetchColumn();
+        $edicao = $this->get($this->base() . "/avisos/{$id}/editar")->body;
+        $this->assertMatchesRegularExpression('/value="2" checked/', $edicao);
+        $this->assertMatchesRegularExpression('/value="5" checked/', $edicao);
+        $this->assertDoesNotMatchRegularExpression('/value="3" checked/', $edicao);
+        $this->assertStringContainsString('name="hora_inicio" value="07:00"', $edicao);
+        $this->assertStringContainsString('name="hora_fim" value="09:00"', $edicao);
+    }
+
+    public function testRepeticaoInvalidaMostraErroMantendoOQueFoiDigitado(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['dias' => ['3'], 'hora_inicio' => '10:00', 'hora_fim' => '09:00']));
+
+        $this->assertSame(422, $r->status);
+        $this->assertStringContainsString('O horário final precisa ser depois do inicial', $r->body);
+        $this->assertMatchesRegularExpression('/value="3" checked/', $r->body);
+        $this->assertStringContainsString('name="hora_inicio" value="10:00"', $r->body);
+        $this->assertSame(0, $this->contar('avisos'));
+    }
+
+    public function testSemMarcarNadaOAvisoNaoRepete(): void
+    {
+        $this->entrar();
+
+        $this->criarAviso();
+
+        $this->assertSame([null, null, null], array_values($this->pdo->query('SELECT dias_semana, hora_inicio, hora_fim FROM avisos')->fetch(\PDO::FETCH_NUM)));
+        $this->assertStringNotContainsString('class="repete"', $this->get($this->base() . '/avisos')->body);
+    }
+
+    public function testPreviaAvisaQueOAvisoSeRepete(): void
+    {
+        $this->entrar();
+        $id = $this->criarAviso(['dias' => ['1'], 'hora_inicio' => '08:00', 'hora_fim' => '09:00']);
+
+        $this->assertStringContainsString('Este aviso se repete', $this->get($this->base() . "/avisos/{$id}/previa")->body);
+        $semRepetir = $this->criarAviso(['titulo' => 'Outro']);
+        $this->assertStringNotContainsString('Este aviso se repete', $this->get($this->base() . "/avisos/{$semRepetir}/previa")->body);
+    }
+
     // ---------- Modelos de aviso ----------
 
     private function modeloPorNome(string $nome): array

@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Repositories\AvisoRepository;
 use App\Support\DataHora;
 use App\Support\NaoEncontradoException;
+use App\Support\Recorrencia;
 use App\Support\Validator;
 use Throwable;
 
@@ -35,7 +36,10 @@ final class AvisoService
         $agora ??= time();
 
         return array_map(
-            fn (array $aviso): array => $aviso + ['situacao' => self::situacao($aviso, $agora)],
+            fn (array $aviso): array => $aviso + [
+                'situacao' => self::situacao($aviso, $agora),
+                'repeticao' => Recorrencia::resumo($aviso['dias_semana'], $aviso['hora_inicio'], $aviso['hora_fim']),
+            ],
             $this->avisos->listar($permitidos, $condominioId)
         );
     }
@@ -150,6 +154,8 @@ final class AvisoService
             !$aviso['ativo'] => ['codigo' => 'desativado', 'rotulo' => 'Desativado'],
             $agora < $aviso['inicio_epoch'] => ['codigo' => 'agendado', 'rotulo' => 'Agendado'],
             $agora >= $aviso['fim_epoch'] => ['codigo' => 'encerrado', 'rotulo' => 'Encerrado'],
+            // Dentro do período, mas hoje/agora fora dos dias ou do horário escolhidos.
+            !Recorrencia::ativaEm($agora, $aviso['dias_semana'] ?? null, $aviso['hora_inicio'] ?? null, $aviso['hora_fim'] ?? null) => ['codigo' => 'fora-do-horario', 'rotulo' => 'Fora do horário'],
             default => ['codigo' => 'no-ar', 'rotulo' => 'No ar'],
         };
     }
@@ -205,6 +211,8 @@ final class AvisoService
             $erros['fim_em'] = 'O fim precisa ser depois do início.';
         }
 
+        [$dias, $horaInicio, $horaFim] = $this->validarRepeticao($dados, $erros);
+
         if ($erros !== []) {
             throw new ValidacaoException($erros);
         }
@@ -216,10 +224,45 @@ final class AvisoService
             'corpo' => $valores['corpo'],
             'tipo' => $tipo,
             'tipo_novo' => $tipoNovo,
+            'dias_semana' => $dias,
+            'hora_inicio' => $horaInicio,
+            'hora_fim' => $horaFim,
             'inicio_epoch' => (int) $inicio,
             'fim_epoch' => (int) $fim,
             'ativo' => ($dados['ativo'] ?? '') === '1',
         ];
+    }
+
+    /**
+     * Repetição opcional: dias da semana (dias[] com 0 a 6) e janela de horário (as duas horas juntas ou nenhuma).
+     *
+     * @param array<string, mixed>  $dados
+     * @param array<string, string> $erros
+     * @return array{?int, ?string, ?string}
+     */
+    private function validarRepeticao(array $dados, array &$erros): array
+    {
+        $lista = [];
+        foreach (is_array($dados['dias'] ?? null) ? $dados['dias'] : [] as $dia) {
+            if (!is_string($dia) || !preg_match('/^[0-6]\z/', $dia)) {
+                $erros['dias'] = 'Escolha dias da semana válidos.';
+
+                return [null, null, null];
+            }
+            $lista[] = (int) $dia;
+        }
+
+        $inicio = is_string($dados['hora_inicio'] ?? null) ? trim($dados['hora_inicio']) : '';
+        $fim = is_string($dados['hora_fim'] ?? null) ? trim($dados['hora_fim']) : '';
+        if (($inicio === '') !== ($fim === '')) {
+            $erros['hora_fim'] = 'Preencha o horário de início e o de fim (ou deixe os dois em branco).';
+        } elseif ($inicio !== '' && (!Recorrencia::horaValida($inicio) || !Recorrencia::horaValida($fim))) {
+            $erros['hora_fim'] = 'Informe horários válidos, como 08:00.';
+        } elseif ($inicio !== '' && Recorrencia::minutos($fim) <= Recorrencia::minutos($inicio)) {
+            $erros['hora_fim'] = 'O horário final precisa ser depois do inicial (no mesmo dia).';
+        }
+
+        return [Recorrencia::mascaraDeDias($lista), $inicio === '' ? null : $inicio, $fim === '' ? null : $fim];
     }
 
     /**

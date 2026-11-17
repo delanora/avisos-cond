@@ -10,6 +10,7 @@ use App\Services\TipoAvisoService;
 use App\Services\ValidacaoException;
 use App\Support\DataHora;
 use App\Support\EscopoGerente;
+use App\Support\Recorrencia;
 use App\Support\Request;
 use App\Support\Response;
 use App\Support\Session;
@@ -56,6 +57,7 @@ final class AvisosController
             'titulo' => $modelo['titulo'] ?? '', 'corpo' => $modelo['corpo'] ?? '', 'tipo' => $modelo['tipo'] ?? 'comum', 'ativo' => true,
             'salvar_modelo' => false,
             'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
+            'dias' => [], 'hora_inicio' => '', 'hora_fim' => '',
             'inicio_em' => DataHora::paraFormulario($inicio),
             'fim_em' => DataHora::paraFormulario($inicio + 7 * 86400),
         ], []);
@@ -97,6 +99,9 @@ final class AvisosController
             'tipo' => $aviso['tipo'],
             'salvar_modelo' => false,
             'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
+            'dias' => Recorrencia::listaDeDias($aviso['dias_semana']),
+            'hora_inicio' => $aviso['hora_inicio'] ?? '',
+            'hora_fim' => $aviso['hora_fim'] ?? '',
             'ativo' => $aviso['ativo'],
             'inicio_em' => DataHora::paraFormulario($aviso['inicio_epoch']),
             'fim_em' => DataHora::paraFormulario($aviso['fim_epoch']),
@@ -182,6 +187,9 @@ final class AvisosController
             'corpo' => trim($texto('corpo')),
             'tipo' => $texto('tipo'),
             'salvar_modelo' => $texto('salvar_modelo') === '1',
+            'dias' => array_values(array_filter(array_map('intval', is_array($request->body['dias'] ?? null) ? array_filter($request->body['dias'], 'is_string') : []), static fn (int $d): bool => $d >= 0 && $d <= 6)),
+            'hora_inicio' => $texto('hora_inicio'),
+            'hora_fim' => $texto('hora_fim'),
             'novo_tipo_nome' => trim($texto('novo_tipo_nome')),
             'novo_tipo_cor' => $texto('novo_tipo_cor') !== '' ? $texto('novo_tipo_cor') : '#2F6FED',
             'novo_tipo_fixo' => $texto('novo_tipo_fixo') === '1',
@@ -208,6 +216,7 @@ final class AvisosController
             'url_midia' => $aviso === null ? '' : "{$base}/{$aviso['id']}/midia",
             'valores' => $valores,
             'erros' => $erros,
+            'dias_semana' => Recorrencia::DIAS,
             'tipos' => $this->tipos->listar(EscopoGerente::permitidos($request), $condominio['id']),
             'modelos' => $aviso === null ? $this->modelos->listar(EscopoGerente::permitidos($request), $condominio['id']) : [],
             'menu' => 'avisos',

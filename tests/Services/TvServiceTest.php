@@ -95,7 +95,7 @@ final class TvServiceTest extends BancoMigradoTestCase
         $this->assertMatchesRegularExpression('/^[a-f0-9]{16}$/', $estado['version']);
 
         $aviso = $estado['avisos'][0];
-        $this->assertSame(['id', 'titulo', 'corpo', 'tipo', 'tipo_nome', 'fixo', 'visual', 'inicio_em', 'fim_em', 'midia'], array_keys($aviso));
+        $this->assertSame(['id', 'titulo', 'corpo', 'tipo', 'tipo_nome', 'fixo', 'visual', 'repete', 'inicio_em', 'fim_em', 'midia'], array_keys($aviso));
         $this->assertSame('urgente', $aviso['tipo']);
         $this->assertSame('Urgente', $aviso['tipo_nome']);
         $this->assertTrue($aviso['fixo'], 'Urgente é um tipo fixo.');
@@ -245,5 +245,20 @@ final class TvServiceTest extends BancoMigradoTestCase
 
         $this->assertNotSame($v1, $v2);
         $this->assertNotSame($v2, $v3);
+    }
+
+    public function testAvisoComRepeticaoVaiParaATvComDiasEJanelaEQuemNaoRepeteVaiNulo(): void
+    {
+        $this->avisoTv($this->pdo, $this->a, 'Coleta', -60, 3600, ['dias_semana' => 0b0100100, 'hora_inicio' => '07:00', 'hora_fim' => '09:30']);
+        $this->avisoTv($this->pdo, $this->a, 'Só dias', -50, 3600, ['dias_semana' => 0b0000001]);
+        $this->avisoTv($this->pdo, $this->a, 'Só horário', -40, 3600, ['hora_inicio' => '18:00', 'hora_fim' => '20:00']);
+        $this->avisoTv($this->pdo, $this->a, 'Sem repetir', -30, 3600);
+
+        [$coleta, $dias, $horario, $normal] = $this->servico()->estado($this->acesso($this->a), time())['avisos'];
+
+        $this->assertSame(['dias' => [2, 5], 'inicio' => '07:00', 'fim' => '09:30'], $coleta['repete']);
+        $this->assertSame(['dias' => [0], 'inicio' => null, 'fim' => null], $dias['repete']);
+        $this->assertSame(['dias' => null, 'inicio' => '18:00', 'fim' => '20:00'], $horario['repete']);
+        $this->assertNull($normal['repete']);
     }
 }

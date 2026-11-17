@@ -19,6 +19,10 @@
         <p class="alerta alerta-sucesso" role="status">{{ ui.icone('aviso', 20) }}<span>Aviso do tipo {{ aviso.tipo_nome }} (fixo): fica sempre à vista na faixa do topo da TV, só com o texto. Se houver outros avisos fixos, a faixa é dividida entre eles.{% if aviso.midia %} A foto ou o vídeo deste aviso não são exibidos na TV.{% endif %}</span></p>
     {% endif %}
 
+    {% if aviso.dias_semana is not null or aviso.hora_inicio is not null %}
+        <p class="alerta alerta-sucesso" role="status">{{ ui.icone('relogio', 20) }}<span>Este aviso se repete: aparece na TV só nos dias e no horário escolhidos, dentro do período dele. Aqui você vê como ele fica quando está no ar.</span></p>
+    {% endif %}
+
     {% if not aviso.ativo %}
         <p class="alerta alerta-erro" role="status">{{ ui.icone('alerta', 20) }}<span>Este aviso está desativado e não aparece na TV.</span></p>
     {% endif %}

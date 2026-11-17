@@ -557,3 +557,5 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 .modelo-escolha { margin-bottom: 1rem; }
 .modelo-linha { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .modelo-linha select { flex: 1 1 14rem; }
+.repete { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.25rem; font-size: 0.8125rem; color: var(--suave); }
+.etiqueta-situacao-fora-do-horario { color: #7A4B06; background: #FDE9C8; }

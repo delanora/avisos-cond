@@ -46,7 +46,7 @@
                                     {% if a.midia_tipo == 'video' %}<span class="etiqueta">{{ ui.icone('video', 14) }}Vídeo</span>{% endif %}
                                 </span>
                             </td>
-                            <td class="celula-suave esconde-movel">{{ a.inicio_epoch|date('d/m/Y H:i', 'America/Sao_Paulo') }} até {{ a.fim_epoch|date('d/m/Y H:i', 'America/Sao_Paulo') }}</td>
+                            <td class="celula-suave esconde-movel">{{ a.inicio_epoch|date('d/m/Y H:i', 'America/Sao_Paulo') }} até {{ a.fim_epoch|date('d/m/Y H:i', 'America/Sao_Paulo') }}{% if a.repeticao %}<span class="repete">{{ ui.icone('relogio', 14) }}{{ a.repeticao }}</span>{% endif %}</td>
                             <td><span class="etiqueta etiqueta-situacao-{{ a.situacao.codigo }}">{{ a.situacao.rotulo }}</span></td>
                             <td class="acoes-celula">
                                 <a class="botao-icone" href="/gerente/condominios/{{ condominio.id }}/avisos/{{ a.id }}/previa" title="Ver como fica na TV" aria-label="Ver na TV: {{ a.titulo }}">{{ ui.icone('olho', 18) }}</a>

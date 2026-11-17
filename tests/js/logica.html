@@ -26,7 +26,7 @@
     }
     function ids(lista) { var r = []; for (var i = 0; i < lista.length; i++) { r.push(lista[i].id); } return r; }
 
-    teste('TvLogica foi exposta', !!L && !!L.selecionarFixos && !!L.selecionarCarrossel && !!L.disposicao && !!L.duracaoMs && !!L.horaBrasilia && !!L.interpretar && !!L.ehFixo);
+    teste('TvLogica foi exposta', !!L && !!L.selecionarFixos && !!L.selecionarCarrossel && !!L.disposicao && !!L.duracaoMs && !!L.horaBrasilia && !!L.interpretar && !!L.ehFixo && !!L.recorrenciaAtiva);
 
     var T = function (s) { return Date.parse(s); };
     var avisos = L.interpretar([
@@ -40,6 +40,30 @@
     // ----- quem é fixo -----
     teste('tipo marcado como fixo (urgente, fixo ou um criado pelo gerente) é fixo', L.ehFixo({ tipo: 'urgente', fixo: true }) && L.ehFixo({ tipo: 'reuniao-do-conselho', fixo: true }));
     teste('tipo não fixo vai para o carrossel, qualquer que seja o nome', !L.ehFixo({ tipo: 'comum', fixo: false }) && !L.ehFixo({ tipo: 'fixo', fixo: false }) && !L.ehFixo({ tipo: 'urgente' }));
+
+    // ----- repetição (dias da semana e janela de horário, horário de Brasília) -----
+    // 2026-11-17 é terça-feira; 11:00Z = 08:00 em Brasília.
+    var terca8h = T('2026-11-17T11:00:00Z');
+    igual('sem repetição sempre vale', L.recorrenciaAtiva(null, terca8h), true);
+    igual('terça numa terça', L.recorrenciaAtiva({ dias: [2], inicio: null, fim: null }, terca8h), true);
+    igual('terça numa quarta', L.recorrenciaAtiva({ dias: [2], inicio: null, fim: null }, T('2026-11-18T11:00:00Z')), false);
+    igual('terça ou sexta, numa sexta', L.recorrenciaAtiva({ dias: [2, 5], inicio: null, fim: null }, T('2026-11-20T11:00:00Z')), true);
+    igual('janela 07:00-09:00 às 08:00', L.recorrenciaAtiva({ dias: null, inicio: '07:00', fim: '09:00' }, terca8h), true);
+    igual('janela no início exato (07:00)', L.recorrenciaAtiva({ dias: null, inicio: '07:00', fim: '09:00' }, T('2026-11-17T10:00:00Z')), true);
+    igual('janela um minuto antes', L.recorrenciaAtiva({ dias: null, inicio: '07:00', fim: '09:00' }, T('2026-11-17T09:59:00Z')), false);
+    igual('janela no fim exato já saiu', L.recorrenciaAtiva({ dias: null, inicio: '07:00', fim: '09:00' }, T('2026-11-17T12:00:00Z')), false);
+    igual('dia certo e hora errada', L.recorrenciaAtiva({ dias: [2], inicio: '07:00', fim: '09:00' }, T('2026-11-17T15:00:00Z')), false);
+    igual('22:00 em Brasília de terça (01:00Z de quarta) ainda é terça', L.recorrenciaAtiva({ dias: [2], inicio: null, fim: null }, T('2026-11-18T01:00:00Z')), true);
+    igual('dias vazio = todos os dias', L.recorrenciaAtiva({ dias: [], inicio: null, fim: null }, terca8h), true);
+    var rep = L.interpretar([
+        aviso(20, 'comum', '2026-11-16T00:00:00Z', '2026-11-30T00:00:00Z', { repete: { dias: [2, 5], inicio: '07:00', fim: '09:00' } }),
+        aviso(21, 'fixo', '2026-11-16T00:00:00Z', '2026-11-30T00:00:00Z', { repete: { dias: [2], inicio: null, fim: null } })
+    ]);
+    igual('carrossel respeita a repetição: dentro da janela', ids(L.selecionarCarrossel(rep, terca8h)), [20]);
+    igual('carrossel respeita a repetição: fora da janela', ids(L.selecionarCarrossel(rep, T('2026-11-17T15:00:00Z'))), []);
+    igual('faixa fixa respeita os dias: terça', ids(L.selecionarFixos(rep, terca8h)), [21]);
+    igual('faixa fixa respeita os dias: quarta', ids(L.selecionarFixos(rep, T('2026-11-18T11:00:00Z'))), []);
+    igual('fora do período nunca aparece, mesmo no dia e hora certos', ids(L.selecionarCarrossel(rep, T('2026-12-01T11:00:00Z'))), []);
 
     // ----- carrossel (não fixos), por horário -----
     igual('carrossel antes de tudo: vazio', ids(L.selecionarCarrossel(avisos, T('2026-11-16T08:00:00Z'))), []);

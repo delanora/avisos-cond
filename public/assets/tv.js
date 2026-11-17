@@ -52,8 +52,35 @@
         return aviso.fixo === true;
     }
 
+    /** "08:30" → minutos desde a meia-noite. */
+    function minutosDoDia(hhmm) {
+        var partes = String(hhmm).split(':');
+        return parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
+    }
+
+    /**
+     * Repetição do aviso dentro do período: dias da semana (0 = domingo) e janela de horário, em horário de Brasília,
+     * pelo relógio corrigido. Sem "repete", vale o período inteiro. Mesma regra do PHP (App\Support\Recorrencia).
+     */
+    function recorrenciaAtiva(repete, agoraMs) {
+        if (!repete) { return true; }
+        var d = new Date(agoraMs + BRASILIA_MS);
+        if (repete.dias && repete.dias.length) {
+            var achou = false;
+            for (var i = 0; i < repete.dias.length; i++) {
+                if (repete.dias[i] === d.getUTCDay()) { achou = true; }
+            }
+            if (!achou) { return false; }
+        }
+        if (repete.inicio && repete.fim) {
+            var minutos = d.getUTCHours() * 60 + d.getUTCMinutes();
+            if (minutos < minutosDoDia(repete.inicio) || minutos >= minutosDoDia(repete.fim)) { return false; }
+        }
+        return true;
+    }
+
     function noAr(a, agoraMs) {
-        return a.inicio <= agoraMs && agoraMs < a.fim;
+        return a.inicio <= agoraMs && agoraMs < a.fim && recorrenciaAtiva(a.dados.repete, agoraMs);
     }
 
     /** Avisos fixos/urgentes no ar agora (todos aparecem ao mesmo tempo): urgentes primeiro, depois pelo início. */
@@ -113,6 +140,7 @@
     window.TvLogica = {
         interpretar: interpretar,
         ehFixo: ehFixo,
+        recorrenciaAtiva: recorrenciaAtiva,
         selecionarFixos: selecionarFixos,
         selecionarCarrossel: selecionarCarrossel,
         disposicao: disposicao,

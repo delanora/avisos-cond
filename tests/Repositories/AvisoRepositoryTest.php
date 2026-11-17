@@ -131,4 +131,23 @@ final class AvisoRepositoryTest extends AppHttpTestCase
         $this->assertSame(1_800_086_400, $aviso['fim_epoch']);
         $this->assertSame($this->usuario, $aviso['criado_por']);
     }
+
+    public function testGuardaELeDiasEJanelaDeHorario(): void
+    {
+        $id = (int) $this->repo->criar([$this->a], $this->a, ['dias_semana' => 0b0100100, 'hora_inicio' => '07:00', 'hora_fim' => '09:30'] + $this->dados('Coleta'), $this->usuario);
+
+        $aviso = $this->repo->porId([$this->a], $this->a, $id);
+        $this->assertSame([36, '07:00', '09:30'], [$aviso['dias_semana'], $aviso['hora_inicio'], $aviso['hora_fim']]);
+
+        $this->assertTrue($this->repo->atualizar([$this->a], $this->a, $id, ['dias_semana' => null, 'hora_inicio' => null, 'hora_fim' => null] + $this->dados('Coleta')));
+        $limpo = $this->repo->porId([$this->a], $this->a, $id);
+        $this->assertSame([null, null, null], [$limpo['dias_semana'], $limpo['hora_inicio'], $limpo['hora_fim']]);
+    }
+
+    public function testRepeticaoNaoVazaNemMudaNoCondominioDeOutroGerente(): void
+    {
+        $this->assertFalse($this->repo->atualizar([$this->a], $this->b, $this->avisoB, ['dias_semana' => 1] + $this->dados('Invasor')));
+
+        $this->assertNull($this->repo->porId([$this->b], $this->b, $this->avisoB)['dias_semana']);
+    }
 }
