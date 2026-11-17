@@ -29,9 +29,9 @@ Existem três "superfícies" no sistema:
 - CRUD de avisos com título, texto, imagem ou vídeo curto opcional (sem PDF) e tipo (comum, fixo, urgente, manutenção, assembleia). Fixo e urgente ficam sempre à vista em cartões só de texto (ocupam a tela toda quando são os únicos; com avisos de carrossel, ficam numa faixa no topo); os demais passam em carrossel. A TV não tem barra: só cartões. A lista mostra a situação de cada aviso: no ar, agendado, encerrado ou desativado.
 - Cada aviso é criado individualmente para um condomínio (não há publicação em lote para vários).
 - Agendamento: data/hora de início e fim de exibição, com opção de recorrência.
-- Pré-visualização de como o aviso aparece na TV, com a logo e as cores do condomínio (aviso urgente em destaque).
+- Pré-visualização de como o aviso aparece na TV, (aviso urgente em destaque).
 - Modelos prontos de aviso (falta de água, manutenção de elevador, dedetização, assembleia).
-- Personalização visual de cada condomínio: logo e esquema de cores. Sem seleção, a TV usa a logo e as cores padrão da Embracore.
+- Aparência do painel do gerente: ele escolhe uma cor de destaque (o tom claro é calculado sozinho) que troca tudo o que é verde no painel dele. A TV e os condomínios não têm cores nem logo próprios.
 - Recuperação de senha por e-mail.
 
 ### Painel Embracore
@@ -43,7 +43,7 @@ Existem três "superfícies" no sistema:
 
 ### Tela de exibição
 - Fullscreen, rotação automática, destaque em tela cheia para avisos urgentes.
-- Relógio, logo e cores do condomínio; widget opcional de clima.
+- Relógio; widget opcional de clima.
 - Exibe somente fotos e vídeos (sem PDF).
 - Acesso por URL com token curto (12 caracteres), fácil de digitar no dispositivo.
 - QR code opcional no aviso para abrir mais detalhes no celular.
@@ -95,7 +95,7 @@ README.md
 ## Modelo de dados (resumo)
 
 - `usuarios` (id, nome, email, senha_hash, papel, ativo)
-- `condominios` (id, nome, endereco, logo, cor_primaria, cor_secundaria, ativo; `bloqueado` e `bloqueio_motivo` na Fase 3); logo e cores nulas = padrão Embracore. `bloqueado` é definido manualmente pelo admin.
+- `condominios` (id, nome, endereco, ativo; `bloqueado` e `bloqueio_motivo` na Fase 3). `bloqueado` é definido manualmente pelo admin.
 - `usuario_condominio` (usuario_id, condominio_id), relação N:N
 - `avisos` (id, condominio_id, titulo, corpo, tipo, midia, midia_tipo, inicio_em, fim_em, ativo, criado_por; `recorrencia` na Fase 2); cada aviso pertence a um único condomínio
 - `modelos_aviso` (modelos prontos de aviso)
@@ -293,7 +293,7 @@ Duas execuções nunca se sobrepõem (lock no PostgreSQL, solto sozinho se o pro
 ### Como a TV funciona
 
 - A página consulta o servidor a cada 30-60 s (`TV_POLL_SECONDS`); cada consulta é o *heartbeat* do dispositivo (o painel mostra o último contato).
-- A rotação é feita na própria TV pelo horário corrigido do servidor, então um relógio errado no aparelho não faz avisos entrarem ou saírem na hora errada. Avisos **urgentes** e **fixos** ficam numa faixa no topo da TV (sempre 40% da altura), todos ao mesmo tempo e dividindo o espaço (quanto mais avisos, menor cada um), só com texto; os demais avisos passam em carrossel abaixo da faixa. Sem avisos, aparecem a logo e um relógio grande; se o condomínio estiver desativado, só o relógio.
+- A rotação é feita na própria TV pelo horário corrigido do servidor, então um relógio errado no aparelho não faz avisos entrarem ou saírem na hora errada. Avisos **urgentes** e **fixos** ficam numa faixa no topo da TV (sempre 40% da altura), todos ao mesmo tempo e dividindo o espaço (quanto mais avisos, menor cada um), só com texto; os demais avisos passam em carrossel abaixo da faixa. Sem avisos, aparece um relógio grande; se o condomínio estiver desativado, só o relógio.
 - **Sem internet** a TV continua com o último conteúdo (Service Worker + armazenamento local) e decide o que mostrar pelo relógio: o que venceu sai, o agendado entra na hora certa. **O modo offline exige HTTPS** (o navegador só libera Service Worker em HTTPS); em HTTP puro a TV funciona, mas só online.
 - Token inválido ou revogado: página "não encontrada" sem detalhes, e excesso de tentativas com token inválido bloqueia o IP por um tempo.
 - O token fica mascarado no log de acesso do Nginx (`/etc/nginx/conf.d/avisos-log.conf`, ver abaixo).
@@ -302,7 +302,7 @@ Duas execuções nunca se sobrepõem (lock no PostgreSQL, solto sozinho se o pro
 
 Resumo abaixo. O detalhamento item a item e o status real de cada um ficam em [`ROADMAP.md`](ROADMAP.md), atualizado a cada commit.
 
-- **MVP**: login com rate limit, recuperação de senha, CRUD de condomínios, gerentes e avisos, personalização visual (logo/cores), dispositivos (cadastro, token e heartbeat), tela da TV com rotação e cache offline.
+- **MVP**: login com rate limit, recuperação de senha, CRUD de condomínios, gerentes e avisos, cor de destaque do gerente, dispositivos (cadastro, token e heartbeat), tela da TV com rotação e cache offline.
 - **Fase 2**: painel de status online/offline dos dispositivos, agendamento avançado, auditoria, pareamento por código.
 - **Fase 3**: situação financeira (visualização e bloqueio manual; TV bloqueada mostra só o relógio), widget de clima, notificações externas (WhatsApp/e-mail), perfil zelador.
 

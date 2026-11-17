@@ -6,7 +6,7 @@ namespace App\Repositories;
 
 use PDO;
 
-/** Quais arquivos de upload ainda são usados (por avisos ou pela logo de algum condomínio). */
+/** Quais arquivos de upload ainda são usados (por avisos). */
 final class ArquivoRepository
 {
     private const LOTE = 500;
@@ -16,7 +16,7 @@ final class ArquivoRepository
     }
 
     /**
-     * Dos nomes informados, devolve os que estão em uso (mídia de aviso ou logo de condomínio).
+     * Dos nomes informados, devolve os que estão em uso (mídia de aviso).
      *
      * @param list<string> $nomes
      * @return list<string>
@@ -26,9 +26,7 @@ final class ArquivoRepository
         $usados = [];
         foreach (array_chunk($nomes, self::LOTE) as $lote) {
             $stmt = $this->pdo->prepare(
-                'SELECT midia AS nome FROM avisos WHERE midia = ANY(:nomes::text[])
-                 UNION
-                 SELECT logo AS nome FROM condominios WHERE logo = ANY(:nomes::text[])'
+                'SELECT midia AS nome FROM avisos WHERE midia = ANY(:nomes::text[])'
             );
             $stmt->execute(['nomes' => Pg::arrayDeTextos($lote)]);
             foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $nome) {

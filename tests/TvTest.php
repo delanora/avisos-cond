@@ -59,7 +59,7 @@ final class TvTest extends AppHttpTestCase
     /** @return list<string> caminhos de todas as rotas da TV para um token */
     private function rotas(string $token, string $midia = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png'): array
     {
-        return ["/tv/{$token}", "/tv/{$token}/state", "/tv/{$token}/media/{$midia}", "/tv/{$token}/logo", "/tv/{$token}/tema.css"];
+        return ["/tv/{$token}", "/tv/{$token}/state", "/tv/{$token}/media/{$midia}"];
     }
 
     // ---------- Página ----------
@@ -89,7 +89,7 @@ final class TvTest extends AppHttpTestCase
         $corpo = $this->get('/tv/' . self::TOKEN)->body;
 
         $this->assertStringContainsString('<link rel="stylesheet" href="/assets/tv.css">', $corpo);
-        $this->assertStringContainsString('href="/tv/' . self::TOKEN . '/tema.css"', $corpo);
+        $this->assertStringNotContainsString('tema.css', $corpo, 'A TV não tem cores personalizadas.');
         $this->assertStringContainsString('<script src="/assets/tv.js" defer></script>', $corpo);
         $this->assertSame(1, substr_count($corpo, '<script'), 'Só o script externo.');
         $this->assertStringNotContainsString(' style=', $corpo);
@@ -418,34 +418,14 @@ final class TvTest extends AppHttpTestCase
         $this->assertSame(404, $this->get('/tv/' . self::TOKEN . "/media/{$nome}")->status);
     }
 
-    // ---------- Logo e tema ----------
+    // ---------- Sem logo nem tema ----------
 
-    public function testLogoPersonalizadaDoPropriocondominio(): void
+    public function testTvNaoTemMaisRotasDeLogoNemDeTema(): void
     {
-        $this->assertSame(404, $this->get('/tv/' . self::TOKEN . '/logo')->status, 'Sem logo própria.');
-
-        $logo = $this->arquivo(Amostras::jpg(), 'jpg');
-        $this->pdo->exec("UPDATE condominios SET logo = '{$logo}' WHERE id = {$this->a}");
-
-        $r = $this->get('/tv/' . self::TOKEN . '/logo');
-        $this->assertSame(200, $r->status);
-        $this->assertSame('image/jpeg', $r->headers['Content-Type']);
-        $this->assertSame(404, $this->get('/tv/' . self::TOKEN_B . '/logo')->status, 'A TV do Beta não recebe a logo do Alfa.');
-        $this->assertStringContainsString('/tv/' . self::TOKEN . '/logo?v=' . substr($logo, 0, 12), $this->estado()['logo']);
-    }
-
-    public function testTemaCssComAsCoresDoCondominio(): void
-    {
-        $this->pdo->exec("UPDATE condominios SET cor_primaria = '#1E3A8A', cor_secundaria = '#FACC15' WHERE id = {$this->a}");
-
-        $r = $this->get('/tv/' . self::TOKEN . '/tema.css');
-
-        $this->assertSame(200, $r->status);
-        $this->assertStringStartsWith('text/css', $r->headers['Content-Type']);
-        $this->assertStringContainsString('--tv-primaria: #1E3A8A;', $r->body);
-        $this->assertStringContainsString('--tv-secundaria: #FACC15;', $r->body);
-        $this->assertStringContainsString('--tv-secundaria-texto: #1D2125;', $r->body);
-        $this->assertStringContainsString('#00A67E', $this->get('/tv/' . self::TOKEN_B . '/tema.css')->body, 'O do Beta continua no padrão.');
+        $this->assertSame(404, $this->get('/tv/' . self::TOKEN . '/logo')->status);
+        $this->assertSame(404, $this->get('/tv/' . self::TOKEN . '/tema.css')->status);
+        $this->assertArrayNotHasKey('logo', $this->estado());
+        $this->assertArrayNotHasKey('tema', $this->estado());
     }
 
     // ---------- Condomínio desativado / bloqueado ----------

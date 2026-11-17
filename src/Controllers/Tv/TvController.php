@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers\Tv;
 
-use App\Controllers\Gerente\TemaController;
-use App\Services\AparenciaService;
 use App\Services\RateLimitExcedidoException;
 use App\Services\TvAcesso;
 use App\Services\TvService;
@@ -27,7 +25,6 @@ final class TvController
         private readonly View $view,
         private readonly TvAcesso $acesso,
         private readonly TvService $tv,
-        private readonly AparenciaService $aparencia,
         private readonly ?string $aceleracao,
     ) {
     }
@@ -43,7 +40,6 @@ final class TvController
                 'token' => $acesso['dispositivo']['token'],
                 'estado_json' => json_encode($estado, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'intervalo' => $estado['intervalo'],
-                'tema' => $estado['tema'],
             ]));
         });
     }
@@ -68,27 +64,6 @@ final class TvController
             // O nome do arquivo é aleatório e nunca muda de conteúdo: pode ficar em cache por bastante tempo.
             return Response::arquivo($m['caminho'], UploadService::mimeDoNome($m['nome']), $this->aceleracao)
                 ->withHeader('Cache-Control', 'private, max-age=86400');
-        });
-    }
-
-    /** @param array<string, string> $vars */
-    public function logo(Request $request, array $vars): Response
-    {
-        return $this->acessar($request, $vars, function (array $acesso): Response {
-            $l = $this->tv->logo($acesso);
-
-            return Response::arquivo($l['caminho'], UploadService::mimeDoNome($l['nome']), $this->aceleracao)
-                ->withHeader('Cache-Control', 'private, max-age=86400');
-        });
-    }
-
-    /** @param array<string, string> $vars */
-    public function tema(Request $request, array $vars): Response
-    {
-        return $this->acessar($request, $vars, function (array $acesso): Response {
-            $a = $this->aparencia->resolver($acesso['condominio']);
-
-            return new Response(200, TemaController::gerar($a), ['Content-Type' => 'text/css; charset=utf-8']);
         });
     }
 

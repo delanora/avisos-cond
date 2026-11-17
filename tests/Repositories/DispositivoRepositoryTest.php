@@ -35,7 +35,7 @@ final class DispositivoRepositoryTest extends AppHttpTestCase
         $this->assertSame($id, $porToken['dispositivo']['id']);
         $this->assertSame($this->a, $porToken['condominio']['id']);
         $this->assertTrue($porToken['condominio']['ativo']);
-        $this->assertNull($porToken['condominio']['logo']);
+        $this->assertArrayNotHasKey('logo', $porToken['condominio']);
     }
 
     public function testTokenDuplicadoNaoCriaERetornaNull(): void

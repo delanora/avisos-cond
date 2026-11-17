@@ -5,7 +5,7 @@
  *  - Página /tv/{token} e /state: rede primeiro; se a rede falhar, usa a última cópia.
  *  - Mídias (/tv/{token}/media/...): cache primeiro (o nome do arquivo é aleatório e nunca muda de conteúdo).
  *    Atende pedidos "Range" a partir da cópia guardada (o <video> precisa disso).
- *  - /assets/ (tv.js, tv.css, fonte, logo padrão): serve a cópia e atualiza em segundo plano.
+ *  - /assets/ (tv.js, tv.css, fonte): serve a cópia e atualiza em segundo plano.
  *  - Respostas de erro (ex.: 404 de token revogado) NUNCA entram no cache nem substituem uma cópia boa;
  *    e um 404 da rede é repassado (não se cai na cópia antiga), para um dispositivo revogado parar de exibir.
  * ES5 de propósito (navegadores antigos).
@@ -122,8 +122,6 @@ self.addEventListener('fetch', function (evento) {
         evento.respondWith(midia(requisicao));
     } else if (/^\/tv\/[A-Za-z0-9]{12}\/state$/.test(caminho)) {
         evento.respondWith(redePrimeiro(requisicao, CACHE_ESTADO));
-    } else if (/^\/tv\/[A-Za-z0-9]{12}\/(logo|tema\.css)$/.test(caminho)) {
-        evento.respondWith(redePrimeiro(requisicao, CACHE_ASSETS));
     } else if (/^\/tv\/[A-Za-z0-9]{12}\/?$/.test(caminho)) {
         evento.respondWith(redePrimeiro(requisicao, CACHE_PAGINAS));
     } else if (caminho.indexOf('/assets/') === 0) {

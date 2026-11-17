@@ -10,7 +10,6 @@ use App\Controllers\Admin\UsuariosController;
 use App\Controllers\Gerente\AparenciaController;
 use App\Controllers\Gerente\AvisosController;
 use App\Controllers\Gerente\MidiaController;
-use App\Controllers\Gerente\TemaController;
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\GerenteController;
@@ -39,7 +38,6 @@ use App\Services\GestaoUsuariosService;
 use App\Services\Mailer;
 use App\Services\PasswordHasher;
 use App\Services\PasswordResetService;
-use App\Services\PersonalizacaoService;
 use App\Services\RateLimiter;
 use App\Services\TvAcesso;
 use App\Services\TvService;
@@ -94,14 +92,13 @@ final class AppFactory
         $maximoUpload = max(1, $config->int('UPLOAD_MAX_MB', 10)) * 1048576;
         $upload = new UploadService($config->obrigatorio('UPLOAD_DIR'), $maximoUpload, $moverUpload);
         $aceleracao = $config->string('MEDIA_ACCEL') === '' ? null : $config->string('MEDIA_ACCEL');
-        $aparenciaService = new AparenciaService();
+        $aparenciaService = new AparenciaService($usuarios);
         $avisoService = new AvisoService(new AvisoRepository($pdo), $upload);
-        $personalizacao = new PersonalizacaoService($condominios, $upload);
 
         // TV: token na URL, sem sessão. Intervalo de consulta configurável (30 a 60 s).
         $dispositivos = new DispositivoRepository($pdo);
         $intervaloTv = min(60, max(30, $config->int('TV_POLL_SECONDS', 45)));
-        $tvService = new TvService(new AvisoRepository($pdo), $dispositivos, $aparenciaService, $upload, $intervaloTv, $versaoApp ?? self::versaoDoCodigoDaTv($diretorioTemplates));
+        $tvService = new TvService(new AvisoRepository($pdo), $dispositivos, $upload, $intervaloTv, $versaoApp ?? self::versaoDoCodigoDaTv($diretorioTemplates));
         $tvAcesso = new TvAcesso($dispositivos, $limitador);
         $gestaoDispositivos = new DispositivoService($dispositivos, $condominios);
 
@@ -133,18 +130,17 @@ final class AppFactory
         $gerente = new GerenteController($view);
         $admin = new AdminController($view, $gestaoUsuarios, $gestaoCondominios);
         $adminUsuarios = new UsuariosController($view, $sessao, $gestaoUsuarios, $gestaoCondominios);
-        $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios, $aparenciaService);
-        $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $aparenciaService);
-        $gerenteAparencia = new AparenciaController($view, $sessao, $personalizacao, $aparenciaService);
+        $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios);
+        $gerenteAvisos = new AvisosController($view, $sessao, $avisoService);
+        $gerenteAparencia = new AparenciaController($view, $sessao, $aparenciaService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
-        $gerenteTema = new TemaController($aparenciaService);
         $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'));
-        $tv = new TvController($view, $tvAcesso, $tvService, $aparenciaService, $aceleracao);
+        $tv = new TvController($view, $tvAcesso, $tvService, $aceleracao);
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTema, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -198,8 +194,6 @@ final class AppFactory
             $r->addRoute('GET', $t, [$tv, 'tela']);
             $r->addRoute('GET', "{$t}/state", [$tv, 'estado']);
             $r->addRoute('GET', "{$t}/media/{arquivo:[a-f0-9]{32}\.(?:jpg|png|webp|mp4)}", [$tv, 'midia']);
-            $r->addRoute('GET', "{$t}/logo", [$tv, 'logo']);
-            $r->addRoute('GET', "{$t}/tema.css", [$tv, 'tema']);
 
             // Área do gerente: login → papel → condomínios permitidos (do banco) → (upload) tamanho → (escrita) CSRF.
             $gLeitura = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwGerente, $mwEscopo);
@@ -207,6 +201,11 @@ final class AppFactory
             $gUpload = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwGerente, $mwEscopo, $mwTamanho, $mwCsrf);
 
             $r->addRoute('GET', '/gerente', $gLeitura([$gerente, 'painel']));
+
+            // Aparência é do próprio gerente (sem condomínio na URL): só login, papel e, na escrita, CSRF.
+            $r->addRoute('GET', '/gerente/aparencia', $gLeitura([$gerenteAparencia, 'formulario']));
+            $r->addRoute('POST', '/gerente/aparencia', $gEscrita([$gerenteAparencia, 'salvar']));
+            $r->addRoute('GET', '/gerente/tema.css', $gLeitura([$gerenteAparencia, 'css']));
 
             $c = '/gerente/condominios/{cid:\d+}';
             $r->addRoute('GET', "{$c}/avisos", $gLeitura([$gerenteAvisos, 'lista']));
@@ -219,10 +218,6 @@ final class AppFactory
             $r->addRoute('GET', "{$c}/avisos/{id:\d+}/previa", $gLeitura([$gerenteAvisos, 'previa']));
             $r->addRoute('GET', "{$c}/avisos/{id:\d+}/midia", $gLeitura([$gerenteMidia, 'aviso']));
 
-            $r->addRoute('GET', "{$c}/aparencia", $gLeitura([$gerenteAparencia, 'formulario']));
-            $r->addRoute('POST', "{$c}/aparencia", $gUpload([$gerenteAparencia, 'salvar']));
-            $r->addRoute('GET', "{$c}/logo", $gLeitura([$gerenteMidia, 'logo']));
-            $r->addRoute('GET', "{$c}/tema.css", $gLeitura([$gerenteTema, 'css']));
         });
 
         return new Application($dispatcher, $view, $logger, new SecurityHeaders());

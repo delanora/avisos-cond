@@ -136,7 +136,6 @@
         tv: document.getElementById('tv'),
         fixos: document.getElementById('tv-fixos'),
         corpo: document.getElementById('tv-corpo'),
-        logo: document.getElementById('tv-logo'),
         ociosoRelogio: document.getElementById('tv-ocioso-relogio'),
         ociosoTexto: document.getElementById('tv-ocioso-texto'),
         offline: document.getElementById('tv-offline')
@@ -170,20 +169,6 @@
     }
 
     /* ---------- Desenho ---------- */
-
-    function aplicarTema(tema) {
-        if (!tema || !document.documentElement.style || !document.documentElement.style.setProperty) { return; }
-        var s = document.documentElement.style;
-        // CSSOM não é bloqueado pelo CSP (só estilo inline escrito no HTML).
-        s.setProperty('--tv-primaria', tema.primaria);
-        s.setProperty('--tv-primaria-texto', tema.primaria_texto);
-        s.setProperty('--tv-secundaria', tema.secundaria);
-        s.setProperty('--tv-secundaria-texto', tema.secundaria_texto);
-    }
-
-    function aplicarLogo(url) {
-        if (url && el.logo.getAttribute('src') !== url) { el.logo.setAttribute('src', url); }
-    }
 
     /** modo: 'aviso' (carrossel), 'ocioso' (nada no ar), 'semCarrossel' (só avisos fixos/urgentes, em tela cheia) ou 'relogio' (só o relógio). */
     function definirModo(modo) {
@@ -372,8 +357,6 @@
         if (!mudou) { return; }
 
         interpretados = interpretar(novo.avisos || []);
-        aplicarTema(novo.tema);
-        aplicarLogo(novo.logo);
         preCarregarEMLimpar(novo);
         atual = null;          // força reavaliar o que mostrar
         assinaturaFixos = '#';  // e redesenhar a faixa do topo

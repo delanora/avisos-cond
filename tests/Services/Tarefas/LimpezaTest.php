@@ -136,16 +136,14 @@ final class LimpezaTest extends BancoMigradoTestCase
         $condominio = (int) $this->pdo->query("INSERT INTO condominios (nome) VALUES ('A') RETURNING id")->fetchColumn();
         $usuario = $this->criarUsuario('g@exemplo.com.br');
         $emAviso = $this->arquivo($this->nomeValido());
-        $emLogo = $this->arquivo($this->nomeValido('jpg'));
         $orfaoVelho = $this->arquivo($this->nomeValido(), 3 * 86400, str_repeat('z', 2048));
         $orfaoNovo = $this->arquivo($this->nomeValido(), 3600);
         $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, midia, midia_tipo, inicio_em, fim_em, criado_por) VALUES ({$condominio}, 'a', '{$emAviso}', 'imagem', now(), now() + interval '1 day', {$usuario})");
-        $this->pdo->exec("UPDATE condominios SET logo = '{$emLogo}' WHERE id = {$condominio}");
 
         $resumo = $this->tarefaDeOrfaos()->executar();
 
-        $this->assertSame('1 arquivo(s) órfão(s) removido(s) (2,0 KB), 3 em uso', $resumo);
-        $this->assertEqualsCanonicalizing([$emAviso, $emLogo, $orfaoNovo], $this->guardados(), 'Em uso e recém-criado ficam; só o órfão antigo some.');
+        $this->assertSame('1 arquivo(s) órfão(s) removido(s) (2,0 KB), 2 em uso', $resumo);
+        $this->assertEqualsCanonicalizing([$emAviso, $orfaoNovo], $this->guardados(), 'Em uso e recém-criado ficam; só o órfão antigo some.');
     }
 
     public function testIgnoraArquivosForaDoPadraoDeNome(): void
@@ -263,17 +261,15 @@ final class LimpezaTest extends BancoMigradoTestCase
         $condominio = (int) $this->pdo->query("INSERT INTO condominios (nome) VALUES ('A') RETURNING id")->fetchColumn();
         $usuario = $this->criarUsuario('g@exemplo.com.br');
         $usado = $this->nomeValido();
-        $logo = $this->nomeValido('webp');
         $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, midia, midia_tipo, inicio_em, fim_em, criado_por) VALUES ({$condominio}, 'a', '{$usado}', 'imagem', now(), now() + interval '1 day', {$usuario})");
-        $this->pdo->exec("UPDATE condominios SET logo = '{$logo}' WHERE id = {$condominio}");
         $repo = new ArquivoRepository($this->pdo);
 
-        $nomes = [$usado, $logo];
+        $nomes = [$usado];
         for ($i = 0; $i < 1200; $i++) {
             $nomes[] = $this->nomeValido();
         }
 
-        $this->assertEqualsCanonicalizing([$usado, $logo], $repo->emUso($nomes), 'Mais de 500 nomes: processa em lotes.');
+        $this->assertEqualsCanonicalizing([$usado], $repo->emUso($nomes), 'Mais de 500 nomes: processa em lotes.');
         $this->assertSame([], $repo->emUso([]));
         $this->assertSame([], $repo->emUso(["a\"b'; DROP TABLE avisos; --"]), 'Texto malicioso é só um nome que não existe.');
         $this->assertSame(1, $this->total('avisos'));

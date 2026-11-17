@@ -7,8 +7,6 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Avisos</title>
     <link rel="stylesheet" href="/assets/tv.css">
-    {# Cores do condomínio (o JS as atualiza quando mudam). O CSP não permite estilo inline. #}
-    <link rel="stylesheet" href="/tv/{{ token }}/tema.css">
 </head>
 {# O estado inicial vai num atributo (escapado pelo Twig): a TV já nasce com os avisos, mesmo offline. #}
 <body class="tv-pagina" data-estado="{{ estado_json }}" data-estado-url="/tv/{{ token }}/state" data-intervalo="{{ intervalo }}">
@@ -16,7 +14,6 @@
         <div class="tv-fixos" id="tv-fixos"></div>
         <div class="tv-corpo" id="tv-corpo"></div>
         <div class="tv-ocioso" id="tv-ocioso">
-            <img class="tv-ocioso-logo" id="tv-logo" src="/assets/logo-embracore.svg" alt="">
             <span class="tv-ocioso-relogio" id="tv-ocioso-relogio">--:--</span>
             <span class="tv-ocioso-texto" id="tv-ocioso-texto">Nenhum aviso no momento</span>
         </div>

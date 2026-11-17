@@ -6,7 +6,6 @@ namespace Tests\Services;
 
 use App\Repositories\AvisoRepository;
 use App\Repositories\DispositivoRepository;
-use App\Services\AparenciaService;
 use App\Services\TvService;
 use App\Services\UploadService;
 use App\Support\NaoEncontradoException;
@@ -50,7 +49,7 @@ final class TvServiceTest extends BancoMigradoTestCase
     private function servico(int $intervalo = 45): TvService
     {
         return new TvService(
-            new AvisoRepository($this->pdo), new DispositivoRepository($this->pdo), new AparenciaService(),
+            new AvisoRepository($this->pdo), new DispositivoRepository($this->pdo),
             new UploadService($this->uploads, 1048576), $intervalo, 'v123'
         );
     }
@@ -87,7 +86,7 @@ final class TvServiceTest extends BancoMigradoTestCase
 
         $estado = $this->servico(30)->estado($this->acesso($this->a), $agora);
 
-        $this->assertSame(['bloqueado', 'logo', 'tema', 'avisos', 'version', 'server_time', 'server_epoch', 'intervalo', 'app'], array_keys($estado), 'Só o necessário para exibir.');
+        $this->assertSame(['bloqueado', 'avisos', 'version', 'server_time', 'server_epoch', 'intervalo', 'app'], array_keys($estado), 'Só o necessário para exibir.');
         $this->assertFalse($estado['bloqueado']);
         $this->assertSame($agora, $estado['server_epoch']);
         $this->assertSame(gmdate('Y-m-d\TH:i:s\Z', $agora), $estado['server_time']);
@@ -141,30 +140,18 @@ final class TvServiceTest extends BancoMigradoTestCase
         $v2 = $this->servico()->estado($acesso, $agora)['version'];
         $this->assertNotSame($v1, $v2);
 
-        $this->pdo->exec("UPDATE condominios SET cor_primaria = '#112233' WHERE id = {$this->a}");
-        $v3 = $this->servico()->estado((new DispositivoRepository($this->pdo))->porToken('ABCDEFGH2345'), $agora)['version'];
-        $this->assertNotSame($v2, $v3, 'Mudar a cor muda a versão.');
+        $v3 = $v2;
 
         $this->avisoTv($this->pdo, $this->a, 'Novo', -60, 3600);
         $this->assertNotSame($v3, $this->servico()->estado((new DispositivoRepository($this->pdo))->porToken('ABCDEFGH2345'), $agora)['version']);
     }
 
-    public function testTemaEPadraoDaEmbracoreOuDoCondominioComCorDoTexto(): void
+    public function testEstadoNaoTemLogoNemCoresPersonalizadas(): void
     {
-        $padrao = $this->servico()->estado($this->acesso($this->a), time());
-        $this->assertSame('#00A67E', $padrao['tema']['primaria']);
-        $this->assertSame('#1D2125', $padrao['tema']['primaria_texto']);
-        $this->assertSame('#202124', $padrao['tema']['secundaria']);
-        $this->assertSame('#FFFFFF', $padrao['tema']['secundaria_texto']);
-        $this->assertSame('/assets/logo-embracore.svg', $padrao['logo']);
+        $estado = $this->servico()->estado($this->acesso($this->a), time());
 
-        $this->pdo->exec("UPDATE condominios SET cor_primaria = '#1E3A8A', cor_secundaria = '#FACC15', logo = '" . str_repeat('b', 32) . ".png' WHERE id = {$this->a}");
-        $custom = $this->servico()->estado((new DispositivoRepository($this->pdo))->porToken('ABCDEFGH2345'), time());
-
-        $this->assertSame('#1E3A8A', $custom['tema']['primaria']);
-        $this->assertSame('#FFFFFF', $custom['tema']['primaria_texto']);
-        $this->assertSame('#1D2125', $custom['tema']['secundaria_texto']);
-        $this->assertSame('/tv/ABCDEFGH2345/logo?v=' . str_repeat('b', 12), $custom['logo']);
+        $this->assertArrayNotHasKey('logo', $estado, 'A TV não é personalizável.');
+        $this->assertArrayNotHasKey('tema', $estado);
     }
 
     public function testCondominioDesativadoOuBloqueadoMostraSoORelogio(): void
@@ -224,22 +211,5 @@ final class TvServiceTest extends BancoMigradoTestCase
                 $this->addToAssertionCount(1);
             }
         }
-    }
-
-    public function testLogoSoSeExistirNoCondominioDoDispositivo(): void
-    {
-        mkdir($this->uploads, 0750, true);
-        $logo = bin2hex(random_bytes(16)) . '.png';
-        file_put_contents("{$this->uploads}/{$logo}", 'x');
-        $this->pdo->exec("UPDATE condominios SET logo = '{$logo}' WHERE id = {$this->b}");
-
-        try {
-            $this->servico()->logo($this->acesso($this->a));
-            $this->fail('O condomínio A não tem logo.');
-        } catch (NaoEncontradoException) {
-            $this->addToAssertionCount(1);
-        }
-
-        $this->assertSame("{$this->uploads}/{$logo}", $this->servico()->logo($this->acesso($this->b, 'JKMNPQRS6789'))['caminho']);
     }
 }

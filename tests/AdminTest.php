@@ -454,7 +454,7 @@ final class AdminTest extends AppHttpTestCase
         $lista = $this->get('/admin/condominios');
         $this->assertStringContainsString('Condomínio criado com sucesso.', $lista->body);
         $this->assertStringContainsString('Residencial Sol', $lista->body);
-        $this->assertStringContainsString('Padrão Embracore', $lista->body);
+        $this->assertStringNotContainsString('Aparência', $lista->body, 'Condomínio não tem mais aparência.');
         $this->assertSame(2, $this->contar('usuario_condominio'));
     }
 
@@ -470,7 +470,7 @@ final class AdminTest extends AppHttpTestCase
         $this->assertSame(0, $this->contar('condominios'));
     }
 
-    public function testEdicaoDoCondominioMostraAparenciaPadraoEVinculosDoLadoDoCondominio(): void
+    public function testEdicaoDoCondominioMostraOsVinculosESemAparencia(): void
     {
         $this->logarComoAdmin();
         $g = $this->criarUsuario('g@exemplo.com.br');
@@ -481,23 +481,8 @@ final class AdminTest extends AppHttpTestCase
 
         $this->assertSame(200, $r->status);
         $this->assertMatchesRegularExpression('/name="gerentes\[\]" value="' . $g . '" checked/', $r->body);
-        $this->assertStringContainsString('#00A67E', $r->body);
-        $this->assertStringContainsString('#202124', $r->body);
-        $this->assertStringContainsString('Padrão Embracore', $r->body);
-        $this->assertStringContainsString('/assets/logo-embracore.svg', $r->body);
-    }
-
-    public function testEdicaoMostraAparenciaPersonalizadaDoCondominio(): void
-    {
-        $this->logarComoAdmin();
-        $c = $this->criarCondominio();
-        $this->pdo->exec("UPDATE condominios SET cor_primaria = '#112233', cor_secundaria = '#445566' WHERE id = {$c}");
-
-        $corpo = $this->get("/admin/condominios/{$c}/editar")->body;
-
-        $this->assertStringContainsString('#112233', $corpo);
-        $this->assertStringContainsString('#445566', $corpo);
-        $this->assertStringContainsString('Personalizada pelo gerente', $corpo);
+        $this->assertStringNotContainsString('Aparência', $r->body);
+        $this->assertStringNotContainsString('logo-embracore.svg', $r->body);
     }
 
     public function testAtualizarCondominioTrocaGerentesEDesativa(): void

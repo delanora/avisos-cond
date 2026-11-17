@@ -27,8 +27,8 @@ final class CondominioRepositoryTest extends AppHttpTestCase
         $this->assertSame('Residencial Sol', $c['nome']);
         $this->assertSame('Rua A, 10', $c['endereco']);
         $this->assertTrue($c['ativo']);
-        $this->assertNull($c['logo']);
-        $this->assertNull($c['cor_primaria']);
+        $this->assertArrayNotHasKey('logo', $c, 'Condomínio não tem mais aparência própria.');
+        $this->assertArrayNotHasKey('cor_primaria', $c);
     }
 
     public function testEnderecoOpcionalFicaNulo(): void

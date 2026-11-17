@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block titulo %}{{ app_nome }}{% endblock %}</title>
     <link rel="stylesheet" href="/assets/app.css">
+    {# Cor de destaque escolhida pelo gerente (o CSP não permite estilo inline, então vem de uma folha própria). #}
+    {% if usuario.papel == 'gerente' and usuario.cor_primaria %}<link rel="stylesheet" href="/gerente/tema.css?v={{ usuario.cor_primaria|slice(1) }}">{% endif %}
     {% block cabecalho %}{% endblock %}
 </head>
 <body>
@@ -31,8 +33,8 @@
                     <a href="/gerente"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('painel', 18) }}Condomínios</a>
                     {% if condominio is defined and condominio %}
                         <a href="/gerente/condominios/{{ condominio.id }}/avisos"{% if menu == 'avisos' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('aviso', 18) }}Avisos</a>
-                        <a href="/gerente/condominios/{{ condominio.id }}/aparencia"{% if menu == 'aparencia' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a>
                     {% endif %}
+                    <a href="/gerente/aparencia"{% if menu == 'aparencia' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a>
                 {% endif %}
                 {% if usuario.papel == 'superadmin' %}
                     <a href="/admin"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('painel', 18) }}Início</a>

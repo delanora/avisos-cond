@@ -17,7 +17,6 @@ final class TvService
     public function __construct(
         private readonly AvisoRepository $avisos,
         private readonly DispositivoRepository $dispositivos,
-        private readonly AparenciaService $aparencia,
         private readonly UploadService $upload,
         private readonly int $intervaloSegundos = 45,
         private readonly string $versaoApp = '',
@@ -34,9 +33,6 @@ final class TvService
     {
         $condominio = $acesso['condominio'];
         $token = (string) $acesso['dispositivo']['token'];
-        // O nome do arquivo na URL (?v=) faz a TV buscar a logo de novo quando ela é trocada.
-        $urlLogo = is_string($condominio['logo']) ? "/tv/{$token}/logo?v=" . substr($condominio['logo'], 0, 12) : null;
-        $a = $this->aparencia->resolver($condominio, $urlLogo);
 
         // Condomínio desativado (ou bloqueado, a partir da Fase 3): a TV mostra só o relógio.
         $bloqueado = !$condominio['ativo'] || ($condominio['bloqueado'] ?? false) === true;
@@ -63,13 +59,6 @@ final class TvService
         // Tudo que muda a exibição entra na versão; a TV só redesenha quando ela muda.
         $conteudo = [
             'bloqueado' => $bloqueado,
-            'logo' => $a['logo'],
-            'tema' => [
-                'primaria' => $a['cor_primaria'],
-                'primaria_texto' => AparenciaService::corDoTexto($a['cor_primaria']),
-                'secundaria' => $a['cor_secundaria'],
-                'secundaria_texto' => AparenciaService::corDoTexto($a['cor_secundaria']),
-            ],
             'avisos' => $avisos,
         ];
 
@@ -110,23 +99,5 @@ final class TvService
         }
 
         return ['caminho' => $caminho, 'nome' => $nomeDoArquivo];
-    }
-
-    /**
-     * Logo personalizada do condomínio do dispositivo.
-     *
-     * @param array{dispositivo: array<string, mixed>, condominio: array<string, mixed>} $acesso
-     * @return array{caminho: string, nome: string}
-     * @throws NaoEncontradoException
-     */
-    public function logo(array $acesso): array
-    {
-        $nome = $acesso['condominio']['logo'];
-        $caminho = is_string($nome) ? $this->upload->caminho($nome) : null;
-        if ($caminho === null) {
-            throw new NaoEncontradoException();
-        }
-
-        return ['caminho' => $caminho, 'nome' => $nome];
     }
 }

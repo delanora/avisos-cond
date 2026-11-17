@@ -49,14 +49,6 @@
             </fieldset>
         </section>
 
-        {% if editando %}
-        <section class="formulario-secao">
-            <h2>Aparência na TV</h2>
-            <p class="secao-ajuda">Logo e cores são definidas pelo gerente do condomínio. Sem personalização, vale o padrão da Embracore.</p>
-            {% include 'partials/aparencia.html.twig' %}
-        </section>
-        {% endif %}
-
         <div class="acoes">
             <button type="submit">{{ editando ? 'Salvar alterações' : 'Criar condomínio' }}</button>
             <a class="botao botao-secundario" href="/admin/condominios">Cancelar</a>

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers\Gerente;
 
-use App\Services\AparenciaService;
 use App\Services\AvisoService;
 use App\Services\ValidacaoException;
 use App\Support\DataHora;
@@ -21,7 +20,6 @@ final class AvisosController
         private readonly View $view,
         private readonly Session $sessao,
         private readonly AvisoService $avisos,
-        private readonly AparenciaService $aparencia,
     ) {
     }
 
@@ -144,7 +142,6 @@ final class AvisosController
         return Response::html($this->view->render('gerente/avisos/previa.html.twig', EscopoGerente::contexto($request, $condominio) + [
             'aviso' => $aviso,
             'tipos' => AvisoService::TIPOS,
-            'aparencia' => $this->aparencia->resolver($condominio, "/gerente/condominios/{$condominio['id']}/logo"),
             'url_midia' => "/gerente/condominios/{$condominio['id']}/avisos/{$aviso['id']}/midia",
             'hora' => DataHora::paraFormulario(time()),
             'menu' => 'avisos',

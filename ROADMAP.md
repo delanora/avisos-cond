@@ -55,8 +55,8 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] CRUD de gerentes e administradores (criar, editar, ativar/desativar, redefinir senha, excluir com confirmação) (2026-11-16)
 - [x] CRUD de condomínios (exclusão mostra o que será apagado em cascata) (2026-11-16)
 - [x] Vínculo gerente ↔ condomínios (N:N), editável pelo usuário e pelo condomínio (2026-11-16)
-- [x] Logo/cores padrão da Embracore (usadas quando o condomínio não personaliza) (`AparenciaService`) (2026-11-16)
-- [ ] Trocar `public/assets/logo-embracore.svg` (provisória) pela logo oficial da Embracore
+- [x] ~~Logo/cores padrão da Embracore por condomínio~~ substituído em 2026-11-17: a cor é do gerente (`AparenciaService`)
+- [ ] Trocar `public/assets/logo-embracore.svg` (provisória) pela logo oficial da Embracore (hoje o arquivo não é usado pela TV; a marca do painel é o SVG de `templates/partials/logo.html.twig`)
 - [x] Hospedar a fonte Inter localmente em `public/assets/fonts` (licença OFL incluída) (2026-11-16)
 - [x] Redesenho visual dos painéis e das telas de acesso (barra branca, cartões, ícones, avatares, saudação, login em duas colunas), conferido por capturas de tela no Chromium (2026-11-16)
 - [ ] Você revisar o novo visual em um navegador real e pedir ajustes (cores, textos, ilustração)
@@ -65,14 +65,14 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] Lista de condomínios vinculados (lidos do banco a cada requisição) e seletor para trocar de condomínio (2026-11-16)
 - [x] CRUD de avisos (título, texto, tipo, imagem/vídeo, início/fim), com situação (no ar, agendado, encerrado, desativado) (2026-11-16)
 - [x] Upload seguro (JPEG/PNG/WebP/MP4, MIME real, nome aleatório, fora do webroot, entrega por X-Accel-Redirect) (2026-11-16)
-- [x] Personalização visual do condomínio (logo e cores) (2026-11-16)
+- [x] ~~Personalização visual do condomínio (logo e cores)~~ substituída em 2026-11-17 pela cor de destaque do gerente (`/gerente/aparencia`)
 - [x] Pré-visualização do aviso na TV (com tema do condomínio; urgente em destaque) (2026-11-16)
 - [x] Testes de isolamento de tenant para avisos e personalização (gerente A × condomínio B → 404), validados por mutação (2026-11-16)
 - [ ] Testar o upload e a prévia de **vídeo MP4** real em um Fire Stick e no navegador (os testes automáticos usam um MP4 mínimo)
 
 ### 1.6 Dispositivos e tela da TV
 - [x] Cadastro de dispositivo (`/admin/dispositivos`) e geração de token (12 caracteres, 31 símbolos sem ambíguos), revogável, com troca de token e exclusão (2026-11-17)
-- [x] `/tv/{token}`: página com rotação, relógio, logo e cores; modos sem avisos e só relógio (2026-11-17)
+- [x] `/tv/{token}`: página com rotação e relógio (sem logo nem cores personalizadas desde 2026-11-17); modos sem avisos e só relógio (2026-11-17)
 - [x] `/tv/{token}/state` (JSON com `version`, avisos, `inicio_em`/`fim_em`, `server_time`) e heartbeat (`ultimo_ping`) (2026-11-17)
 - [x] `/tv/{token}/media/{arquivo}` com validação de token, só mídias de avisos visíveis, e `X-Accel-Redirect` (2026-11-17)
 - [x] Avisos `urgente` e novo tipo `fixo` em uma faixa fixa no topo da TV (40% da altura, dividida entre todos eles), com o carrossel dos demais avisos abaixo; substitui a regra "urgente esconde os outros" (migration 005) (2026-11-17)
@@ -159,5 +159,6 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-17: redesenho visual da tela da TV a pedido: cartões sem moldura lateral e com sombra suave, faixa de fixos sem fundo nem linha divisória (mesmo fundo do carrossel), barra do topo ~20% menor com a hora sempre branca, e o conjunto no estilo dos painéis (fundo quente, cartões brancos, etiquetas em pílula com ícone). Observação: hora branca sobre cor de condomínio muito clara (ex.: amarelo) tem pouco contraste; se aparecer um caso assim, escurecer a barra automaticamente.
 - 2026-11-17: ajuste de aproveitamento dos cartões da TV a pedido: etiqueta do tipo à direita, na mesma linha do título (faixa e carrossel); texto curto no carrossel ganha letra maior (`tv-corpo-curto` até 110 caracteres, `tv-corpo-medio` até 220); cartões da faixa crescem para a última linha incompleta não deixar buraco; com uma só linha de cartões o texto aceita até 6 linhas. Residencial Exemplo do ambiente de desenvolvimento recebeu avisos de demonstração (1 urgente, 4 fixos, 9 rotativos).
 - 2026-11-17: barra do topo da TV removida a pedido (só cartões; logo do condomínio passou a aparecer no modo "nenhum aviso"; a hora só aparece nesse modo). Modos: só fixos/urgentes = faixa em tela cheia; só carrossel = tela cheia; os dois = faixa de 40% + carrossel (mesmo layout de antes). Interpretei "o modo segue o mesmo" assim [confirmar]. Sem barra, a hora some enquanto há avisos no ar [confirmar se querem a hora em algum canto].
+- 2026-11-17: a aparência saiu do condomínio e foi para o gerente, a pedido. Migration 007: `usuarios.cor_primaria` (única cor; tons claros e escuros calculados) e remoção de `condominios.logo/cor_primaria/cor_secundaria` (as logos já enviadas ficam órfãs e a tarefa `limpar_arquivos_orfaos` as apaga). A cor vale só no painel do próprio gerente (rota `/gerente/aparencia`, folha `/gerente/tema.css`); a TV não tem mais logo nem cores personalizadas; o painel do superadmin segue no verde. Decisão minha: os verdes semânticos de "sucesso" (etiqueta Ativo, alerta de salvo) e os avatares coloridos não mudam com a cor. Títulos dos cartões da TV passaram a ocupar sempre 1 linha (reticências se não couber).
 - 2026-11-17: bloco 1.7 decidiu: sem tarefa "publicar/expirar" (tudo é calculado na leitura; mudar `ativo` em massa apagaria a intenção do gerente e atrapalharia estender um aviso); o lock é `pg_try_advisory_lock` (vale entre servidores e some se o processo morrer); `limpar_arquivos_orfaos` tem disjuntor; `LOG_DIR` opcional no `.env` (padrão `storage/logs`). Mais tarefas entram na Fase 2 (dispositivos offline) pela interface `Tarefa`.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.

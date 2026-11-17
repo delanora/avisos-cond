@@ -145,14 +145,16 @@ final class SchemaTest extends DatabaseTestCase
     public function testCorInvalidaEhRejeitada(): void
     {
         $this->expectException(PDOException::class);
-        $this->pdo->exec("INSERT INTO condominios (nome, cor_primaria) VALUES ('x', 'vermelho')");
+        $this->pdo->exec("INSERT INTO usuarios (nome, email, senha_hash, papel, cor_primaria) VALUES ('x', 'x@x.com', 'h', 'gerente', 'vermelho')");
     }
 
     public function testCorValidaEPadraoNuloSaoAceitos(): void
     {
-        $this->pdo->exec("INSERT INTO condominios (nome, cor_primaria, cor_secundaria) VALUES ('x', '#1A2b3C', NULL)");
+        $this->pdo->exec("INSERT INTO usuarios (nome, email, senha_hash, papel, cor_primaria) VALUES ('x', 'x@x.com', 'h', 'gerente', '#1A2b3C')");
+        $this->pdo->exec("INSERT INTO usuarios (nome, email, senha_hash, papel, cor_primaria) VALUES ('y', 'y@x.com', 'h', 'gerente', NULL)");
 
-        $this->assertSame(1, $this->contar('condominios'));
+        $this->assertSame(2, $this->contar('usuarios'));
+        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM information_schema.columns WHERE table_name = 'condominios' AND column_name IN ('logo', 'cor_primaria', 'cor_secundaria')")->fetchColumn(), 'Condomínio não tem mais aparência própria.');
     }
 
     public function testAvisoComFimAntesDoInicioEhRejeitado(): void

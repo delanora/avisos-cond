@@ -16,7 +16,7 @@ final class CondominioRepository
     public function listar(): array
     {
         $linhas = $this->pdo->query(
-            'SELECT c.id, c.nome, c.endereco, c.logo, c.cor_primaria, c.cor_secundaria, c.ativo,
+            'SELECT c.id, c.nome, c.endereco, c.ativo,
                     (SELECT count(*) FROM usuario_condominio uc WHERE uc.condominio_id = c.id) AS total_gerentes
              FROM condominios c
              ORDER BY lower(c.nome), c.id'
@@ -29,7 +29,7 @@ final class CondominioRepository
     public function porId(int $id): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, nome, endereco, logo, cor_primaria, cor_secundaria, ativo, 0 AS total_gerentes
+            'SELECT id, nome, endereco, ativo, 0 AS total_gerentes
              FROM condominios WHERE id = :id'
         );
         $stmt->execute(['id' => $id]);
@@ -47,7 +47,7 @@ final class CondominioRepository
     public function listarDoGerente(int $usuarioId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT c.id, c.nome, c.endereco, c.logo, c.cor_primaria, c.cor_secundaria, c.ativo, 0 AS total_gerentes
+            'SELECT c.id, c.nome, c.endereco, c.ativo, 0 AS total_gerentes
              FROM condominios c
              JOIN usuario_condominio uc ON uc.condominio_id = c.id
              WHERE uc.usuario_id = :usuario AND c.ativo
@@ -56,27 +56,6 @@ final class CondominioRepository
         $stmt->execute(['usuario' => $usuarioId]);
 
         return array_map($this->normalizar(...), $stmt->fetchAll());
-    }
-
-    /**
-     * Logo e cores do condomínio, só se ele estiver entre os permitidos.
-     *
-     * @param list<int> $permitidos
-     */
-    public function atualizarAparencia(array $permitidos, int $id, ?string $logo, ?string $corPrimaria, ?string $corSecundaria): bool
-    {
-        $stmt = $this->pdo->prepare(
-            'UPDATE condominios SET logo = :logo, cor_primaria = :primaria, cor_secundaria = :secundaria
-             WHERE id = :id AND id = ANY(:permitidos::bigint[])'
-        );
-        $stmt->bindValue('logo', $logo, $logo === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-        $stmt->bindValue('primaria', $corPrimaria, $corPrimaria === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-        $stmt->bindValue('secundaria', $corSecundaria, $corSecundaria === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-        $stmt->bindValue('id', $id, PDO::PARAM_INT);
-        $stmt->bindValue('permitidos', Pg::arrayDeInteiros($permitidos));
-        $stmt->execute();
-
-        return $stmt->rowCount() === 1;
     }
 
     public function criar(string $nome, ?string $endereco, bool $ativo): int
@@ -165,9 +144,6 @@ final class CondominioRepository
             'id' => (int) $linha['id'],
             'nome' => (string) $linha['nome'],
             'endereco' => $linha['endereco'] === null ? null : (string) $linha['endereco'],
-            'logo' => $linha['logo'] === null ? null : (string) $linha['logo'],
-            'cor_primaria' => $linha['cor_primaria'] === null ? null : (string) $linha['cor_primaria'],
-            'cor_secundaria' => $linha['cor_secundaria'] === null ? null : (string) $linha['cor_secundaria'],
             'ativo' => (bool) $linha['ativo'],
             'total_gerentes' => (int) $linha['total_gerentes'],
         ];

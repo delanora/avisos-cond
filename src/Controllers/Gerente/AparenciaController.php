@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controllers\Gerente;
 
 use App\Services\AparenciaService;
-use App\Services\PersonalizacaoService;
 use App\Services\ValidacaoException;
 use App\Support\EscopoGerente;
 use App\Support\Request;
@@ -13,13 +12,15 @@ use App\Support\Response;
 use App\Support\Session;
 use App\Support\View;
 
-/** Logo e cores do condomínio (aparência na TV). */
+/**
+ * Cor de destaque do painel do gerente. É do próprio gerente (não de condomínio): só ele vê, e só o painel dele muda.
+ * Nada aqui recebe condominio_id.
+ */
 final class AparenciaController
 {
     public function __construct(
         private readonly View $view,
         private readonly Session $sessao,
-        private readonly PersonalizacaoService $personalizacao,
         private readonly AparenciaService $aparencia,
     ) {
     }
@@ -27,54 +28,61 @@ final class AparenciaController
     /** @param array<string, string> $vars */
     public function formulario(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-        $atual = $this->aparencia->resolver($condominio);
+        $cor = $request->attribute('usuario')['cor_primaria'] ?? null;
 
-        return $this->pagina($request, $condominio, [
-            'usar_padrao' => $condominio['cor_primaria'] === null && $condominio['cor_secundaria'] === null,
-            'cor_primaria' => $atual['cor_primaria'],
-            'cor_secundaria' => $atual['cor_secundaria'],
+        return $this->pagina($request, [
+            'usar_padrao' => $cor === null,
+            'cor_primaria' => $cor ?? AparenciaService::COR_PADRAO,
         ], []);
     }
 
     /** @param array<string, string> $vars */
     public function salvar(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
+        $usuario = $request->attribute('usuario');
+        $usarPadrao = ($request->body['usar_padrao'] ?? '') === '1';
 
         try {
-            $this->personalizacao->salvar(
-                EscopoGerente::permitidos($request),
-                $condominio['id'],
-                $request->body,
-                $request->files['logo'] ?? null
-            );
+            $this->aparencia->salvar($usuario['id'], $request->body['cor_primaria'] ?? null, $usarPadrao);
         } catch (ValidacaoException $e) {
-            $texto = static fn (string $chave): string => is_string($request->body[$chave] ?? null) ? $request->body[$chave] : '';
+            $cor = $request->body['cor_primaria'] ?? '';
 
-            return $this->pagina($request, $condominio, [
-                'usar_padrao' => $texto('usar_padrao') === '1',
-                'cor_primaria' => $texto('cor_primaria'),
-                'cor_secundaria' => $texto('cor_secundaria'),
+            return $this->pagina($request, [
+                'usar_padrao' => false,
+                'cor_primaria' => is_string($cor) ? $cor : '',
             ], $e->erros, 422);
         }
 
         $this->sessao->flash('Aparência atualizada com sucesso.');
 
-        return Response::redirect("/gerente/condominios/{$condominio['id']}/aparencia", 303);
+        return Response::redirect('/gerente/aparencia', 303);
+    }
+
+    /** CSS com as variáveis da cor do gerente logado (nada de condomínio entra aqui). @param array<string, string> $vars */
+    public function css(Request $request, array $vars): Response
+    {
+        $cor = $request->attribute('usuario')['cor_primaria'] ?? null;
+        $css = is_string($cor) && AparenciaService::corValida($cor) ? AparenciaService::css($cor) : '';
+
+        return new Response(200, $css, [
+            'Content-Type' => 'text/css; charset=utf-8',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-cache',
+        ]);
     }
 
     /**
-     * @param array<string, mixed>  $condominio
      * @param array<string, mixed>  $valores
      * @param array<string, string> $erros
      */
-    private function pagina(Request $request, array $condominio, array $valores, array $erros, int $status = 200): Response
+    private function pagina(Request $request, array $valores, array $erros, int $status = 200): Response
     {
-        return Response::html($this->view->render('gerente/aparencia.html.twig', EscopoGerente::contexto($request, $condominio) + [
+        $corValida = is_string($valores['cor_primaria']) && AparenciaService::corValida($valores['cor_primaria']);
+
+        return Response::html($this->view->render('gerente/aparencia.html.twig', EscopoGerente::contexto($request) + [
             'valores' => $valores,
             'erros' => $erros,
-            'aparencia' => $this->aparencia->resolver($condominio, "/gerente/condominios/{$condominio['id']}/logo"),
+            'paleta' => AparenciaService::paleta($corValida ? $valores['cor_primaria'] : AparenciaService::COR_PADRAO),
             'menu' => 'aparencia',
         ]), $status);
     }

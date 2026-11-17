@@ -181,6 +181,23 @@ final class TvArquivosTest extends TestCase
         $this->assertMatchesRegularExpression('/\.tv-fixos-cols-3 \.tv-fixo\s*\{[^}]*flex:\s*1 0 calc/', $css);
     }
 
+    public function testTituloDosCartoesSempreEmUmaLinhaESemCoresDeCondominio(): void
+    {
+        $css = (string) preg_replace('#/\*.*?\*/#s', '', $this->ler('assets/tv.css'));
+
+        foreach (['.tv-titulo', '.tv-fixo-titulo'] as $seletor) {
+            preg_match('/(?:^|\})\s*' . preg_quote($seletor, '/') . '\s*\{([^}]*)\}/m', $css, $m);
+            $regra = $m[1] ?? '';
+            $this->assertStringContainsString('white-space: nowrap', $regra, "{$seletor}: uma linha só.");
+            $this->assertStringContainsString('text-overflow: ellipsis', $regra, "{$seletor}: reticências se não couber.");
+            $this->assertStringContainsString('overflow: hidden', $regra);
+            $this->assertStringNotContainsString('line-clamp', $regra);
+        }
+        $this->assertStringNotContainsString('--tv-', $css, 'A TV não usa cores de condomínio.');
+        $this->assertStringNotContainsString('--tv-', $this->ler('assets/tv.js'));
+        $this->assertStringNotContainsString('logo', $this->ler('assets/tv.js'));
+    }
+
     public function testDesignDosCartoesDaFaixa(): void
     {
         $css = (string) preg_replace('#/\*.*?\*/#s', '', $this->ler('assets/tv.css'));

@@ -333,7 +333,7 @@ final class GerenteTest extends AppHttpTestCase
         $id = $this->criarAviso([], ['midia' => Amostras::arquivo('foto.png', Amostras::png())]);
 
         foreach (['/gerente', $this->base() . '/avisos', $this->base() . '/avisos/novo', $this->base() . "/avisos/{$id}/editar",
-                  $this->base() . "/avisos/{$id}/excluir", $this->base() . "/avisos/{$id}/previa", $this->base() . '/aparencia'] as $caminho) {
+                  $this->base() . "/avisos/{$id}/excluir", $this->base() . "/avisos/{$id}/previa", '/gerente/aparencia'] as $caminho) {
             $r = $this->get($caminho);
             $this->assertStringNotContainsString(' style=', $r->body, $caminho);
             $this->assertStringNotContainsString('<script', $r->body, $caminho);
@@ -346,7 +346,7 @@ final class GerenteTest extends AppHttpTestCase
         $this->entrar();
         $id = $this->criarAviso();
 
-        foreach ([$this->base() . '/avisos', $this->base() . "/avisos/{$id}", $this->base() . "/avisos/{$id}/excluir", $this->base() . '/aparencia'] as $caminho) {
+        foreach ([$this->base() . '/avisos', $this->base() . "/avisos/{$id}", $this->base() . "/avisos/{$id}/excluir", '/gerente/aparencia'] as $caminho) {
             $this->assertSame(403, $this->post($caminho, $this->aviso(['titulo' => 'HACK']), comCsrf: false)->status, $caminho);
         }
 
@@ -356,7 +356,7 @@ final class GerenteTest extends AppHttpTestCase
 
     // ---------- Prévia na TV ----------
 
-    public function testPreviaMostraOAvisoDoCarrosselComOTemaDoCondominio(): void
+    public function testPreviaMostraOAvisoDoCarrossel(): void
     {
         $this->entrar();
         $id = $this->criarAviso();
@@ -370,7 +370,6 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('Manutenção', $r->body);
         $this->assertStringContainsString('Desculpe o transtorno.', $r->body);
         $this->assertStringContainsString('href="/assets/tv.css"', $r->body);
-        $this->assertStringContainsString("href=\"{$this->base()}/tema.css\"", $r->body);
         $this->assertStringNotContainsString('tv-topo', $r->body, 'A TV não tem mais barra no topo.');
         $this->assertStringNotContainsString('desativado', $r->body);
     }
@@ -499,84 +498,87 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertSame(404, $this->get($this->base() . "/avisos/{$comMidia}/midia")->status);
     }
 
-    // ---------- Aparência ----------
+    // ---------- Aparência (cor do gerente) ----------
 
     public function testFormularioDeAparenciaMostraOPadraoDaEmbracore(): void
     {
         $this->entrar();
 
-        $corpo = $this->get($this->base() . '/aparencia')->body;
+        $r = $this->get('/gerente/aparencia');
+        $corpo = $r->body;
 
-        $this->assertStringContainsString('Logo padrão da Embracore', $corpo);
+        $this->assertSame(200, $r->status);
         $this->assertMatchesRegularExpression('/name="cor_primaria" value="#00A67E"/', $corpo);
-        $this->assertMatchesRegularExpression('/name="cor_secundaria" value="#202124"/', $corpo);
         $this->assertMatchesRegularExpression('/name="usar_padrao" value="1" checked/', $corpo);
-        $this->assertStringContainsString('enctype="multipart/form-data"', $corpo);
+        $this->assertStringNotContainsString('cor_secundaria', $corpo, 'Só uma cor: o tom claro é calculado.');
+        $this->assertStringNotContainsString('type="file"', $corpo, 'Não há mais upload de logo.');
+        $this->assertStringNotContainsString('tema.css', $corpo, 'Sem cor escolhida, nenhuma folha extra.');
+        $this->assertStringContainsString('href="/gerente/aparencia" class="ativo"', $corpo);
     }
 
-    public function testSalvarCoresELogoEMostrarDepois(): void
+    public function testSalvarCorEMostrarDepois(): void
     {
         $this->entrar();
 
-        $r = $this->post($this->base() . '/aparencia', ['cor_primaria' => '#2f6fed', 'cor_secundaria' => '#111111'], arquivos: ['logo' => Amostras::arquivo('logo.png', Amostras::png())]);
+        $r = $this->post('/gerente/aparencia', ['cor_primaria' => '#2f6fed']);
 
         $this->assertSame(303, $r->status);
-        $c = $this->pdo->query("SELECT logo, cor_primaria, cor_secundaria FROM condominios WHERE id = {$this->condominio}")->fetch();
-        $this->assertSame('#2F6FED', $c['cor_primaria']);
-        $this->assertSame('#111111', $c['cor_secundaria']);
-        $this->assertNotNull($c['logo']);
+        $this->assertSame('#2F6FED', $this->pdo->query("SELECT cor_primaria FROM usuarios WHERE email = 'gerente@exemplo.com.br'")->fetchColumn());
 
-        $corpo = $this->get($this->base() . '/aparencia')->body;
+        $corpo = $this->get('/gerente/aparencia')->body;
         $this->assertStringContainsString('Aparência atualizada com sucesso.', $corpo);
-        $this->assertStringContainsString('Logo do condomínio', $corpo);
         $this->assertMatchesRegularExpression('/name="cor_primaria" value="#2F6FED"/', $corpo);
         $this->assertDoesNotMatchRegularExpression('/name="usar_padrao" value="1" checked/', $corpo);
-        $this->assertStringContainsString('name="remover_logo"', $corpo);
+        $this->assertStringContainsString('<link rel="stylesheet" href="/gerente/tema.css?v=2F6FED">', $corpo);
+        $this->assertStringContainsString('tema.css?v=2F6FED', $this->get($this->base() . '/avisos')->body, 'A cor vale em todas as telas do painel.');
+        $this->assertStringContainsString('tema.css?v=2F6FED', $this->get($this->base() . '/avisos/novo')->body);
     }
 
-    public function testAparenciaInvalidaMostraErrosESemAlterar(): void
+    public function testAparenciaInvalidaMostraErroESemAlterar(): void
     {
         $this->entrar();
 
-        $r = $this->post($this->base() . '/aparencia', ['cor_primaria' => 'vermelho', 'cor_secundaria' => '#111111'], arquivos: ['logo' => Amostras::arquivo('logo.pdf', Amostras::pdf())]);
+        $r = $this->post('/gerente/aparencia', ['cor_primaria' => 'vermelho']);
 
         $this->assertSame(422, $r->status);
         $this->assertStringContainsString('Escolha uma cor válida.', $r->body);
-        $this->assertNull($this->pdo->query("SELECT cor_primaria FROM condominios WHERE id = {$this->condominio}")->fetchColumn() ?: null);
-        $this->assertSame([], $this->arquivosGuardados());
+        $this->assertNull($this->pdo->query("SELECT cor_primaria FROM usuarios WHERE email = 'gerente@exemplo.com.br'")->fetchColumn() ?: null);
     }
 
-    public function testLogoPersonalizadaEEntreguePelaRotaProtegida(): void
+    public function testVoltarAoPadraoLimpaACor(): void
     {
         $this->entrar();
-        $this->assertSame(404, $this->get($this->base() . '/logo')->status, 'Sem logo própria não há o que entregar.');
+        $this->post('/gerente/aparencia', ['cor_primaria' => '#2F6FED']);
 
-        $this->post($this->base() . '/aparencia', ['usar_padrao' => '1'], arquivos: ['logo' => Amostras::arquivo('logo.jpg', Amostras::jpg())]);
-        $r = $this->get($this->base() . '/logo');
+        $this->post('/gerente/aparencia', ['cor_primaria' => '#2F6FED', 'usar_padrao' => '1']);
 
-        $this->assertSame(200, $r->status);
-        $this->assertSame('image/jpeg', $r->headers['Content-Type']);
-        $this->assertSame(Amostras::jpg(), (string) file_get_contents((string) $r->arquivo));
+        $this->assertNull($this->pdo->query("SELECT cor_primaria FROM usuarios WHERE email = 'gerente@exemplo.com.br'")->fetchColumn() ?: null);
+        $this->assertStringNotContainsString('tema.css', $this->get($this->base() . '/avisos')->body);
     }
 
-    public function testTemaCssTemAsCoresDoCondominioOuAsPadrao(): void
+    public function testTemaCssTemAsVariaveisDaCorDoGerente(): void
     {
         $this->entrar();
 
-        $padrao = $this->get($this->base() . '/tema.css');
+        $padrao = $this->get('/gerente/tema.css');
         $this->assertSame(200, $padrao->status);
         $this->assertStringStartsWith('text/css', $padrao->headers['Content-Type']);
         $this->assertSame('nosniff', $padrao->headers['X-Content-Type-Options']);
-        $this->assertStringContainsString('--tv-primaria: #00A67E;', $padrao->body);
-        $this->assertStringContainsString('--tv-secundaria: #202124;', $padrao->body);
-        $this->assertStringContainsString('--tv-primaria-texto: #1D2125;', $padrao->body, 'Verde claro pede texto escuro.');
-        $this->assertStringContainsString('--tv-secundaria-texto: #FFFFFF;', $padrao->body);
+        $this->assertSame('', $padrao->body, 'Sem cor escolhida vale o padrão do app.css.');
 
-        $this->post($this->base() . '/aparencia', ['cor_primaria' => '#1E3A8A', 'cor_secundaria' => '#FACC15']);
-        $custom = $this->get($this->base() . '/tema.css')->body;
-        $this->assertStringContainsString('--tv-primaria: #1E3A8A;', $custom);
-        $this->assertStringContainsString('--tv-primaria-texto: #FFFFFF;', $custom);
-        $this->assertStringContainsString('--tv-secundaria: #FACC15;', $custom);
-        $this->assertStringContainsString('--tv-secundaria-texto: #1D2125;', $custom);
+        $this->post('/gerente/aparencia', ['cor_primaria' => '#1E3A8A']);
+        $custom = $this->get('/gerente/tema.css')->body;
+
+        foreach (['--marca: #1E3A8A;', '--marca-700:', '--marca-800:', '--marca-50:', '--marca-100:', '--marca-300:', '--marca-foco: rgba(30, 58, 138, 0.18);'] as $trecho) {
+            $this->assertStringContainsString($trecho, $custom);
+        }
+    }
+
+    public function testSuperadminNaoUsaAAparenciaDoGerente(): void
+    {
+        $this->logarComoAdmin();
+
+        $this->assertSame(403, $this->get('/gerente/aparencia')->status);
+        $this->assertSame(403, $this->get('/gerente/tema.css')->status);
     }
 }

@@ -8,7 +8,7 @@ use PDO;
 
 final class UsuarioRepository
 {
-    private const COLUNAS = 'id, nome, email, senha_hash, papel, ativo,
+    private const COLUNAS = 'id, nome, email, senha_hash, papel, ativo, cor_primaria,
         extract(epoch FROM senha_alterada_em)::bigint AS senha_alterada_epoch';
 
     public function __construct(private readonly PDO $pdo)
@@ -44,6 +44,17 @@ final class UsuarioRepository
     }
 
     /** Troca a senha e registra o momento, o que invalida as sessões abertas antes dele. */
+    /** Cor de destaque do painel do gerente (nulo = padrão da Embracore). */
+    public function atualizarCor(int $id, ?string $cor): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE usuarios SET cor_primaria = :cor WHERE id = :id');
+        $stmt->bindValue('cor', $cor, $cor === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue('id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->rowCount() === 1;
+    }
+
     public function atualizarSenha(int $id, string $senhaHash): void
     {
         $stmt = $this->pdo->prepare(
@@ -151,6 +162,7 @@ final class UsuarioRepository
             'senha_hash' => (string) $linha['senha_hash'],
             'papel' => (string) $linha['papel'],
             'ativo' => (bool) $linha['ativo'],
+            'cor_primaria' => isset($linha['cor_primaria']) ? (string) $linha['cor_primaria'] : null,
             'senha_alterada_epoch' => $linha['senha_alterada_epoch'] === null ? null : (int) $linha['senha_alterada_epoch'],
         ];
     }

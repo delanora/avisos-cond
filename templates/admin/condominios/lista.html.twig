@@ -28,7 +28,6 @@
                         <tr>
                             <th>Condomínio</th>
                             <th class="esconde-movel">Gerentes</th>
-                            <th class="esconde-movel">Aparência</th>
                             <th>Situação</th>
                             <th><span class="sr-only">Ações</span></th>
                         </tr>
@@ -46,7 +45,6 @@
                                 </div>
                             </td>
                             <td class="celula-suave esconde-movel">{{ c.total_gerentes }}</td>
-                            <td class="celula-suave esconde-movel">{{ c.personalizada ? 'Personalizada' : 'Padrão Embracore' }}</td>
                             <td><span class="etiqueta {{ c.ativo ? 'etiqueta-ok' : 'etiqueta-off' }}">{{ c.ativo ? 'Ativo' : 'Inativo' }}</span></td>
                             <td class="acoes-celula">
                                 <a class="botao-icone" href="/admin/condominios/{{ c.id }}/editar" title="Editar" aria-label="Editar {{ c.nome }}">{{ ui.icone('editar', 18) }}</a>

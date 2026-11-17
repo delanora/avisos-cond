@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controllers\Admin;
 
-use App\Services\AparenciaService;
 use App\Services\GestaoCondominiosService;
 use App\Services\ListaDeIds;
 use App\Services\ValidacaoException;
@@ -20,22 +19,15 @@ final class CondominiosController
         private readonly View $view,
         private readonly Session $sessao,
         private readonly GestaoCondominiosService $condominios,
-        private readonly AparenciaService $aparencia,
     ) {
     }
 
     /** @param array<string, string> $vars */
     public function lista(Request $request, array $vars): Response
     {
-        $lista = array_map(function (array $condominio): array {
-            $condominio['personalizada'] = $this->aparencia->resolver($condominio)['personalizada'];
-
-            return $condominio;
-        }, $this->condominios->listar());
-
         return Response::html($this->view->render('admin/condominios/lista.html.twig', [
             'usuario' => $request->attribute('usuario'),
-            'condominios' => $lista,
+            'condominios' => $this->condominios->listar(),
         ]));
     }
 
@@ -145,7 +137,6 @@ final class CondominiosController
             'valores' => $valores,
             'erros' => $erros,
             'gerentes' => $this->condominios->gerentesDisponiveis(),
-            'aparencia' => $this->aparencia->resolver($alvo ?? []),
         ]), $status);
     }
 }
