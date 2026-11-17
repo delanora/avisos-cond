@@ -68,9 +68,19 @@
 .tv-midia { -webkit-flex: 1 1 45%; flex: 1 1 45%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; min-width: 0; }
 .tv-midia img, .tv-midia video { display: block; max-width: 100%; max-height: 32em; border-radius: 1.2em; }
 
+/* Título à esquerda e etiqueta do tipo à direita, na mesma linha. */
+.tv-cabeca { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: space-between; justify-content: space-between; }
+.tv-cabeca .tv-titulo, .tv-cabeca .tv-fixo-titulo { -webkit-flex: 1 1 auto; flex: 1 1 auto; min-width: 0; }
+.tv-cabeca .tv-tipo, .tv-cabeca .tv-fixo-tipo { -webkit-flex: 0 0 auto; flex: 0 0 auto; margin: 0 0 0 1em; }
 .tv-tipo { display: inline-block; margin-bottom: 1em; padding: 0.3em 1em; font-size: 1.2em; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: #FFFFFF; color: var(--tv-secundaria-texto, #FFFFFF); background: #202124; background: var(--tv-secundaria, #202124); border-radius: 999px; }
 .tv-titulo { margin: 0 0 0.5em; font-size: 4.1em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; word-wrap: break-word; overflow-wrap: anywhere; }
 .tv-texto { margin: 0; font-size: 2em; line-height: 1.4; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; color: #4B5563; }
+
+/* Texto curto cresce para preencher o cartão (a classe vem do tv.js pelo tamanho do texto). */
+.tv-corpo-curto .tv-titulo { font-size: 5.2em; }
+.tv-corpo-curto .tv-texto { font-size: 2.9em; line-height: 1.35; }
+.tv-corpo-medio .tv-titulo { font-size: 4.6em; }
+.tv-corpo-medio .tv-texto { font-size: 2.5em; }
 
 /*
  * Faixa de avisos FIXOS e URGENTES: ocupa sempre 40% da altura da tela (largura total), logo abaixo da barra
@@ -95,9 +105,9 @@
  * as margens e os espaços entre cartões ficam sempre iguais, e os cartões alinham com o cartão do carrossel.
  */
 .tv-fixo-conteudo { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; min-width: 0; }
-.tv-fixos-cols-1.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 1em; }
-.tv-fixos-cols-2.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.85em; }
-.tv-fixos-cols-3.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.7em; }
+.tv-fixos-cols-1.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 1.15em; }
+.tv-fixos-cols-2.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 1em; }
+.tv-fixos-cols-3.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.85em; }
 .tv-fixos-cols-4.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.6em; }
 .tv-fixos-cols-5.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.5em; }
 .tv-fixos-cols-1.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.8em; }
@@ -113,16 +123,18 @@
     box-sizing: border-box;
     min-width: 0;
     margin: 0.6em;
-    padding: 0 2em;
+    padding: 0 1.6em;
     overflow: hidden;
 }
-.tv-fixos-cols-1 .tv-fixo { -webkit-flex: 0 0 calc(100% - 1.2em); flex: 0 0 calc(100% - 1.2em); }
-.tv-fixos-cols-2 .tv-fixo { -webkit-flex: 0 0 calc(50% - 1.2em); flex: 0 0 calc(50% - 1.2em); }
-.tv-fixos-cols-3 .tv-fixo { -webkit-flex: 0 0 calc(33.333% - 1.2em); flex: 0 0 calc(33.333% - 1.2em); }
-.tv-fixos-cols-4 .tv-fixo { -webkit-flex: 0 0 calc(25% - 1.2em); flex: 0 0 calc(25% - 1.2em); }
-.tv-fixos-cols-5 .tv-fixo { -webkit-flex: 0 0 calc(20% - 1.2em); flex: 0 0 calc(20% - 1.2em); }
+.tv-fixos-cols-1 .tv-fixo { -webkit-flex: 1 0 calc(100% - 1.2em); flex: 1 0 calc(100% - 1.2em); }
+.tv-fixos-cols-2 .tv-fixo { -webkit-flex: 1 0 calc(50% - 1.2em); flex: 1 0 calc(50% - 1.2em); }
+.tv-fixos-cols-3 .tv-fixo { -webkit-flex: 1 0 calc(33.333% - 1.2em); flex: 1 0 calc(33.333% - 1.2em); }
+.tv-fixos-cols-4 .tv-fixo { -webkit-flex: 1 0 calc(25% - 1.2em); flex: 1 0 calc(25% - 1.2em); }
+.tv-fixos-cols-5 .tv-fixo { -webkit-flex: 1 0 calc(20% - 1.2em); flex: 1 0 calc(20% - 1.2em); }
 .tv-fixos-rows-1 .tv-fixo { height: calc(100% - 1.2em); }
 .tv-fixos-rows-2 .tv-fixo { height: calc(50% - 1.2em); }
+/* Com uma só linha de cartões sobra altura: o texto pode ocupar mais linhas. */
+.tv-fixos-rows-1 .tv-fixo-texto { -webkit-line-clamp: 6; }
 
 /* Etiqueta em pílula com ícone (mesmo desenho das etiquetas dos painéis). */
 .tv-fixo-tipo {
@@ -151,6 +163,10 @@
 .tv-com-fixos .tv-tipo { margin-bottom: 0.6em; font-size: 1.05em; }
 .tv-com-fixos .tv-titulo { font-size: 3em; }
 .tv-com-fixos .tv-texto { font-size: 1.6em; }
+.tv-com-fixos .tv-corpo-curto .tv-titulo { font-size: 3.9em; }
+.tv-com-fixos .tv-corpo-curto .tv-texto { font-size: 2.3em; }
+.tv-com-fixos .tv-corpo-medio .tv-titulo { font-size: 3.4em; }
+.tv-com-fixos .tv-corpo-medio .tv-texto { font-size: 2em; }
 .tv-com-fixos .tv-midia img, .tv-com-fixos .tv-midia video { max-height: 17em; }
 /* Só avisos fixos/urgentes no ar: o espaço de baixo mostra o relógio, sem barra repetida. */
 .tv-com-fixos .tv-ocioso-relogio { font-size: 7em; }

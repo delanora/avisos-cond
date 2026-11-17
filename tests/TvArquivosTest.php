@@ -167,6 +167,20 @@ final class TvArquivosTest extends TestCase
         $this->assertStringNotContainsString('-webkit-line-clamp: 0', $css);
     }
 
+    public function testTextoCurtoCresceEUltimaLinhaDaFaixaSeEstica(): void
+    {
+        $css = (string) file_get_contents(dirname(__DIR__) . '/public/assets/tv.css');
+        $js = (string) file_get_contents(dirname(__DIR__) . '/public/assets/tv.js');
+        // O JS marca o cartão pelo tamanho do texto e o CSS aumenta a letra dos textos curtos.
+        $this->assertStringContainsString('tv-corpo-curto', $js);
+        $this->assertStringContainsString('tv-cabeca', $js, 'Etiqueta do tipo ao lado do título.');
+        $this->assertMatchesRegularExpression('/\\.tv-cabeca\\s*\\{[^}]*space-between/', $css);
+        $this->assertStringContainsString('tv-corpo-medio', $js);
+        $this->assertMatchesRegularExpression('/\.tv-corpo-curto \.tv-texto\s*\{[^}]*font-size/', $css);
+        // Cartões da faixa crescem (flex-grow 1) para a última linha incompleta não deixar buraco.
+        $this->assertMatchesRegularExpression('/\.tv-fixos-cols-3 \.tv-fixo\s*\{[^}]*flex:\s*1 0 calc/', $css);
+    }
+
     public function testDesignDosCartoesDaFaixa(): void
     {
         $css = (string) preg_replace('#/\*.*?\*/#s', '', $this->ler('assets/tv.css'));

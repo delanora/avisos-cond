@@ -246,8 +246,11 @@
             var icone = criarIcone(dados.tipo);
             if (icone) { etiqueta.appendChild(icone); }
             etiqueta.appendChild(criar('span', '', TIPOS[dados.tipo] || dados.tipo));
-            conteudo.appendChild(etiqueta);
-            conteudo.appendChild(criar('h2', 'tv-fixo-titulo', dados.titulo));
+            // Título à esquerda e etiqueta à direita, na mesma linha.
+            var cabeca = criar('div', 'tv-cabeca');
+            cabeca.appendChild(criar('h2', 'tv-fixo-titulo', dados.titulo));
+            cabeca.appendChild(etiqueta);
+            conteudo.appendChild(cabeca);
             if (dados.corpo) { conteudo.appendChild(criar('p', 'tv-fixo-texto', dados.corpo)); }
             cartao.appendChild(conteudo);
             el.fixos.appendChild(cartao);
@@ -257,11 +260,16 @@
     function montarAviso(a) {
         var d = a.dados;
         while (el.corpo.firstChild) { el.corpo.removeChild(el.corpo.firstChild); } // o conteúdo novo entra só por textContent
-        el.corpo.className = 'tv-corpo' + (d.midia ? ' tv-com-midia' : '');
+        var tam = (d.corpo || '').length;
+        // Texto curto ganha letra maior, para o cartão não ficar vazio; com foto/vídeo o espaço é dividido.
+        var escala = d.midia ? '' : (tam <= 110 ? ' tv-corpo-curto' : (tam <= 220 ? ' tv-corpo-medio' : ''));
+        el.corpo.className = 'tv-corpo' + (d.midia ? ' tv-com-midia' : '') + escala;
 
         var bloco = criar('div', 'tv-texto-bloco');
-        bloco.appendChild(criar('span', 'tv-tipo', TIPOS[d.tipo] || d.tipo));
-        bloco.appendChild(criar('h2', 'tv-titulo', d.titulo));
+        var cabeca = criar('div', 'tv-cabeca');
+        cabeca.appendChild(criar('h2', 'tv-titulo', d.titulo));
+        cabeca.appendChild(criar('span', 'tv-tipo', TIPOS[d.tipo] || d.tipo));
+        bloco.appendChild(cabeca);
         if (d.corpo) { bloco.appendChild(criar('p', 'tv-texto', d.corpo)); }
         el.corpo.appendChild(bloco);
 
