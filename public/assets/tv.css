@@ -31,20 +31,6 @@
     box-sizing: border-box;
 }
 
-/* Barra do topo: cor do condomínio, logo à esquerda e hora (sempre branca) à direita. */
-.tv-topo {
-    display: -webkit-flex; display: flex;
-    -webkit-align-items: center; align-items: center;
-    -webkit-justify-content: space-between; justify-content: space-between;
-    -webkit-flex: 0 0 auto; flex: 0 0 auto;
-    padding: 0.95em 2.4em;
-    background: #00A67E; background: var(--tv-primaria, #00A67E);
-    color: #FFFFFF;
-}
-.tv-logo { display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; padding: 0.25em 0.75em; background: #FFFFFF; border-radius: 0.7em; }
-.tv-logo img { display: block; height: 2.15em; width: auto; max-width: 16em; }
-.tv-relogio { font-size: 2.2em; font-weight: 700; letter-spacing: 0.02em; line-height: 1.2; color: #FFFFFF; }
-
 /* Cartões: o mesmo desenho para os avisos fixos e para o carrossel. */
 .tv-corpo, .tv-fixo {
     background: #FFFFFF;
@@ -58,7 +44,7 @@
     -webkit-flex: 1; flex: 1;
     -webkit-align-items: center; align-items: center;
     min-height: 0;
-    margin: 2em 2.4em 2.4em;
+    margin: 2.4em;
     padding: 2.6em 3.2em;
     box-sizing: border-box;
     -webkit-transition: opacity 0.35s ease-out; transition: opacity 0.35s ease-out;
@@ -96,7 +82,7 @@
     -webkit-flex-wrap: wrap; flex-wrap: wrap;
     -webkit-align-content: stretch; align-content: stretch;
     box-sizing: border-box;
-    padding: 1em 1.8em 0.4em;
+    padding: 1.8em 1.8em 0.6em;
 }
 .tv-com-fixos .tv-fixos { display: -webkit-flex; display: flex; }
 
@@ -158,7 +144,7 @@
 .tv-fixo-urgente .tv-fixo-titulo { color: #8F1B12; }
 .tv-fixo-urgente .tv-fixo-texto { color: #5C1F19; }
 
-/* Com a faixa do topo ativa, o carrossel usa letras e mídia menores para caber no espaço que sobra. */
+/* Com a faixa do topo ativa (e o carrossel abaixo), o carrossel usa letras e mídia menores para caber no espaço que sobra. */
 .tv-com-fixos .tv-corpo { overflow: hidden; margin-top: 0.4em; padding: 1.5em 3em; }
 .tv-com-fixos .tv-tipo { margin-bottom: 0.6em; font-size: 1.05em; }
 .tv-com-fixos .tv-titulo { font-size: 3em; }
@@ -168,24 +154,36 @@
 .tv-com-fixos .tv-corpo-medio .tv-titulo { font-size: 3.4em; }
 .tv-com-fixos .tv-corpo-medio .tv-texto { font-size: 2em; }
 .tv-com-fixos .tv-midia img, .tv-com-fixos .tv-midia video { max-height: 17em; }
-/* Só avisos fixos/urgentes no ar: o espaço de baixo mostra o relógio, sem barra repetida. */
-.tv-com-fixos .tv-ocioso-relogio { font-size: 7em; }
-.tv-com-fixos .tv-ocioso-texto { margin-top: 0.4em; font-size: 1.8em; }
-.tv-sem-carrossel .tv-corpo { display: none; }
-.tv-sem-carrossel .tv-topo .tv-relogio { visibility: hidden; }
-.tv-sem-carrossel .tv-ocioso { display: -webkit-flex; display: flex; }
+/*
+ * Só avisos fixos/urgentes no ar: a faixa ocupa a tela inteira e o carrossel some. As letras crescem na mesma
+ * proporção do espaço (a tela toda em vez de 40%) e os textos podem usar mais linhas.
+ */
+.tv-sem-carrossel .tv-corpo, .tv-sem-carrossel .tv-ocioso { display: none; }
+.tv-sem-carrossel .tv-fixos { -webkit-flex: 1 1 auto; flex: 1 1 auto; padding-bottom: 1.8em; }
+.tv-sem-carrossel .tv-fixo-titulo { -webkit-line-clamp: 3; }
+.tv-sem-carrossel .tv-fixo-texto { -webkit-line-clamp: 8; }
+.tv-sem-carrossel.tv .tv-fixos-cols-1.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 2.5em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-2.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 1.5em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-3.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 1.1em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-4.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.9em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-5.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.75em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-1.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 1.5em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-2.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 1.15em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-3.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.9em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-4.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.78em; }
+.tv-sem-carrossel.tv .tv-fixos-cols-5.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.66em; }
 
-/* Sem avisos no momento: logo e relógio grande. */
+/* Sem avisos no momento: logo do condomínio e relógio grande. */
+.tv-ocioso-logo { display: block; height: 5em; width: auto; max-width: 28em; margin-bottom: 2em; }
 .tv-ocioso { display: none; -webkit-flex: 1; flex: 1; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; text-align: center; }
 .tv-ocioso-relogio { font-size: 12em; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
 .tv-ocioso-texto { margin-top: 0.6em; font-size: 2.2em; color: #5B6472; }
 
 .tv-modo-ocioso .tv-corpo { display: none; }
 .tv-modo-ocioso .tv-ocioso { display: -webkit-flex; display: flex; }
-.tv-modo-ocioso .tv-topo .tv-relogio { visibility: hidden; }
 
 /* Condomínio sem exibição (desativado/bloqueado) ou dispositivo revogado: somente o relógio. */
-.tv-modo-relogio .tv-topo, .tv-modo-relogio .tv-corpo { display: none; }
+.tv-modo-relogio .tv-corpo, .tv-modo-relogio .tv-ocioso-logo { display: none; }
 .tv-modo-relogio .tv-ocioso { display: -webkit-flex; display: flex; }
 .tv-modo-relogio .tv-ocioso-texto { visibility: hidden; }
 

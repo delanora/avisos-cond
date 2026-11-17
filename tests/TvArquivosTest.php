@@ -199,9 +199,12 @@ final class TvArquivosTest extends TestCase
         $faixa = $regra('.tv-fixos');
         $this->assertStringNotContainsString('background', $faixa);
         $this->assertDoesNotMatchRegularExpression('/(^|[;\s])border(-[a-z-]+)?\s*:/', $faixa, 'Sem linha de separação (box-sizing: border-box é permitido).');
-        // A hora é sempre branca, independente da cor do condomínio.
-        $this->assertMatchesRegularExpression('/\.tv-relogio\s*\{[^}]*color:\s*#FFFFFF/i', $css);
-        $this->assertStringNotContainsString('tv-primaria-texto', $css, 'O texto da barra não depende mais da cor do condomínio.');
+        // Sem barra no topo: só cartões (nem no CSS nem na página).
+        $this->assertStringNotContainsString('.tv-topo', $css);
+        $this->assertStringNotContainsString('tv-topo', $this->ler('../templates/tv/tela.html.twig'));
+        $this->assertStringNotContainsString('tv-primaria-texto', $css);
+        // Só fixos/urgentes: a faixa ocupa a tela inteira (o carrossel some).
+        $this->assertMatchesRegularExpression('/\.tv-sem-carrossel \.tv-fixos\s*\{[^}]*flex:\s*1 1 auto/', $css);
     }
 
     public function testCssDaTvTemAFonteLocalEDestaqueUrgente(): void

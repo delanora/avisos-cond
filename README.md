@@ -26,7 +26,7 @@ Existem três "superfícies" no sistema:
 
 ### Painel do Gerente
 - Lista dos condomínios vinculados (1 ou N, só os ativos; lida do banco a cada requisição) e seletor para trocar de condomínio. Com um só condomínio, o gerente vai direto para os avisos.
-- CRUD de avisos com título, texto, imagem ou vídeo curto opcional (sem PDF) e tipo (comum, fixo, urgente, manutenção, assembleia). Fixo e urgente ficam sempre à vista na faixa do topo da TV (só texto); os demais passam em carrossel. A lista mostra a situação de cada aviso: no ar, agendado, encerrado ou desativado.
+- CRUD de avisos com título, texto, imagem ou vídeo curto opcional (sem PDF) e tipo (comum, fixo, urgente, manutenção, assembleia). Fixo e urgente ficam sempre à vista em cartões só de texto (ocupam a tela toda quando são os únicos; com avisos de carrossel, ficam numa faixa no topo); os demais passam em carrossel. A TV não tem barra: só cartões. A lista mostra a situação de cada aviso: no ar, agendado, encerrado ou desativado.
 - Cada aviso é criado individualmente para um condomínio (não há publicação em lote para vários).
 - Agendamento: data/hora de início e fim de exibição, com opção de recorrência.
 - Pré-visualização de como o aviso aparece na TV, com a logo e as cores do condomínio (aviso urgente em destaque).

@@ -137,7 +137,6 @@
         fixos: document.getElementById('tv-fixos'),
         corpo: document.getElementById('tv-corpo'),
         logo: document.getElementById('tv-logo'),
-        relogio: document.getElementById('tv-relogio'),
         ociosoRelogio: document.getElementById('tv-ocioso-relogio'),
         ociosoTexto: document.getElementById('tv-ocioso-texto'),
         offline: document.getElementById('tv-offline')
@@ -186,7 +185,7 @@
         if (url && el.logo.getAttribute('src') !== url) { el.logo.setAttribute('src', url); }
     }
 
-    /** modo: 'aviso' (carrossel), 'ocioso' (nada no ar), 'semCarrossel' (só a faixa do topo) ou 'relogio' (só o relógio). */
+    /** modo: 'aviso' (carrossel), 'ocioso' (nada no ar), 'semCarrossel' (só avisos fixos/urgentes, em tela cheia) ou 'relogio' (só o relógio). */
     function definirModo(modo) {
         var classe = 'tv';
         if (modo === 'ocioso') { classe += ' tv-modo-ocioso'; }
@@ -194,8 +193,6 @@
         if (temFixos && modo !== 'relogio') { classe += ' tv-com-fixos'; }
         if (modo === 'semCarrossel') { classe += ' tv-sem-carrossel'; }
         if (el.tv.className !== classe) { el.tv.className = classe; }
-        var texto = modo === 'semCarrossel' ? 'Sem outros avisos no momento' : 'Nenhum aviso no momento';
-        if (el.ociosoTexto.textContent !== texto) { el.ociosoTexto.textContent = texto; }
     }
 
     function criar(tag, classe, texto) {
@@ -320,7 +317,6 @@
 
     function atualizarRelogio() {
         var hora = horaBrasilia(agora());
-        if (el.relogio.textContent !== hora) { el.relogio.textContent = hora; }
         if (el.ociosoRelogio.textContent !== hora) { el.ociosoRelogio.textContent = hora; }
     }
 

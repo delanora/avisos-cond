@@ -371,8 +371,7 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('Desculpe o transtorno.', $r->body);
         $this->assertStringContainsString('href="/assets/tv.css"', $r->body);
         $this->assertStringContainsString("href=\"{$this->base()}/tema.css\"", $r->body);
-        $this->assertStringContainsString('/assets/logo-embracore.svg', $r->body, 'Sem logo própria, usa a padrão.');
-        $this->assertMatchesRegularExpression('#<span class="tv-relogio">\d{2}:\d{2}</span>#', $r->body);
+        $this->assertStringNotContainsString('tv-topo', $r->body, 'A TV não tem mais barra no topo.');
         $this->assertStringNotContainsString('desativado', $r->body);
     }
 
@@ -387,7 +386,7 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('class="tv-fixos tv-fixos-cols-1 tv-fixos-rows-1"', $corpo);
         $this->assertStringContainsString('<article class="tv-fixo tv-fixo-urgente">', $corpo);
         $this->assertStringContainsString('<h2 class="tv-fixo-titulo">Vazamento</h2>', $corpo);
-        $this->assertStringContainsString('Os avisos em carrossel aparecem aqui', $corpo);
+        $this->assertStringNotContainsString('tv-topo', $corpo);
         $this->assertStringContainsString('Aviso urgente: fica sempre à vista na faixa do topo da TV', $corpo);
         $this->assertStringNotContainsString('class="tv-corpo', $corpo, 'Urgente não entra no carrossel.');
     }
@@ -446,18 +445,6 @@ final class GerenteTest extends AppHttpTestCase
         $id = $this->criarAviso(['ativo' => '']);
 
         $this->assertStringContainsString('Este aviso está desativado e não aparece na TV.', $this->get($this->base() . "/avisos/{$id}/previa")->body);
-    }
-
-    public function testPreviaUsaALogoPersonalizadaDoCondominio(): void
-    {
-        $this->entrar();
-        $id = $this->criarAviso();
-        $this->post($this->base() . '/aparencia', ['usar_padrao' => '1'], arquivos: ['logo' => Amostras::arquivo('logo.png', Amostras::png())]);
-
-        $corpo = $this->get($this->base() . "/avisos/{$id}/previa")->body;
-
-        $this->assertStringContainsString("<img src=\"{$this->base()}/logo\"", $corpo);
-        $this->assertStringNotContainsString('logo-embracore.svg', $corpo);
     }
 
     // ---------- Entrega de mídia ----------
