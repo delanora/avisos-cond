@@ -117,13 +117,13 @@ Segundo fator por **código de 6 dígitos de aplicativo autenticador** (Google A
 Decisões já tomadas (2026-11-17):
 - Os **dois perfis** (`superadmin` e `gerente`) usam o 2FA.
 - **Lembrar dispositivo no login: sim.** Prazo e regras ainda a definir [confirmar].
-- Biblioteca/código próprio de TOTP e QR code: seguir a sugestão (código próprio para o TOTP; QR code com biblioteca pequena, a mesma do "QR code opcional no aviso"; justificar no commit qualquer `composer require`, AGENTS.md 2.2).
+- **TOTP: código próprio** (RFC 6238 com `hash_hmac`, ~50 linhas, sem dependência, testado com os vetores do RFC). **QR code: biblioteca de terceiros pequena** (QR é complexo demais para escrever à mão), com saída em SVG para não depender da extensão GD e para o CSP aceitar; candidata: `bacon/bacon-qr-code`; a mesma serve ao "QR code opcional no aviso". Conferir versão, licença e manutenção e justificar o `composer require` no commit (AGENTS.md 2.2). Alternativa sem dependência (mostrar só a chave para digitar no app) fica como plano B.
+- **Lembrar dispositivo: 30 dias**, cancelado ao trocar a senha, desativar ou redefinir o 2FA, ou pelo botão "esquecer meus dispositivos".
 - Quem ativa o 2FA e **não confirma o código** na ativação continua sem 2FA; quem tem 2FA ativo e **não confirma o código no login, não entra**.
 - O 2FA é **opcional**, mas o **lembrete é obrigatório**: quem não ativou vê o pop-up em **todo login** (não há "não mostrar mais"); quem não ativa continua entrando só com a senha.
 - O superadmin **redefine e desativa** o 2FA de outros usuários; e há um comando no terminal do servidor para desativar em caso de problema.
 
-Ainda a confirmar:
-- [ ] "Lembrar dispositivo": por quantos dias o navegador fica dispensado do código (sugestão: 30) e o que cancela a lembrança (sugestão: trocar a senha, desativar ou redefinir o 2FA, ou o botão "esquecer meus dispositivos"). Se não houver outra resposta, adotar a sugestão [confirmar]
+Nada pendente de decisão do produto; só conferir a versão e a licença da biblioteca de QR code na hora de implementar.
 
 Banco e segurança do segredo:
 - [ ] Migration: em `usuarios`, `totp_segredo` (cifrado), `totp_ativado_em` e `totp_ultimo_passo` (impede reaproveitar o mesmo código); tabela `codigos_recuperacao` (usuário, hash, usado_em)
@@ -226,4 +226,4 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-17: bloco 1.7 decidiu: sem tarefa "publicar/expirar" (tudo é calculado na leitura; mudar `ativo` em massa apagaria a intenção do gerente e atrapalharia estender um aviso); o lock é `pg_try_advisory_lock` (vale entre servidores e some se o processo morrer); `limpar_arquivos_orfaos` tem disjuntor; `LOG_DIR` opcional no `.env` (padrão `storage/logs`). Mais tarefas entram na Fase 2 (dispositivos offline) pela interface `Tarefa`.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.
 - 2026-11-17: 2FA por TOTP adicionado à Fase 2 (seção 2.x) a pedido; sem SMS. Quem é obrigado a usar, o lembrar dispositivo e a biblioteca de QR code ficam como [confirmar] antes de implementar.
-- 2026-11-17: decisões do 2FA registradas (ver seção 2.x): os dois perfis usam, lembrar dispositivo no login, engrenagem com Segurança/Aparência, pop-up de lembrete, admin redefine/desativa e comando no terminal. Decidido depois: 2FA opcional com lembrete obrigatório a cada login. Pendente: prazo do lembrar dispositivo (sugestão 30 dias).
+- 2026-11-17: decisões do 2FA registradas (ver seção 2.x): os dois perfis usam, lembrar dispositivo no login, engrenagem com Segurança/Aparência, pop-up de lembrete, admin redefine/desativa e comando no terminal. Decidido depois: 2FA opcional com lembrete obrigatório a cada login. Fechado em seguida: lembrar dispositivo por 30 dias (cancelado ao trocar a senha, desativar ou redefinir), TOTP com código próprio e QR code com biblioteca de terceiros (SVG).
