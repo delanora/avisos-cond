@@ -3,6 +3,9 @@
  * sem container queries, sem grid. Medidas em "em": 1em = 1/96 da largura da TV (20px em 1920x1080).
  * O CSP proíbe CSS inline; as cores do condomínio chegam por /tv/{token}/tema.css (variáveis --tv-*).
  * Estes estilos também são usados na prévia do gerente (a moldura da prévia define o tamanho da fonte).
+ *
+ * Estilo: o mesmo dos painéis (fundo quente, cartões brancos arredondados com sombra suave, etiquetas em
+ * pílula, fonte Inter). Todo o conteúdo são cartões sobre o mesmo fundo, sem linhas divisórias.
  */
 @font-face {
     font-family: "Inter";
@@ -23,45 +26,59 @@
     font-size: 10px;
     line-height: 1.3;
     color: #1D2125;
-    background: #FFFFFF;
+    /* Um só fundo para a faixa de fixos e para o carrossel. */
+    background: #F6F5F2;
     box-sizing: border-box;
 }
 
+/* Barra do topo: cor do condomínio, logo à esquerda e hora (sempre branca) à direita. */
 .tv-topo {
     display: -webkit-flex; display: flex;
     -webkit-align-items: center; align-items: center;
     -webkit-justify-content: space-between; justify-content: space-between;
-    padding: 1.2em 2.4em;
+    -webkit-flex: 0 0 auto; flex: 0 0 auto;
+    padding: 0.95em 2.4em;
     background: #00A67E; background: var(--tv-primaria, #00A67E);
-    color: #FFFFFF; color: var(--tv-primaria-texto, #FFFFFF);
+    color: #FFFFFF;
 }
-.tv-logo { display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; padding: 0.35em 0.8em; background: #FFFFFF; border-radius: 0.7em; }
-.tv-logo img { display: block; height: 2.6em; width: auto; max-width: 16em; }
-.tv-relogio { font-size: 2.4em; font-weight: 700; letter-spacing: 0.02em; }
+.tv-logo { display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; padding: 0.25em 0.75em; background: #FFFFFF; border-radius: 0.7em; }
+.tv-logo img { display: block; height: 2.15em; width: auto; max-width: 16em; }
+.tv-relogio { font-size: 2.2em; font-weight: 700; letter-spacing: 0.02em; line-height: 1.2; color: #FFFFFF; }
 
+/* Cartões: o mesmo desenho para os avisos fixos e para o carrossel. */
+.tv-corpo, .tv-fixo {
+    background: #FFFFFF;
+    border-radius: 1.4em;
+    box-shadow: 0 0.08em 0.2em rgba(29, 33, 37, 0.06), 0 0.3em 1em rgba(29, 33, 37, 0.08);
+}
+
+/* Carrossel (comum, manutenção, assembleia): um cartão grande abaixo da faixa. */
 .tv-corpo {
     display: -webkit-flex; display: flex;
     -webkit-flex: 1; flex: 1;
     -webkit-align-items: center; align-items: center;
     min-height: 0;
-    padding: 2.4em 3em;
+    margin: 2em 2.4em 2.4em;
+    padding: 2.6em 3.2em;
+    box-sizing: border-box;
     -webkit-transition: opacity 0.35s ease-out; transition: opacity 0.35s ease-out;
 }
 .tv-texto-bloco { -webkit-flex: 1 1 55%; flex: 1 1 55%; min-width: 0; }
-.tv-com-midia .tv-texto-bloco { margin-right: 2.4em; }
+.tv-com-midia .tv-texto-bloco { margin-right: 2.6em; }
 .tv-midia { -webkit-flex: 1 1 45%; flex: 1 1 45%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; min-width: 0; }
-.tv-midia img, .tv-midia video { display: block; max-width: 100%; max-height: 34em; border-radius: 1.2em; background: #F3F2EE; }
+.tv-midia img, .tv-midia video { display: block; max-width: 100%; max-height: 32em; border-radius: 1.2em; }
 
-.tv-tipo { display: inline-block; margin-bottom: 1em; padding: 0.3em 1em; font-size: 1.3em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #FFFFFF; color: var(--tv-secundaria-texto, #FFFFFF); background: #202124; background: var(--tv-secundaria, #202124); border-radius: 999px; }
-.tv-titulo { margin: 0 0 0.5em; font-size: 4.2em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; word-wrap: break-word; overflow-wrap: anywhere; }
-.tv-texto { margin: 0; font-size: 2em; line-height: 1.4; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; color: #3A4047; }
+.tv-tipo { display: inline-block; margin-bottom: 1em; padding: 0.3em 1em; font-size: 1.2em; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: #FFFFFF; color: var(--tv-secundaria-texto, #FFFFFF); background: #202124; background: var(--tv-secundaria, #202124); border-radius: 999px; }
+.tv-titulo { margin: 0 0 0.5em; font-size: 4.1em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; word-wrap: break-word; overflow-wrap: anywhere; }
+.tv-texto { margin: 0; font-size: 2em; line-height: 1.4; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; color: #4B5563; }
 
 /*
  * Faixa de avisos FIXOS e URGENTES: ocupa sempre 40% da altura da tela (largura total), logo abaixo da barra
  * do topo, enquanto houver algum aviso desses tipos no ar. Todos os avisos fixos/urgentes aparecem ao mesmo
  * tempo, dividindo a faixa: quanto mais avisos, menor o espaço (e a letra) de cada um, mas a faixa não cresce.
  * O JS define a disposição: tv-fixos-cols-N (colunas) e tv-fixos-rows-N (linhas, no máximo 2).
- * Só texto (sem foto/vídeo). O carrossel dos demais avisos continua no espaço que sobra, abaixo da faixa.
+ * Só texto (sem foto/vídeo). A faixa não tem fundo próprio nem linha de separação: os cartões ficam direto
+ * sobre o fundo da tela, e o carrossel dos demais avisos continua no espaço que sobra, abaixo.
  */
 .tv-fixos {
     display: none;
@@ -69,20 +86,25 @@
     -webkit-flex-wrap: wrap; flex-wrap: wrap;
     -webkit-align-content: stretch; align-content: stretch;
     box-sizing: border-box;
-    padding: 0.7em 1.9em;
-    overflow: hidden;
-    background: #F3F2EE;
-    border-bottom: 0.3em solid #00A67E; border-bottom-color: var(--tv-primaria, #00A67E);
+    padding: 1em 1.8em 0.4em;
 }
 .tv-com-fixos .tv-fixos { display: -webkit-flex; display: flex; }
 
-/* A letra encolhe conforme o número de colunas e de linhas (os dois fatores se multiplicam). */
-.tv-fixos-cols-1 { font-size: 1em; }
-.tv-fixos-cols-2 { font-size: 0.85em; }
-.tv-fixos-cols-3 { font-size: 0.7em; }
-.tv-fixos-cols-4 { font-size: 0.6em; }
-.tv-fixos-cols-5 { font-size: 0.5em; }
-.tv-fixos-rows-2 .tv-fixo { font-size: 0.8em; }
+/*
+ * A letra encolhe conforme o número de colunas e de linhas, mas só DENTRO dos cartões (.tv-fixo-conteudo):
+ * as margens e os espaços entre cartões ficam sempre iguais, e os cartões alinham com o cartão do carrossel.
+ */
+.tv-fixo-conteudo { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; min-width: 0; }
+.tv-fixos-cols-1.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 1em; }
+.tv-fixos-cols-2.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.85em; }
+.tv-fixos-cols-3.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.7em; }
+.tv-fixos-cols-4.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.6em; }
+.tv-fixos-cols-5.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 0.5em; }
+.tv-fixos-cols-1.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.8em; }
+.tv-fixos-cols-2.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.68em; }
+.tv-fixos-cols-3.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.56em; }
+.tv-fixos-cols-4.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.48em; }
+.tv-fixos-cols-5.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.4em; }
 
 .tv-fixo {
     display: -webkit-flex; display: flex;
@@ -90,41 +112,51 @@
     -webkit-justify-content: center; justify-content: center;
     box-sizing: border-box;
     min-width: 0;
-    margin: 0.5em;
-    padding: 0 1.6em;
+    margin: 0.6em;
+    padding: 0 2em;
     overflow: hidden;
-    background: #FFFFFF;
-    border-left: 0.6em solid #202124; border-left-color: var(--tv-secundaria, #202124);
-    border-radius: 1em;
 }
-.tv-fixos-cols-1 .tv-fixo { -webkit-flex: 0 0 calc(100% - 1em); flex: 0 0 calc(100% - 1em); }
-.tv-fixos-cols-2 .tv-fixo { -webkit-flex: 0 0 calc(50% - 1em); flex: 0 0 calc(50% - 1em); }
-.tv-fixos-cols-3 .tv-fixo { -webkit-flex: 0 0 calc(33.333% - 1em); flex: 0 0 calc(33.333% - 1em); }
-.tv-fixos-cols-4 .tv-fixo { -webkit-flex: 0 0 calc(25% - 1em); flex: 0 0 calc(25% - 1em); }
-.tv-fixos-cols-5 .tv-fixo { -webkit-flex: 0 0 calc(20% - 1em); flex: 0 0 calc(20% - 1em); }
-.tv-fixos-rows-1 .tv-fixo { height: calc(100% - 1em); }
-.tv-fixos-rows-2 .tv-fixo { height: calc(50% - 1em); }
+.tv-fixos-cols-1 .tv-fixo { -webkit-flex: 0 0 calc(100% - 1.2em); flex: 0 0 calc(100% - 1.2em); }
+.tv-fixos-cols-2 .tv-fixo { -webkit-flex: 0 0 calc(50% - 1.2em); flex: 0 0 calc(50% - 1.2em); }
+.tv-fixos-cols-3 .tv-fixo { -webkit-flex: 0 0 calc(33.333% - 1.2em); flex: 0 0 calc(33.333% - 1.2em); }
+.tv-fixos-cols-4 .tv-fixo { -webkit-flex: 0 0 calc(25% - 1.2em); flex: 0 0 calc(25% - 1.2em); }
+.tv-fixos-cols-5 .tv-fixo { -webkit-flex: 0 0 calc(20% - 1.2em); flex: 0 0 calc(20% - 1.2em); }
+.tv-fixos-rows-1 .tv-fixo { height: calc(100% - 1.2em); }
+.tv-fixos-rows-2 .tv-fixo { height: calc(50% - 1.2em); }
 
-.tv-fixo-tipo { display: block; margin: 0 0 0.45em; font-size: 1.15em; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #5B6472; }
+/* Etiqueta em pílula com ícone (mesmo desenho das etiquetas dos painéis). */
+.tv-fixo-tipo {
+    display: -webkit-inline-flex; display: inline-flex;
+    -webkit-align-items: center; align-items: center;
+    -webkit-align-self: flex-start; align-self: flex-start;
+    margin: 0 0 0.6em;
+    padding: 0.28em 1em 0.28em 0.75em;
+    font-size: 1.1em; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; line-height: 1.2;
+    color: #FFFFFF; color: var(--tv-secundaria-texto, #FFFFFF);
+    background: #202124; background: var(--tv-secundaria, #202124);
+    border-radius: 999px;
+}
+.tv-fixo-tipo svg { display: block; width: 1.2em; height: 1.2em; margin-right: 0.45em; }
 .tv-fixo-titulo { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin: 0 0 0.3em; overflow: hidden; font-size: 2.9em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; word-wrap: break-word; overflow-wrap: anywhere; }
-.tv-fixo-texto { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; margin: 0; overflow: hidden; font-size: 1.7em; line-height: 1.3; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; color: #3A4047; }
+.tv-fixo-texto { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; margin: 0; overflow: hidden; font-size: 1.7em; line-height: 1.3; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; color: #4B5563; }
 
-/* Urgente: vermelho, independente do tema do condomínio. */
-.tv-fixo-urgente { background: #FDEDEB; border-left-color: #B42318; }
-.tv-fixo-urgente .tv-fixo-tipo { color: #B42318; }
+/* Urgente: tom avermelhado e etiqueta vermelha, independente do tema do condomínio. */
+.tv-fixo-urgente { background: #FDEDEB; border: 0.1em solid #F5C6C1; }
+.tv-fixo-urgente .tv-fixo-tipo { color: #FFFFFF; background: #B42318; }
 .tv-fixo-urgente .tv-fixo-titulo { color: #8F1B12; }
-.tv-fixo-urgente .tv-fixo-texto { color: #4A1814; }
+.tv-fixo-urgente .tv-fixo-texto { color: #5C1F19; }
 
 /* Com a faixa do topo ativa, o carrossel usa letras e mídia menores para caber no espaço que sobra. */
-.tv-com-fixos .tv-corpo { overflow: hidden; padding: 1.2em 3em; }
-.tv-com-fixos .tv-tipo { margin-bottom: 0.6em; font-size: 1.1em; }
-.tv-com-fixos .tv-titulo { font-size: 3.1em; }
+.tv-com-fixos .tv-corpo { overflow: hidden; margin-top: 0.4em; padding: 1.5em 3em; }
+.tv-com-fixos .tv-tipo { margin-bottom: 0.6em; font-size: 1.05em; }
+.tv-com-fixos .tv-titulo { font-size: 3em; }
 .tv-com-fixos .tv-texto { font-size: 1.6em; }
-.tv-com-fixos .tv-midia img, .tv-com-fixos .tv-midia video { max-height: 18em; }
+.tv-com-fixos .tv-midia img, .tv-com-fixos .tv-midia video { max-height: 17em; }
 /* Só avisos fixos/urgentes no ar: o espaço de baixo mostra o relógio, sem barra repetida. */
 .tv-com-fixos .tv-ocioso-relogio { font-size: 7em; }
 .tv-com-fixos .tv-ocioso-texto { margin-top: 0.4em; font-size: 1.8em; }
 .tv-sem-carrossel .tv-corpo { display: none; }
+.tv-sem-carrossel .tv-topo .tv-relogio { visibility: hidden; }
 .tv-sem-carrossel .tv-ocioso { display: -webkit-flex; display: flex; }
 
 /* Sem avisos no momento: logo e relógio grande. */

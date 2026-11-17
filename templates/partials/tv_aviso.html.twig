@@ -1,5 +1,6 @@
 {# Um aviso do jeito que aparece na TV. Recebe: aviso, tipos, aparencia, url_midia, hora. Medidas em "em": a TV real usa 1.0417vw por em.
    Avisos fixos e urgentes aparecem na faixa do topo (só texto); os demais ocupam a área do carrossel. #}
+{% import 'macros/ui.html.twig' as ui %}
 {% set na_faixa = aviso.tipo in ['urgente', 'fixo'] %}
 <div class="tv-moldura">
     <div class="tv{% if na_faixa %} tv-com-fixos tv-sem-carrossel{% endif %}">
@@ -10,9 +11,11 @@
         {% if na_faixa %}
             <div class="tv-fixos tv-fixos-cols-1 tv-fixos-rows-1">
                 <article class="tv-fixo tv-fixo-{{ aviso.tipo }}">
-                    <span class="tv-fixo-tipo">{{ tipos[aviso.tipo] }}</span>
-                    <h2 class="tv-fixo-titulo">{{ aviso.titulo }}</h2>
-                    {% if aviso.corpo != '' %}<p class="tv-fixo-texto">{{ aviso.corpo }}</p>{% endif %}
+                    <div class="tv-fixo-conteudo">
+                        <span class="tv-fixo-tipo">{{ ui.icone(aviso.tipo == 'urgente' ? 'alerta' : 'fixar', 20) }}<span>{{ tipos[aviso.tipo] }}</span></span>
+                        <h2 class="tv-fixo-titulo">{{ aviso.titulo }}</h2>
+                        {% if aviso.corpo != '' %}<p class="tv-fixo-texto">{{ aviso.corpo }}</p>{% endif %}
+                    </div>
                 </article>
             </div>
             <div class="tv-ocioso">

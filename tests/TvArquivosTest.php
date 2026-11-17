@@ -17,13 +17,17 @@ final class TvArquivosTest extends TestCase
         return (string) file_get_contents(dirname(__DIR__) . '/public/' . $caminho);
     }
 
-    /** Remove comentários e textos entre aspas, para os padrões abaixo olharem só o código. */
+    /**
+     * Remove comentários e troca o conteúdo dos textos entre aspas por "", para os padrões abaixo olharem só o
+     * código. Um único passe da esquerda para a direita: um "//" dentro de um texto (ex.: uma URL) não é comentário.
+     */
     private function codigo(string $js): string
     {
-        $js = (string) preg_replace('#/\*.*?\*/#s', '', $js);
-        $js = (string) preg_replace('#//[^\n]*#', '', $js);
-
-        return (string) preg_replace('/(["\'])(?:\\\\.|(?!\1).)*\1/s', '""', $js);
+        return (string) preg_replace_callback(
+            '~"(?:\\\\.|[^"\\\\])*"|\'(?:\\\\.|[^\'\\\\])*\'|/\*.*?\*/|//[^\n]*~s',
+            static fn (array $m): string => ($m[0][0] === '"' || $m[0][0] === "'") ? '""' : '',
+            $js
+        );
     }
 
     /** @return array<string, array{string}> */
@@ -153,7 +157,7 @@ final class TvArquivosTest extends TestCase
         }
         $this->assertStringContainsString('.tv-fixos-rows-2 .tv-fixo', $css);
         // A letra encolhe quanto mais colunas.
-        preg_match_all('/\.tv-fixos-cols-([1-5])\s*\{\s*font-size:\s*([0-9.]+)em/', $css, $m);
+        preg_match_all('/\.tv-fixos-cols-([1-5])\.tv-fixos-rows-1 \.tv-fixo-conteudo\s*\{\s*font-size:\s*([0-9.]+)em/', $css, $m);
         $escalas = array_combine($m[1], array_map('floatval', $m[2]));
         $this->assertGreaterThan($escalas['2'], $escalas['1']);
         $this->assertGreaterThan($escalas['3'], $escalas['2']);
@@ -161,6 +165,29 @@ final class TvArquivosTest extends TestCase
         $this->assertGreaterThan($escalas['5'], $escalas['4']);
         $this->assertStringContainsString('-webkit-line-clamp', $css, 'Texto longo não estoura o cartão.');
         $this->assertStringNotContainsString('-webkit-line-clamp: 0', $css);
+    }
+
+    public function testDesignDosCartoesDaFaixa(): void
+    {
+        $css = (string) preg_replace('#/\*.*?\*/#s', '', $this->ler('assets/tv.css'));
+        $regra = static function (string $seletor) use ($css): string {
+            preg_match('/(?:^|\})\s*' . preg_quote($seletor, '/') . '\s*\{([^}]*)\}/m', $css, $m);
+
+            return $m[1] ?? '';
+        };
+
+        // Sem moldura lateral esquerda: nenhum border-left nos cartões fixos.
+        $this->assertStringNotContainsString('border-left', $regra('.tv-fixo'));
+        $this->assertStringNotContainsString('border-left', $css, 'Cartões sem a moldura lateral esquerda.');
+        // Sombra suave nos cartões (fixos e carrossel).
+        $this->assertMatchesRegularExpression('/\.tv-corpo,\s*\.tv-fixo\s*\{[^}]*box-shadow:/', $css);
+        // A faixa não tem fundo nem linha de separação: os cartões ficam sobre o mesmo fundo do carrossel.
+        $faixa = $regra('.tv-fixos');
+        $this->assertStringNotContainsString('background', $faixa);
+        $this->assertDoesNotMatchRegularExpression('/(^|[;\s])border(-[a-z-]+)?\s*:/', $faixa, 'Sem linha de separação (box-sizing: border-box é permitido).');
+        // A hora é sempre branca, independente da cor do condomínio.
+        $this->assertMatchesRegularExpression('/\.tv-relogio\s*\{[^}]*color:\s*#FFFFFF/i', $css);
+        $this->assertStringNotContainsString('tv-primaria-texto', $css, 'O texto da barra não depende mais da cor do condomínio.');
     }
 
     public function testCssDaTvTemAFonteLocalEDestaqueUrgente(): void

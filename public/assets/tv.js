@@ -19,6 +19,11 @@
     'use strict';
 
     var TIPOS = { comum: 'Comum', fixo: 'Fixo', urgente: 'Urgente', manutencao: 'Manutenção', assembleia: 'Assembleia' };
+    // Ícones das etiquetas da faixa (mesmos desenhos dos painéis). Caminhos fixos no código, nunca vindos do servidor.
+    var ICONES = {
+        urgente: ['M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z', 'M12 9v4', 'M12 17h.01'],
+        fixo: ['M12 17v5', 'M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z']
+    };
     var BASE_MS = 12000;           // tempo mínimo de cada aviso
     var POR_CARACTERE_MS = 40;     // mais texto, mais tempo (até EXTRA_MAX_MS)
     var EXTRA_MAX_MS = 13000;
@@ -200,6 +205,26 @@
         return n;
     }
 
+    function criarIcone(tipo) {
+        var caminhos = ICONES[tipo];
+        if (!caminhos || !document.createElementNS) { return null; }
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2.4');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        for (var i = 0; i < caminhos.length; i++) {
+            var caminho = document.createElementNS(NS, 'path');
+            caminho.setAttribute('d', caminhos[i]);
+            svg.appendChild(caminho);
+        }
+        return svg;
+    }
+
     /** Desenha a faixa do topo com todos os avisos fixos/urgentes; só mexe no DOM quando algo mudou. */
     function atualizarFixos(lista) {
         var ass = '';
@@ -216,9 +241,15 @@
         for (var j = 0; j < lista.length; j++) {
             var dados = lista[j].dados;
             var cartao = criar('article', 'tv-fixo tv-fixo-' + dados.tipo);
-            cartao.appendChild(criar('span', 'tv-fixo-tipo', TIPOS[dados.tipo] || dados.tipo));
-            cartao.appendChild(criar('h2', 'tv-fixo-titulo', dados.titulo));
-            if (dados.corpo) { cartao.appendChild(criar('p', 'tv-fixo-texto', dados.corpo)); }
+            var conteudo = criar('div', 'tv-fixo-conteudo');
+            var etiqueta = criar('span', 'tv-fixo-tipo');
+            var icone = criarIcone(dados.tipo);
+            if (icone) { etiqueta.appendChild(icone); }
+            etiqueta.appendChild(criar('span', '', TIPOS[dados.tipo] || dados.tipo));
+            conteudo.appendChild(etiqueta);
+            conteudo.appendChild(criar('h2', 'tv-fixo-titulo', dados.titulo));
+            if (dados.corpo) { conteudo.appendChild(criar('p', 'tv-fixo-texto', dados.corpo)); }
+            cartao.appendChild(conteudo);
             el.fixos.appendChild(cartao);
         }
     }
