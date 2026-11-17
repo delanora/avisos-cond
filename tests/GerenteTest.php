@@ -356,7 +356,7 @@ final class GerenteTest extends AppHttpTestCase
 
     // ---------- Prévia na TV ----------
 
-    public function testPreviaMostraOAvisoComOTemaDoCondominio(): void
+    public function testPreviaMostraOAvisoDoCarrosselComOTemaDoCondominio(): void
     {
         $this->entrar();
         $id = $this->criarAviso();
@@ -364,22 +364,66 @@ final class GerenteTest extends AppHttpTestCase
         $r = $this->get($this->base() . "/avisos/{$id}/previa");
 
         $this->assertSame(200, $r->status);
-        $this->assertStringContainsString('class="tv tv-manutencao"', $r->body);
+        $this->assertStringContainsString('<div class="tv">', $r->body, 'Aviso de carrossel: tela sem a faixa do topo.');
+        $this->assertStringNotContainsString('tv-fixos', $r->body);
         $this->assertStringContainsString('<h2 class="tv-titulo">Falta de água</h2>', $r->body);
         $this->assertStringContainsString('Manutenção', $r->body);
         $this->assertStringContainsString('Desculpe o transtorno.', $r->body);
+        $this->assertStringContainsString('href="/assets/tv.css"', $r->body);
         $this->assertStringContainsString("href=\"{$this->base()}/tema.css\"", $r->body);
         $this->assertStringContainsString('/assets/logo-embracore.svg', $r->body, 'Sem logo própria, usa a padrão.');
         $this->assertMatchesRegularExpression('#<span class="tv-relogio">\d{2}:\d{2}</span>#', $r->body);
         $this->assertStringNotContainsString('desativado', $r->body);
     }
 
-    public function testPreviaDeAvisoUrgenteTemDestaque(): void
+    public function testPreviaDeAvisoUrgenteMostraNaFaixaDoTopoSoComTexto(): void
     {
         $this->entrar();
-        $id = $this->criarAviso(['tipo' => 'urgente']);
+        $id = $this->criarAviso(['tipo' => 'urgente', 'titulo' => 'Vazamento']);
 
-        $this->assertStringContainsString('class="tv tv-urgente"', $this->get($this->base() . "/avisos/{$id}/previa")->body);
+        $corpo = $this->get($this->base() . "/avisos/{$id}/previa")->body;
+
+        $this->assertStringContainsString('<div class="tv tv-com-fixos tv-sem-carrossel">', $corpo);
+        $this->assertStringContainsString('class="tv-fixos tv-fixos-cols-1 tv-fixos-rows-1"', $corpo);
+        $this->assertStringContainsString('<article class="tv-fixo tv-fixo-urgente">', $corpo);
+        $this->assertStringContainsString('<h2 class="tv-fixo-titulo">Vazamento</h2>', $corpo);
+        $this->assertStringContainsString('Os avisos em carrossel aparecem aqui', $corpo);
+        $this->assertStringContainsString('Aviso urgente: fica sempre à vista na faixa do topo da TV', $corpo);
+        $this->assertStringNotContainsString('class="tv-corpo', $corpo, 'Urgente não entra no carrossel.');
+    }
+
+    public function testPreviaDeAvisoFixoTambemFicaNaFaixaEAvisaQueAMidiaNaoApareceNaTv(): void
+    {
+        $this->entrar();
+        $id = $this->criarAviso(['tipo' => 'fixo', 'titulo' => 'Regras da piscina'], ['midia' => Amostras::arquivo('f.png', Amostras::png())]);
+
+        $corpo = $this->get($this->base() . "/avisos/{$id}/previa")->body;
+
+        $this->assertStringContainsString('<article class="tv-fixo tv-fixo-fixo">', $corpo);
+        $this->assertStringContainsString('Aviso fixo: fica sempre à vista', $corpo);
+        $this->assertStringContainsString('A foto ou o vídeo deste aviso não são exibidos na TV.', $corpo);
+        $this->assertStringNotContainsString('class="tv-midia"', $corpo);
+    }
+
+    public function testFormularioOferecaOTipoFixoEExplicaAFaixaDoTopo(): void
+    {
+        $this->entrar();
+
+        $corpo = $this->get($this->base() . '/avisos/novo')->body;
+
+        $this->assertMatchesRegularExpression('/name="tipo" value="fixo"/', $corpo);
+        $this->assertStringContainsString('faixa no topo da TV', $corpo);
+        $this->assertStringContainsString('só aparecem em avisos do carrossel', $corpo);
+    }
+
+    public function testCriarEListarAvisoFixoMostraEtiquetaPropria(): void
+    {
+        $this->entrar();
+
+        $this->criarAviso(['tipo' => 'fixo', 'titulo' => 'Horário da portaria']);
+
+        $this->assertSame('fixo', $this->pdo->query('SELECT tipo FROM avisos')->fetchColumn());
+        $this->assertStringContainsString('etiqueta-tipo-fixo">Fixo<', $this->get($this->base() . '/avisos')->body);
     }
 
     public function testPreviaComImagemEComVideo(): void

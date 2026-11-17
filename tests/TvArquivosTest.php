@@ -84,6 +84,22 @@ final class TvArquivosTest extends TestCase
         $this->assertStringNotContainsString('innerHTML', $this->codigo($js));
     }
 
+    public function testTiposDoJavaScriptEstaoEmSincroniaComOsDoPhp(): void
+    {
+        $js = $this->ler('assets/tv.js');
+
+        // Todos os tipos conhecidos pelo painel têm rótulo na TV.
+        foreach (array_keys(\App\Services\AvisoService::TIPOS) as $tipo) {
+            $this->assertMatchesRegularExpression('/\b' . $tipo . ':\s*\'/', $js, "tv.js não tem o rótulo do tipo '{$tipo}'.");
+        }
+        // Os tipos da faixa do topo são os mesmos nos dois lados.
+        foreach (\App\Services\AvisoService::TIPOS_FIXOS as $tipo) {
+            $this->assertStringContainsString("aviso.tipo === '{$tipo}'", $js, "ehFixo() do tv.js não trata '{$tipo}'.");
+        }
+        $this->assertCount(2, \App\Services\AvisoService::TIPOS_FIXOS);
+        $this->assertSame([], array_diff(\App\Services\AvisoService::TIPOS_FIXOS, array_keys(\App\Services\AvisoService::TIPOS)));
+    }
+
     public function testServiceWorkerTemEscopoSoDaTvENaoGuardaErros(): void
     {
         $sw = $this->ler('tv/sw.js');
@@ -127,13 +143,35 @@ final class TvArquivosTest extends TestCase
         $this->assertStringContainsString('(min-aspect-ratio: 16/9)', $css, 'TVs mais largas que 16:9 limitam pela altura.');
     }
 
+    public function testFaixaDeFixosOcupa40PorCentoDaAlturaEDivideEntreOsAvisos(): void
+    {
+        $css = $this->ler('assets/tv.css');
+
+        $this->assertMatchesRegularExpression('/\.tv-fixos\s*\{[^}]*flex:\s*0 0 40%/', $css, 'A faixa tem altura fixa de 40% da tela.');
+        foreach ([1, 2, 3, 4, 5] as $colunas) {
+            $this->assertStringContainsString(".tv-fixos-cols-{$colunas}", $css, "Disposição com {$colunas} coluna(s).");
+        }
+        $this->assertStringContainsString('.tv-fixos-rows-2 .tv-fixo', $css);
+        // A letra encolhe quanto mais colunas.
+        preg_match_all('/\.tv-fixos-cols-([1-5])\s*\{\s*font-size:\s*([0-9.]+)em/', $css, $m);
+        $escalas = array_combine($m[1], array_map('floatval', $m[2]));
+        $this->assertGreaterThan($escalas['2'], $escalas['1']);
+        $this->assertGreaterThan($escalas['3'], $escalas['2']);
+        $this->assertGreaterThan($escalas['4'], $escalas['3']);
+        $this->assertGreaterThan($escalas['5'], $escalas['4']);
+        $this->assertStringContainsString('-webkit-line-clamp', $css, 'Texto longo não estoura o cartão.');
+        $this->assertStringNotContainsString('-webkit-line-clamp: 0', $css);
+    }
+
     public function testCssDaTvTemAFonteLocalEDestaqueUrgente(): void
     {
         $css = $this->ler('assets/tv.css');
 
         preg_match('#url\("(/assets/[^"]+)"\)#', $css, $m);
         $this->assertFileExists(dirname(__DIR__) . '/public' . $m[1]);
-        $this->assertStringContainsString('.tv-urgente', $css);
+        $this->assertStringContainsString('.tv-fixos', $css, 'Faixa do topo para avisos fixos e urgentes.');
+        $this->assertStringContainsString('.tv-fixo-urgente', $css);
+        $this->assertStringContainsString('.tv-sem-carrossel', $css);
         $this->assertStringContainsString('.tv-modo-relogio', $css);
         $this->assertStringContainsString('.tv-modo-ocioso', $css);
     }
@@ -141,10 +179,8 @@ final class TvArquivosTest extends TestCase
     public function testNaoHaMaisEstilosDaTvDuplicadosNoCssDoPainel(): void
     {
         $app = (string) preg_replace('#/\*.*?\*/#s', '', $this->ler('assets/app.css'));
-        // A moldura da prévia (só do painel) pode ajustar a cor da borda do aviso urgente; o resto fica em tv.css.
-        $app = str_replace('.tv-moldura .tv-urgente', '.tv-moldura', $app);
 
-        foreach (['.tv-topo', '.tv-titulo', '.tv-texto', '.tv-urgente', '.tv-midia', '.tv-corpo'] as $classe) {
+        foreach (['.tv-topo', '.tv-titulo', '.tv-texto', '.tv-fixos', '.tv-fixo', '.tv-midia', '.tv-corpo'] as $classe) {
             $this->assertStringNotContainsString($classe, $app, "{$classe} fica só em tv.css.");
         }
     }

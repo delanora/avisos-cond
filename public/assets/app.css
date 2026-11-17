@@ -500,6 +500,7 @@ input[type="color"] { display: block; width: 100%; height: 46px; padding: 4px; b
 .aparencia + .campo { margin-top: 1.25rem; }
 
 .etiqueta-tipo-urgente { color: #8F1B12; background: #FCE3E0; }
+.etiqueta-tipo-fixo { color: #3A3F8A; background: #E4E6FB; }
 .etiqueta-tipo-manutencao { color: #7A4B06; background: #FDE9C8; }
 .etiqueta-tipo-assembleia { color: #1E4A93; background: #DCE8FB; }
 .etiqueta-situacao-no-ar { color: var(--ok-texto); background: var(--ok-fundo); }
@@ -515,7 +516,6 @@ input[type="color"] { display: block; width: 100%; height: 46px; padding: 4px; b
     font-size: 10px; font-size: 1.0417cqw;
     border: 0.8em solid #1D2125; border-radius: 1.6em;
 }
-.tv-moldura .tv-urgente { border-color: #8F1B12; }
 
 @media (max-width: 768px) {
     .seletor { order: 4; flex: 1 0 100%; }

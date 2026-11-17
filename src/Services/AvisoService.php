@@ -18,10 +18,14 @@ final class AvisoService
 {
     public const TIPOS = [
         'comum' => 'Comum',
+        'fixo' => 'Fixo',
         'urgente' => 'Urgente',
         'manutencao' => 'Manutenção',
         'assembleia' => 'Assembleia',
     ];
+
+    /** Tipos que ficam sempre visíveis na faixa do topo da TV (só texto), em vez de entrar no carrossel. */
+    public const TIPOS_FIXOS = ['urgente', 'fixo'];
 
     public const CORPO_MAX = 2000;
 

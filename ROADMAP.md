@@ -75,7 +75,7 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] `/tv/{token}`: página com rotação, relógio, logo e cores; modos sem avisos e só relógio (2026-11-17)
 - [x] `/tv/{token}/state` (JSON com `version`, avisos, `inicio_em`/`fim_em`, `server_time`) e heartbeat (`ultimo_ping`) (2026-11-17)
 - [x] `/tv/{token}/media/{arquivo}` com validação de token, só mídias de avisos visíveis, e `X-Accel-Redirect` (2026-11-17)
-- [x] Avisos `urgente` com destaque em tela cheia e prioridade na rotação (2026-11-17)
+- [x] Avisos `urgente` e novo tipo `fixo` em uma faixa fixa no topo da TV (40% da altura, dividida entre todos eles), com o carrossel dos demais avisos abaixo; substitui a regra "urgente esconde os outros" (migration 005) (2026-11-17)
 - [x] Rate limit de tokens inválidos em `/tv/*`; token inválido → 404 (2026-11-17)
 - [x] Service worker (cache de HTML, assets, estado e mídias, com Range) e ajuste de relógio offline, verificados no Chromium real com o servidor derrubado (2026-11-17)
 - [x] Mascaramento do token no log do Nginx e `Referrer-Policy: no-referrer` (2026-11-17)
@@ -154,4 +154,5 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: VM: `99-avisos.ini` no PHP-FPM (upload 12M/post 14M) e `location /media/` interno no Nginx com `MEDIA_ACCEL=/media/` no `.env`.
 - 2026-11-17: bloco 1.6 decidiu: token de 31 símbolos (o AGENTS dizia 32, mas 26 letras - I, L, O + 8 dígitos = 31), guardado em maiúsculas e aceito em qualquer caixa (migration 004); mídia da TV pelo **nome do arquivo** (e não pelo id do aviso); o `/state` inclui avisos que começam em até 24 h (para exibir na hora certa offline); com urgente no ar, só os urgentes são exibidos; condomínio desativado = só o relógio; o Service Worker fica em `/tv/sw.js` (escopo `/tv/`, não cobre o painel); a TV se recarrega a cada 6 h e quando o JS/CSS muda; `APP_URL` do `.env` passou a ser `http://172.16.31.116` (é o endereço mostrado para digitar na TV).
 - 2026-11-17: VM: `/etc/nginx/conf.d/avisos-log.conf` (log sem o token da TV) e `access_log` no site. Em HTTP puro o Service Worker não existe, então o modo offline só vale em HTTPS.
+- 2026-11-17: a pedido, avisos urgentes e fixos passaram a ocupar uma faixa reservada de 40% da altura no topo da TV, mostrados todos juntos (a letra encolhe com a quantidade), com o carrossel abaixo. Decisões minhas a confirmar: tamanho da faixa 40%; faixa só com texto (foto/vídeo só no carrossel); "fixo" é um tipo novo (e não uma opção de qualquer tipo); com 7 ou mais avisos a faixa fica em 2 linhas de até 5 colunas.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.

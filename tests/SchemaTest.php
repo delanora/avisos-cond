@@ -161,6 +161,17 @@ final class SchemaTest extends DatabaseTestCase
         $this->aviso($this->condominio(), ['ini' => '2026-01-02 00:00:00+00', 'fim' => '2026-01-01 00:00:00+00']);
     }
 
+    public function testTodosOsTiposDeAvisoSaoAceitosInclusiveFixo(): void
+    {
+        $c = $this->condominio();
+
+        foreach (['comum', 'urgente', 'fixo', 'manutencao', 'assembleia'] as $tipo) {
+            $this->aviso($c, ['tipo' => $tipo]);
+        }
+
+        $this->assertSame(5, $this->contar('avisos'));
+    }
+
     public function testAvisoTipoInvalidoEhRejeitado(): void
     {
         $this->expectException(PDOException::class);

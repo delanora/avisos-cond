@@ -12,17 +12,16 @@
  *    aparelho não faz avisos entrarem/saírem no horário errado.
  *  - Sem internet, continua com o último estado guardado (localStorage e Service Worker) e decide pelo
  *    relógio corrigido: o que venceu sai da tela e o agendado entra na hora certa.
- *  - Só redesenha quando "version" muda. Aviso urgente tem prioridade: enquanto existir algum no ar,
- *    só os urgentes são exibidos.
+ *  - Só redesenha quando "version" muda. Avisos URGENTES e FIXOS ficam numa faixa no topo (40% da altura),
+ *    todos ao mesmo tempo, dividindo a faixa; os demais passam em carrossel abaixo dela.
  */
 (function () {
     'use strict';
 
-    var TIPOS = { comum: 'Comum', urgente: 'Urgente', manutencao: 'Manutenção', assembleia: 'Assembleia' };
+    var TIPOS = { comum: 'Comum', fixo: 'Fixo', urgente: 'Urgente', manutencao: 'Manutenção', assembleia: 'Assembleia' };
     var BASE_MS = 12000;           // tempo mínimo de cada aviso
     var POR_CARACTERE_MS = 40;     // mais texto, mais tempo (até EXTRA_MAX_MS)
     var EXTRA_MAX_MS = 13000;
-    var URGENTE_EXTRA_MS = 3000;
     var VIDEO_MAX_MS = 60000;      // se um vídeo não terminar (erro/travou), segue depois disso
     var TROCA_MS = 350;            // duração do fade entre avisos
     var RECARGA_MS = 6 * 3600000;  // recarrega a página a cada 6 h (libera memória; pega novas versões do código)
@@ -44,22 +43,49 @@
         return lista;
     }
 
-    /** Avisos que devem aparecer agora. Com algum urgente no ar, só os urgentes. */
-    function selecionar(interpretados, agoraMs) {
-        var ativos = [];
-        var urgentes = [];
+    function ehFixo(aviso) {
+        return aviso.tipo === 'urgente' || aviso.tipo === 'fixo';
+    }
+
+    function noAr(a, agoraMs) {
+        return a.inicio <= agoraMs && agoraMs < a.fim;
+    }
+
+    /** Avisos fixos/urgentes no ar agora (todos aparecem ao mesmo tempo): urgentes primeiro, depois pelo início. */
+    function selecionarFixos(interpretados, agoraMs) {
+        var lista = [];
         for (var i = 0; i < interpretados.length; i++) {
             var a = interpretados[i];
-            if (a.inicio <= agoraMs && agoraMs < a.fim) {
-                ativos.push(a);
-                if (a.dados.tipo === 'urgente') {
-                    urgentes.push(a);
-                }
-            }
+            if (ehFixo(a.dados) && noAr(a, agoraMs)) { lista.push(a); }
         }
-        var lista = urgentes.length > 0 ? urgentes : ativos;
+        lista.sort(function (x, y) {
+            var ux = x.dados.tipo === 'urgente' ? 0 : 1;
+            var uy = y.dados.tipo === 'urgente' ? 0 : 1;
+            return (ux - uy) || (x.inicio - y.inicio) || (x.id - y.id);
+        });
+        return lista;
+    }
+
+    /** Avisos do carrossel no ar agora (todos os que não são fixos/urgentes), pela ordem de início. */
+    function selecionarCarrossel(interpretados, agoraMs) {
+        var lista = [];
+        for (var i = 0; i < interpretados.length; i++) {
+            var a = interpretados[i];
+            if (!ehFixo(a.dados) && noAr(a, agoraMs)) { lista.push(a); }
+        }
         lista.sort(function (x, y) { return (x.inicio - y.inicio) || (x.id - y.id); });
         return lista;
+    }
+
+    /**
+     * Como dividir a faixa entre n avisos: até 3 numa linha; de 4 a 6 em duas linhas (2 ou 3 colunas);
+     * acima disso, duas linhas com mais colunas (a letra encolhe, a faixa continua do mesmo tamanho).
+     */
+    function disposicao(n) {
+        if (n <= 0) { return { colunas: 0, linhas: 0 }; }
+        if (n <= 3) { return { colunas: n, linhas: 1 }; }
+        if (n === 4) { return { colunas: 2, linhas: 2 }; }
+        return { colunas: Math.min(Math.ceil(n / 2), 5), linhas: 2 };
     }
 
     /** Quanto tempo o aviso fica na tela (null = vídeo: até terminar). */
@@ -68,7 +94,7 @@
             return null;
         }
         var extra = Math.min((aviso.corpo || '').length * POR_CARACTERE_MS, EXTRA_MAX_MS);
-        return BASE_MS + extra + (aviso.tipo === 'urgente' ? URGENTE_EXTRA_MS : 0);
+        return BASE_MS + extra;
     }
 
     function doisDigitos(n) { return (n < 10 ? '0' : '') + n; }
@@ -81,7 +107,10 @@
 
     window.TvLogica = {
         interpretar: interpretar,
-        selecionar: selecionar,
+        ehFixo: ehFixo,
+        selecionarFixos: selecionarFixos,
+        selecionarCarrossel: selecionarCarrossel,
+        disposicao: disposicao,
         duracaoMs: duracaoMs,
         horaBrasilia: horaBrasilia
     };
@@ -100,17 +129,21 @@
 
     var el = {
         tv: document.getElementById('tv'),
+        fixos: document.getElementById('tv-fixos'),
         corpo: document.getElementById('tv-corpo'),
         logo: document.getElementById('tv-logo'),
         relogio: document.getElementById('tv-relogio'),
         ociosoRelogio: document.getElementById('tv-ocioso-relogio'),
+        ociosoTexto: document.getElementById('tv-ocioso-texto'),
         offline: document.getElementById('tv-offline')
     };
 
     var estado = null;          // último estado recebido
     var interpretados = [];     // avisos do estado com datas já convertidas
     var deslocamentoMs = 0;     // hora do servidor - hora do aparelho
-    var atual = null;           // aviso em tela
+    var atual = null;           // aviso do carrossel em tela
+    var assinaturaFixos = '';   // identifica o que a faixa do topo mostra (para só redesenhar quando muda)
+    var temFixos = false;
     var inicioDoAvisoMs = 0;
     var videoTerminou = false;
     var trocando = false;
@@ -148,9 +181,16 @@
         if (url && el.logo.getAttribute('src') !== url) { el.logo.setAttribute('src', url); }
     }
 
+    /** modo: 'aviso' (carrossel), 'ocioso' (nada no ar), 'semCarrossel' (só a faixa do topo) ou 'relogio' (só o relógio). */
     function definirModo(modo) {
-        el.tv.className = 'tv' + (modo === 'ocioso' ? ' tv-modo-ocioso' : '') + (modo === 'relogio' ? ' tv-modo-relogio' : '') +
-            (modo === 'aviso' && atual && atual.dados.tipo === 'urgente' ? ' tv-urgente' : '');
+        var classe = 'tv';
+        if (modo === 'ocioso') { classe += ' tv-modo-ocioso'; }
+        if (modo === 'relogio') { classe += ' tv-modo-relogio'; }
+        if (temFixos && modo !== 'relogio') { classe += ' tv-com-fixos'; }
+        if (modo === 'semCarrossel') { classe += ' tv-sem-carrossel'; }
+        if (el.tv.className !== classe) { el.tv.className = classe; }
+        var texto = modo === 'semCarrossel' ? 'Sem outros avisos no momento' : 'Nenhum aviso no momento';
+        if (el.ociosoTexto.textContent !== texto) { el.ociosoTexto.textContent = texto; }
     }
 
     function criar(tag, classe, texto) {
@@ -158,6 +198,29 @@
         if (classe) { n.className = classe; }
         if (texto !== undefined && texto !== null) { n.textContent = texto; }
         return n;
+    }
+
+    /** Desenha a faixa do topo com todos os avisos fixos/urgentes; só mexe no DOM quando algo mudou. */
+    function atualizarFixos(lista) {
+        var ass = '';
+        for (var i = 0; i < lista.length; i++) { ass += lista[i].id + ','; }
+        temFixos = lista.length > 0;
+        if (ass === assinaturaFixos) { return; }
+        assinaturaFixos = ass;
+
+        while (el.fixos.firstChild) { el.fixos.removeChild(el.fixos.firstChild); }
+        if (!temFixos) { el.fixos.className = 'tv-fixos'; return; }
+
+        var d = disposicao(lista.length);
+        el.fixos.className = 'tv-fixos tv-fixos-cols-' + d.colunas + ' tv-fixos-rows-' + d.linhas;
+        for (var j = 0; j < lista.length; j++) {
+            var dados = lista[j].dados;
+            var cartao = criar('article', 'tv-fixo tv-fixo-' + dados.tipo);
+            cartao.appendChild(criar('span', 'tv-fixo-tipo', TIPOS[dados.tipo] || dados.tipo));
+            cartao.appendChild(criar('h2', 'tv-fixo-titulo', dados.titulo));
+            if (dados.corpo) { cartao.appendChild(criar('p', 'tv-fixo-texto', dados.corpo)); }
+            el.fixos.appendChild(cartao);
+        }
     }
 
     function montarAviso(a) {
@@ -222,20 +285,24 @@
         if (el.ociosoRelogio.textContent !== hora) { el.ociosoRelogio.textContent = hora; }
     }
 
-    /** Executado a cada segundo: relógio, o que está no ar e hora de trocar de aviso. */
+    /** Executado a cada segundo: relógio, faixa do topo, o que está no carrossel e hora de trocar de aviso. */
     function ciclo() {
         atualizarRelogio();
 
         if (!estado || estado.bloqueado || estado.revogado) {
             atual = null;
+            atualizarFixos([]);
             definirModo('relogio');
             return;
         }
 
-        var lista = selecionar(interpretados, agora());
+        var t = agora();
+        atualizarFixos(selecionarFixos(interpretados, t));
+        var lista = selecionarCarrossel(interpretados, t);
+
         if (lista.length === 0) {
             atual = null;
-            definirModo('ocioso');
+            definirModo(temFixos ? 'semCarrossel' : 'ocioso');
             return;
         }
         if (trocando) { return; }
@@ -245,11 +312,12 @@
             if (atual && lista[i].id === atual.id) { posicao = i; break; }
         }
 
-        if (posicao === -1) { // nada em tela, ou o aviso saiu do ar (venceu, foi desativado, apareceu urgente)
+        if (posicao === -1) { // nada em tela, ou o aviso saiu do ar (venceu, foi desativado)
             mostrar(lista[0]);
             return;
         }
 
+        definirModo('aviso');
         var duracao = duracaoMs(atual.dados);
         var passou = Date.now() - inicioDoAvisoMs;
         var acabou = duracao === null ? (videoTerminou || passou >= VIDEO_MAX_MS) : passou >= duracao;
@@ -272,7 +340,8 @@
         aplicarTema(novo.tema);
         aplicarLogo(novo.logo);
         preCarregarEMLimpar(novo);
-        atual = null; // força reavaliar o que mostrar
+        atual = null;          // força reavaliar o que mostrar
+        assinaturaFixos = '#';  // e redesenhar a faixa do topo
         ciclo();
     }
 
@@ -337,7 +406,8 @@
         var urls = [];
         for (var i = 0; i < (novo.avisos || []).length; i++) {
             var m = novo.avisos[i].midia;
-            if (m) { urls.push(m.url); }
+            // Avisos fixos/urgentes mostram só texto: a mídia deles não é usada, então não é guardada.
+            if (m && !ehFixo(novo.avisos[i])) { urls.push(m.url); }
         }
 
         // Guarda no cache os arquivos dos avisos atuais e futuros (o Service Worker intercepta e salva).

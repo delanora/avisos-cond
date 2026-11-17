@@ -26,7 +26,7 @@ Existem três "superfícies" no sistema:
 
 ### Painel do Gerente
 - Lista dos condomínios vinculados (1 ou N, só os ativos; lida do banco a cada requisição) e seletor para trocar de condomínio. Com um só condomínio, o gerente vai direto para os avisos.
-- CRUD de avisos com título, texto, imagem ou vídeo curto opcional (sem PDF) e tipo (comum, urgente, manutenção, assembleia). A lista mostra a situação de cada aviso: no ar, agendado, encerrado ou desativado.
+- CRUD de avisos com título, texto, imagem ou vídeo curto opcional (sem PDF) e tipo (comum, fixo, urgente, manutenção, assembleia). Fixo e urgente ficam sempre à vista na faixa do topo da TV (só texto); os demais passam em carrossel. A lista mostra a situação de cada aviso: no ar, agendado, encerrado ou desativado.
 - Cada aviso é criado individualmente para um condomínio (não há publicação em lote para vários).
 - Agendamento: data/hora de início e fim de exibição, com opção de recorrência.
 - Pré-visualização de como o aviso aparece na TV, com a logo e as cores do condomínio (aviso urgente em destaque).
@@ -279,7 +279,7 @@ O `cron.php` publica/expira avisos agendados e, na Fase 2, marca dispositivos of
 ### Como a TV funciona
 
 - A página consulta o servidor a cada 30-60 s (`TV_POLL_SECONDS`); cada consulta é o *heartbeat* do dispositivo (o painel mostra o último contato).
-- A rotação é feita na própria TV pelo horário corrigido do servidor, então um relógio errado no aparelho não faz avisos entrarem ou saírem na hora errada. Avisos urgentes têm prioridade e destaque em tela cheia; sem avisos, aparecem a logo e um relógio grande; se o condomínio estiver desativado, só o relógio.
+- A rotação é feita na própria TV pelo horário corrigido do servidor, então um relógio errado no aparelho não faz avisos entrarem ou saírem na hora errada. Avisos **urgentes** e **fixos** ficam numa faixa no topo da TV (sempre 40% da altura), todos ao mesmo tempo e dividindo o espaço (quanto mais avisos, menor cada um), só com texto; os demais avisos passam em carrossel abaixo da faixa. Sem avisos, aparecem a logo e um relógio grande; se o condomínio estiver desativado, só o relógio.
 - **Sem internet** a TV continua com o último conteúdo (Service Worker + armazenamento local) e decide o que mostrar pelo relógio: o que venceu sai, o agendado entra na hora certa. **O modo offline exige HTTPS** (o navegador só libera Service Worker em HTTPS); em HTTP puro a TV funciona, mas só online.
 - Token inválido ou revogado: página "não encontrada" sem detalhes, e excesso de tentativas com token inválido bloqueia o IP por um tempo.
 - O token fica mascarado no log de acesso do Nginx (`/etc/nginx/conf.d/avisos-log.conf`, ver abaixo).

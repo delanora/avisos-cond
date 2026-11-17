@@ -182,15 +182,19 @@ final class TvTest extends AppHttpTestCase
         $this->assertNotNull($this->pingDe(self::TOKEN));
     }
 
-    public function testAvisoUrgenteChegaNoEstadoParaOJsDarPrioridade(): void
+    public function testAvisosFixosEUrgentesChegamNoEstadoComSeuTipoParaAFaixaDoTopo(): void
     {
         $this->avisoTv($this->pdo, $this->a, 'Normal', -60, 3600);
         $this->avisoTv($this->pdo, $this->a, 'Urgente', -30, 3600, ['tipo' => 'urgente']);
+        $this->avisoTv($this->pdo, $this->a, 'Fixo', -20, 3600, ['tipo' => 'fixo']);
+        $this->avisoTv($this->pdo, $this->b, 'Fixo do outro condomínio', -20, 3600, ['tipo' => 'fixo']);
 
         $tipos = array_column($this->estado()['avisos'], 'tipo', 'titulo');
 
         $this->assertSame('urgente', $tipos['Urgente']);
+        $this->assertSame('fixo', $tipos['Fixo']);
         $this->assertSame('comum', $tipos['Normal']);
+        $this->assertArrayNotHasKey('Fixo do outro condomínio', $tipos, 'Fixo de outro condomínio nunca vai para esta TV.');
     }
 
     // ---------- Token inválido / revogado: sempre o mesmo 404 ----------

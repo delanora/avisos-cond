@@ -16,6 +16,10 @@
         <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/avisos/{{ aviso.id }}/editar">{{ ui.icone('editar', 18) }}Editar aviso</a>
     </div>
 
+    {% if aviso.tipo in ['urgente', 'fixo'] %}
+        <p class="alerta alerta-sucesso" role="status">{{ ui.icone('aviso', 20) }}<span>Aviso {{ aviso.tipo == 'urgente' ? 'urgente' : 'fixo' }}: fica sempre à vista na faixa do topo da TV, só com o texto. Se houver outros avisos fixos ou urgentes, a faixa é dividida entre eles.{% if aviso.midia %} A foto ou o vídeo deste aviso não são exibidos na TV.{% endif %}</span></p>
+    {% endif %}
+
     {% if not aviso.ativo %}
         <p class="alerta alerta-erro" role="status">{{ ui.icone('alerta', 20) }}<span>Este aviso está desativado e não aparece na TV.</span></p>
     {% endif %}

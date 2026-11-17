@@ -41,14 +41,14 @@
                         </label>
                     {% endfor %}
                 </div>
-                <p class="campo-ajuda">Avisos urgentes ganham destaque em tela cheia na TV.</p>
+                <p class="campo-ajuda"><strong>Fixo</strong> e <strong>Urgente</strong> ficam sempre à vista numa faixa no topo da TV, mostrando só o texto (o urgente em vermelho); com vários, a faixa é dividida entre eles. Os demais tipos passam em carrossel abaixo dela, com foto ou vídeo.</p>
                 {% if erros.tipo is defined %}<p class="erro-texto">{{ erros.tipo }}</p>{% endif %}
             </fieldset>
         </section>
 
         <section class="formulario-secao">
             <h2>Foto ou vídeo</h2>
-            <p class="secao-ajuda">Opcional. Imagem JPG, PNG ou WebP, ou vídeo MP4 curto. Não aceitamos PDF.</p>
+            <p class="secao-ajuda">Opcional. Imagem JPG, PNG ou WebP, ou vídeo MP4 curto. Não aceitamos PDF. A foto ou o vídeo só aparecem em avisos do carrossel (não em avisos Fixo ou Urgente).</p>
 
             {% if editando and aviso.midia %}
                 <div class="midia-atual">

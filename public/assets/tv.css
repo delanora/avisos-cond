@@ -56,13 +56,76 @@
 .tv-titulo { margin: 0 0 0.5em; font-size: 4.2em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; word-wrap: break-word; overflow-wrap: anywhere; }
 .tv-texto { margin: 0; font-size: 2em; line-height: 1.4; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; color: #3A4047; }
 
-/* Aviso urgente: destaque em tela cheia (cor própria, independente do tema do condomínio). */
-.tv-urgente { border-color: #8F1B12; }
-.tv-urgente .tv-topo { background: #B42318; color: #FFFFFF; }
-.tv-urgente .tv-corpo { background: #FDEDEB; }
-.tv-urgente .tv-tipo { color: #FFFFFF; background: #B42318; }
-.tv-urgente .tv-titulo { color: #8F1B12; font-size: 4.8em; }
-.tv-urgente .tv-texto { color: #4A1814; }
+/*
+ * Faixa de avisos FIXOS e URGENTES: ocupa sempre 40% da altura da tela (largura total), logo abaixo da barra
+ * do topo, enquanto houver algum aviso desses tipos no ar. Todos os avisos fixos/urgentes aparecem ao mesmo
+ * tempo, dividindo a faixa: quanto mais avisos, menor o espaço (e a letra) de cada um, mas a faixa não cresce.
+ * O JS define a disposição: tv-fixos-cols-N (colunas) e tv-fixos-rows-N (linhas, no máximo 2).
+ * Só texto (sem foto/vídeo). O carrossel dos demais avisos continua no espaço que sobra, abaixo da faixa.
+ */
+.tv-fixos {
+    display: none;
+    -webkit-flex: 0 0 40%; flex: 0 0 40%;
+    -webkit-flex-wrap: wrap; flex-wrap: wrap;
+    -webkit-align-content: stretch; align-content: stretch;
+    box-sizing: border-box;
+    padding: 0.7em 1.9em;
+    overflow: hidden;
+    background: #F3F2EE;
+    border-bottom: 0.3em solid #00A67E; border-bottom-color: var(--tv-primaria, #00A67E);
+}
+.tv-com-fixos .tv-fixos { display: -webkit-flex; display: flex; }
+
+/* A letra encolhe conforme o número de colunas e de linhas (os dois fatores se multiplicam). */
+.tv-fixos-cols-1 { font-size: 1em; }
+.tv-fixos-cols-2 { font-size: 0.85em; }
+.tv-fixos-cols-3 { font-size: 0.7em; }
+.tv-fixos-cols-4 { font-size: 0.6em; }
+.tv-fixos-cols-5 { font-size: 0.5em; }
+.tv-fixos-rows-2 .tv-fixo { font-size: 0.8em; }
+
+.tv-fixo {
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    -webkit-justify-content: center; justify-content: center;
+    box-sizing: border-box;
+    min-width: 0;
+    margin: 0.5em;
+    padding: 0 1.6em;
+    overflow: hidden;
+    background: #FFFFFF;
+    border-left: 0.6em solid #202124; border-left-color: var(--tv-secundaria, #202124);
+    border-radius: 1em;
+}
+.tv-fixos-cols-1 .tv-fixo { -webkit-flex: 0 0 calc(100% - 1em); flex: 0 0 calc(100% - 1em); }
+.tv-fixos-cols-2 .tv-fixo { -webkit-flex: 0 0 calc(50% - 1em); flex: 0 0 calc(50% - 1em); }
+.tv-fixos-cols-3 .tv-fixo { -webkit-flex: 0 0 calc(33.333% - 1em); flex: 0 0 calc(33.333% - 1em); }
+.tv-fixos-cols-4 .tv-fixo { -webkit-flex: 0 0 calc(25% - 1em); flex: 0 0 calc(25% - 1em); }
+.tv-fixos-cols-5 .tv-fixo { -webkit-flex: 0 0 calc(20% - 1em); flex: 0 0 calc(20% - 1em); }
+.tv-fixos-rows-1 .tv-fixo { height: calc(100% - 1em); }
+.tv-fixos-rows-2 .tv-fixo { height: calc(50% - 1em); }
+
+.tv-fixo-tipo { display: block; margin: 0 0 0.45em; font-size: 1.15em; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #5B6472; }
+.tv-fixo-titulo { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin: 0 0 0.3em; overflow: hidden; font-size: 2.9em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; word-wrap: break-word; overflow-wrap: anywhere; }
+.tv-fixo-texto { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; margin: 0; overflow: hidden; font-size: 1.7em; line-height: 1.3; white-space: pre-line; word-wrap: break-word; overflow-wrap: anywhere; color: #3A4047; }
+
+/* Urgente: vermelho, independente do tema do condomínio. */
+.tv-fixo-urgente { background: #FDEDEB; border-left-color: #B42318; }
+.tv-fixo-urgente .tv-fixo-tipo { color: #B42318; }
+.tv-fixo-urgente .tv-fixo-titulo { color: #8F1B12; }
+.tv-fixo-urgente .tv-fixo-texto { color: #4A1814; }
+
+/* Com a faixa do topo ativa, o carrossel usa letras e mídia menores para caber no espaço que sobra. */
+.tv-com-fixos .tv-corpo { overflow: hidden; padding: 1.2em 3em; }
+.tv-com-fixos .tv-tipo { margin-bottom: 0.6em; font-size: 1.1em; }
+.tv-com-fixos .tv-titulo { font-size: 3.1em; }
+.tv-com-fixos .tv-texto { font-size: 1.6em; }
+.tv-com-fixos .tv-midia img, .tv-com-fixos .tv-midia video { max-height: 18em; }
+/* Só avisos fixos/urgentes no ar: o espaço de baixo mostra o relógio, sem barra repetida. */
+.tv-com-fixos .tv-ocioso-relogio { font-size: 7em; }
+.tv-com-fixos .tv-ocioso-texto { margin-top: 0.4em; font-size: 1.8em; }
+.tv-sem-carrossel .tv-corpo { display: none; }
+.tv-sem-carrossel .tv-ocioso { display: -webkit-flex; display: flex; }
 
 /* Sem avisos no momento: logo e relógio grande. */
 .tv-ocioso { display: none; -webkit-flex: 1; flex: 1; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; text-align: center; }

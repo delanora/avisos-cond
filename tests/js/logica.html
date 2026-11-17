@@ -26,51 +26,85 @@
     }
     function ids(lista) { var r = []; for (var i = 0; i < lista.length; i++) { r.push(lista[i].id); } return r; }
 
-    teste('TvLogica foi exposta', !!L && !!L.selecionar && !!L.duracaoMs && !!L.horaBrasilia && !!L.interpretar);
+    teste('TvLogica foi exposta', !!L && !!L.selecionarFixos && !!L.selecionarCarrossel && !!L.disposicao && !!L.duracaoMs && !!L.horaBrasilia && !!L.interpretar && !!L.ehFixo);
 
     var T = function (s) { return Date.parse(s); };
     var avisos = L.interpretar([
         aviso(1, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
-        aviso(2, 'comum', '2026-11-16T11:00:00Z', '2026-11-16T13:00:00Z'),
+        aviso(2, 'manutencao', '2026-11-16T11:00:00Z', '2026-11-16T13:00:00Z'),
         aviso(3, 'urgente', '2026-11-16T11:30:00Z', '2026-11-16T11:45:00Z'),
-        aviso(4, 'comum', '2026-11-16T14:00:00Z', '2026-11-16T15:00:00Z')
+        aviso(4, 'assembleia', '2026-11-16T14:00:00Z', '2026-11-16T15:00:00Z'),
+        aviso(5, 'fixo', '2026-11-16T09:00:00Z', '2026-11-16T14:30:00Z')
     ]);
 
-    // ----- selecionar -----
-    igual('antes de tudo: nada no ar', ids(L.selecionar(avisos, T('2026-11-16T09:59:59Z'))), []);
-    igual('no instante exato do início o aviso já entra', ids(L.selecionar(avisos, T('2026-11-16T10:00:00Z'))), [1]);
-    igual('dois avisos sobrepostos, ordenados pelo início', ids(L.selecionar(avisos, T('2026-11-16T11:10:00Z'))), [1, 2]);
-    igual('urgente no ar: só os urgentes aparecem', ids(L.selecionar(avisos, T('2026-11-16T11:40:00Z'))), [3]);
-    igual('fim do urgente: voltam os normais', ids(L.selecionar(avisos, T('2026-11-16T11:45:00Z'))), [1, 2]);
-    igual('no instante exato do fim o aviso já sai', ids(L.selecionar(avisos, T('2026-11-16T12:00:00Z'))), [2]);
-    igual('entre avisos: nada no ar', ids(L.selecionar(avisos, T('2026-11-16T13:30:00Z'))), []);
-    igual('aviso futuro entra na hora certa', ids(L.selecionar(avisos, T('2026-11-16T14:30:00Z'))), [4]);
-    igual('lista vazia', ids(L.selecionar(L.interpretar([]), T('2026-11-16T11:00:00Z'))), []);
+    // ----- quem é fixo -----
+    teste('urgente é fixo', L.ehFixo({ tipo: 'urgente' }));
+    teste('fixo é fixo', L.ehFixo({ tipo: 'fixo' }));
+    teste('comum, manutenção e assembleia vão para o carrossel', !L.ehFixo({ tipo: 'comum' }) && !L.ehFixo({ tipo: 'manutencao' }) && !L.ehFixo({ tipo: 'assembleia' }));
+
+    // ----- carrossel (não fixos), por horário -----
+    igual('carrossel antes de tudo: vazio', ids(L.selecionarCarrossel(avisos, T('2026-11-16T08:00:00Z'))), []);
+    igual('no instante exato do início o aviso já entra', ids(L.selecionarCarrossel(avisos, T('2026-11-16T10:00:00Z'))), [1]);
+    igual('dois avisos sobrepostos, ordenados pelo início', ids(L.selecionarCarrossel(avisos, T('2026-11-16T11:10:00Z'))), [1, 2]);
+    igual('urgente no ar NÃO esconde o carrossel', ids(L.selecionarCarrossel(avisos, T('2026-11-16T11:40:00Z'))), [1, 2]);
+    igual('no instante exato do fim o aviso já sai', ids(L.selecionarCarrossel(avisos, T('2026-11-16T12:00:00Z'))), [2]);
+    igual('entre avisos: carrossel vazio', ids(L.selecionarCarrossel(avisos, T('2026-11-16T13:30:00Z'))), []);
+    igual('aviso futuro entra na hora certa', ids(L.selecionarCarrossel(avisos, T('2026-11-16T14:30:00Z'))), [4]);
+    igual('fixos e urgentes nunca entram no carrossel', ids(L.selecionarCarrossel(avisos, T('2026-11-16T11:40:00Z'))).indexOf(3) === -1 && ids(L.selecionarCarrossel(avisos, T('2026-11-16T11:40:00Z'))).indexOf(5) === -1, true);
+    igual('lista vazia', ids(L.selecionarCarrossel(L.interpretar([]), T('2026-11-16T11:00:00Z'))), []);
+
+    // ----- faixa do topo (fixos + urgentes), todos ao mesmo tempo -----
+    igual('faixa antes do fixo começar: vazia', ids(L.selecionarFixos(avisos, T('2026-11-16T08:59:59Z'))), []);
+    igual('fixo sozinho', ids(L.selecionarFixos(avisos, T('2026-11-16T10:00:00Z'))), [5]);
+    igual('urgente e fixo juntos: urgente primeiro', ids(L.selecionarFixos(avisos, T('2026-11-16T11:40:00Z'))), [3, 5]);
+    igual('urgente venceu: sobra o fixo', ids(L.selecionarFixos(avisos, T('2026-11-16T11:45:00Z'))), [5]);
+    igual('fixo vence no instante exato do fim', ids(L.selecionarFixos(avisos, T('2026-11-16T14:30:00Z'))), []);
+
+    var varios = L.interpretar([
+        aviso(10, 'fixo', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
+        aviso(11, 'urgente', '2026-11-16T10:30:00Z', '2026-11-16T12:00:00Z'),
+        aviso(12, 'fixo', '2026-11-16T09:00:00Z', '2026-11-16T12:00:00Z'),
+        aviso(13, 'urgente', '2026-11-16T10:10:00Z', '2026-11-16T12:00:00Z'),
+        aviso(14, 'comum', '2026-11-16T09:00:00Z', '2026-11-16T12:00:00Z')
+    ]);
+    igual('vários: urgentes primeiro (por início), depois fixos (por início)', ids(L.selecionarFixos(varios, T('2026-11-16T11:00:00Z'))), [13, 11, 12, 10]);
+    igual('o comum fica só no carrossel', ids(L.selecionarCarrossel(varios, T('2026-11-16T11:00:00Z'))), [14]);
 
     var empate = L.interpretar([
         aviso(9, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
-        aviso(5, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z')
+        aviso(5, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
+        aviso(8, 'fixo', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
+        aviso(6, 'fixo', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z')
     ]);
-    igual('mesmo início: desempata pelo id', ids(L.selecionar(empate, T('2026-11-16T10:30:00Z'))), [5, 9]);
+    igual('carrossel: mesmo início, desempata pelo id', ids(L.selecionarCarrossel(empate, T('2026-11-16T10:30:00Z'))), [5, 9]);
+    igual('faixa: mesmo início, desempata pelo id', ids(L.selecionarFixos(empate, T('2026-11-16T10:30:00Z'))), [6, 8]);
 
-    var doisUrgentes = L.interpretar([
-        aviso(1, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
-        aviso(2, 'urgente', '2026-11-16T10:30:00Z', '2026-11-16T12:00:00Z'),
-        aviso(3, 'urgente', '2026-11-16T10:10:00Z', '2026-11-16T12:00:00Z')
-    ]);
-    igual('vários urgentes: só eles, em ordem', ids(L.selecionar(doisUrgentes, T('2026-11-16T11:00:00Z'))), [3, 2]);
+    // ----- disposição da faixa -----
+    igual('0 avisos', L.disposicao(0), { colunas: 0, linhas: 0 });
+    igual('1 aviso: uma coluna', L.disposicao(1), { colunas: 1, linhas: 1 });
+    igual('2 avisos: lado a lado', L.disposicao(2), { colunas: 2, linhas: 1 });
+    igual('3 avisos: três colunas', L.disposicao(3), { colunas: 3, linhas: 1 });
+    igual('4 avisos: 2 x 2', L.disposicao(4), { colunas: 2, linhas: 2 });
+    igual('5 avisos: 3 colunas, 2 linhas', L.disposicao(5), { colunas: 3, linhas: 2 });
+    igual('6 avisos: 3 x 2', L.disposicao(6), { colunas: 3, linhas: 2 });
+    igual('7 avisos: 4 x 2', L.disposicao(7), { colunas: 4, linhas: 2 });
+    igual('10 avisos: 5 x 2 (o máximo)', L.disposicao(10), { colunas: 5, linhas: 2 });
+    igual('20 avisos: continua 5 x 2 (a faixa não cresce)', L.disposicao(20), { colunas: 5, linhas: 2 });
+    var cabem = true;
+    for (var n = 1; n <= 20; n++) { var d = L.disposicao(n); if (d.colunas * d.linhas < Math.min(n, 10)) { cabem = false; } if (d.linhas > 2) { cabem = false; } }
+    teste('a disposição nunca passa de 2 linhas e comporta até 10 avisos', cabem);
 
     // Relógio do aparelho errado, corrigido pelo deslocamento: a decisão usa o horário do servidor.
     var deslocamento = T('2026-11-16T11:10:00Z') - T('2024-01-01T00:00:00Z'); // aparelho "em 2024"
     var agoraAparelho = T('2024-01-01T00:00:00Z');
-    igual('com o deslocamento, aparelho com relógio errado decide pelo horário do servidor', ids(L.selecionar(avisos, agoraAparelho + deslocamento)), [1, 2]);
-    igual('sem o deslocamento, o relógio errado não mostraria nada', ids(L.selecionar(avisos, agoraAparelho)), []);
+    igual('com o deslocamento, aparelho com relógio errado decide pelo horário do servidor', ids(L.selecionarCarrossel(avisos, agoraAparelho + deslocamento)), [1, 2]);
+    igual('sem o deslocamento, o relógio errado não mostraria nada', ids(L.selecionarCarrossel(avisos, agoraAparelho)), []);
 
     // ----- duracaoMs -----
     igual('texto curto: 12 s', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { corpo: '' })), 12000);
     igual('texto de 100 caracteres: 12 s + 4 s', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { corpo: new Array(101).join('a') })), 16000);
     igual('texto enorme: extra limitado a 13 s', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { corpo: new Array(5001).join('a') })), 25000);
-    igual('urgente ganha 3 s', L.duracaoMs(aviso(1, 'urgente', 'x', 'x', { corpo: '' })), 15000);
+    igual('tipo não muda o tempo (urgente não passa mais no carrossel)', L.duracaoMs(aviso(1, 'urgente', 'x', 'x', { corpo: '' })), 12000);
     igual('vídeo: sem duração fixa (até terminar)', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { midia: { tipo: 'video', url: '/v' } })), null);
     igual('imagem: segue a regra do texto', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { midia: { tipo: 'imagem', url: '/i' } })), 12000);
     igual('corpo ausente não quebra', L.duracaoMs({ tipo: 'comum', midia: null }), 12000);
