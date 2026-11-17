@@ -181,10 +181,10 @@ a:hover { color: var(--marca-800); }
 .boas-vindas-arte { flex: 0 1 260px; }
 .boas-vindas-arte svg { display: block; width: 100%; height: auto; }
 
-.numeros { display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 1.5rem; padding: 0; overflow: hidden; }
-.numero { display: flex; align-items: center; gap: 1rem; padding: 1.5rem 1.75rem; }
+.numeros { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-bottom: 1.5rem; padding: 0; overflow: hidden; }
+.numero { display: flex; align-items: center; gap: 0.9rem; min-width: 0; padding: 1.5rem 1.25rem; }
 .numero + .numero { border-left: 1px solid var(--linha); }
-.numero-icone { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 14px; background: var(--marca-50); color: var(--marca-700); }
+.numero-icone { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 14px; background: var(--marca-50); color: var(--marca-700); }
 .numero-valor { display: block; font-size: 1.75rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
 .numero-rotulo { display: block; margin-top: 0.15rem; font-size: 0.875rem; color: var(--suave); }
 
@@ -423,7 +423,7 @@ td.acoes-celula form { display: inline; margin: 0; }
     .menu { order: 3; flex: 1 0 100%; margin: 0 -0.25rem; padding-bottom: 0.6rem; overflow-x: auto; }
     .boas-vindas { padding: 1.5rem; }
     .boas-vindas-arte { display: none; }
-    .numeros { grid-template-columns: 1fr; }
+    .numeros { grid-auto-flow: row; grid-template-columns: 1fr; }
     .numero + .numero { border-left: 0; border-top: 1px solid var(--linha); }
     .atalhos { grid-template-columns: 1fr; }
     .grade-2 { grid-template-columns: 1fr; }
