@@ -506,38 +506,28 @@ input[type="color"] { display: block; width: 100%; height: 46px; padding: 4px; b
 .etiqueta-situacao-agendado { color: #1E4A93; background: #DCE8FB; }
 .pessoa-sub .etiqueta { margin: 0.35rem 0.35rem 0 0; font-size: 0.75rem; padding: 0.05rem 0.55rem; }
 
-/* ---------- Como o aviso aparece na TV ----------
- * Medidas em "em": 1em = 1/96 da largura da TV. Na prévia a moldura define o tamanho (cqw); na TV real
- * o corpo da página usa 1.0417vw. As cores do condomínio chegam em /tema.css (variáveis --tv-*). */
+/* ---------- Prévia: moldura do aviso como aparece na TV ----------
+ * Os estilos do conteúdo (.tv, .tv-topo, ...) estão em tv.css, o mesmo usado pela TV real. Aqui só a moldura:
+ * proporção 16:9 e tamanho da fonte proporcional à largura (cqw). As cores do condomínio vêm de /tema.css. */
 .tv-moldura { container-type: inline-size; width: 100%; max-width: 960px; }
-.tv {
-    display: flex; flex-direction: column; aspect-ratio: 16 / 9; overflow: hidden;
-    font-size: 10px; font-size: 1.0417cqw; line-height: 1.3;
-    color: var(--tinta); background: #FFFFFF;
-    border: 0.8em solid #1D2125; border-radius: 1.6em; box-sizing: border-box;
+.tv-moldura .tv {
+    aspect-ratio: 16 / 9;
+    font-size: 10px; font-size: 1.0417cqw;
+    border: 0.8em solid #1D2125; border-radius: 1.6em;
 }
-.tv-topo { display: flex; align-items: center; justify-content: space-between; padding: 1.2em 2.4em; background: var(--tv-primaria, #00A67E); color: var(--tv-primaria-texto, #FFFFFF); }
-.tv-logo { display: inline-flex; align-items: center; padding: 0.35em 0.8em; background: #FFFFFF; border-radius: 0.7em; }
-.tv-logo img { display: block; height: 2.6em; width: auto; max-width: 16em; object-fit: contain; }
-.tv-relogio { font-size: 2.4em; font-weight: 700; letter-spacing: 0.02em; }
-.tv-corpo { display: grid; flex: 1; grid-template-columns: 1fr; align-items: center; gap: 2.4em; padding: 2.4em 3em; min-height: 0; }
-.tv-com-midia { grid-template-columns: 1.1fr 1fr; }
-.tv-tipo { display: inline-block; margin-bottom: 1em; padding: 0.3em 1em; font-size: 1.3em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tv-secundaria-texto, #FFFFFF); background: var(--tv-secundaria, #202124); border-radius: 999px; }
-.tv-titulo { margin: 0 0 0.5em; font-size: 4.2em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; overflow-wrap: anywhere; }
-.tv-texto { max-width: none; margin: 0; font-size: 2em; line-height: 1.4; white-space: pre-line; overflow-wrap: anywhere; color: #3A4047; }
-.tv-midia { display: flex; align-items: center; justify-content: center; min-height: 0; height: 100%; }
-.tv-midia img, .tv-midia video { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 1.2em; background: #F3F2EE; }
-
-/* Aviso urgente: destaque em tela cheia (cor própria, independente do tema do condomínio). */
-.tv-urgente { border-color: #8F1B12; }
-.tv-urgente .tv-topo { background: #B42318; color: #FFFFFF; }
-.tv-urgente .tv-corpo { background: #FDEDEB; }
-.tv-urgente .tv-tipo { color: #FFFFFF; background: #B42318; }
-.tv-urgente .tv-titulo { color: #8F1B12; font-size: 4.8em; }
-.tv-urgente .tv-texto { color: #4A1814; }
+.tv-moldura .tv-urgente { border-color: #8F1B12; }
 
 @media (max-width: 768px) {
     .seletor { order: 4; flex: 1 0 100%; }
     .seletor summary { max-width: 100%; }
     .grade-cartoes { grid-template-columns: 1fr; }
 }
+
+/* ---------- Dispositivos (admin) ---------- */
+.endereco-tv { margin: 0.5rem 0; padding: 1rem 1.25rem; background: var(--marca-50); border: 1px solid var(--marca-100); border-radius: var(--raio); }
+.endereco-tv code { font-family: ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 1.125rem; font-weight: 600; color: var(--marca-800); overflow-wrap: anywhere; user-select: all; }
+.token-destaque { font-family: ui-monospace, "JetBrains Mono", Menlo, monospace; font-size: 1.0625rem; letter-spacing: 0.08em; color: var(--tinta); }
+.passos { margin: 0 0 1rem; padding-left: 1.25rem; }
+.passos li { margin-bottom: 0.4rem; }
+.acoes.sem-margem { margin-top: 0; }
+.etiqueta + .celula-suave { margin-left: 0.6rem; }

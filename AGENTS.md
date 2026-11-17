@@ -35,7 +35,7 @@ Bibliotecas adicionais permitidas somente se pequenas, mantidas e realmente nece
 ## 4. Estrutura e responsabilidades
 
 ```
-/public            index.php (front controller), assets, sw.js (service worker)
+/public            index.php (front controller), assets (app.css, tv.css, tv.js), tv/sw.js (service worker da TV)
 /src
   /Controllers     recebem a requisição, validam entrada, chamam Services/Repositories, devolvem resposta
   /Repositories    TODO o SQL do sistema mora aqui, e só aqui
@@ -125,14 +125,16 @@ Regras de camada:
 - Chamadas externas com timeout definido.
 
 ### 6.8 Tela da TV (`/tv/{token}`)
-- O "login" da TV/mini PC é feito **somente pela URL com token** (`/tv/{token}`), sem usuário e senha. O token precisa ser curto o bastante para ser digitado no dispositivo: **12 caracteres** aleatórios (~60 bits), gerados com `random_int` a partir de um alfabeto de 32 símbolos sem caracteres ambíguos (sem `0 O 1 I L`), único por dispositivo, revogável. Por ser mais curto que o ideal, a segurança depende também do rate limit abaixo.
-- Rate limit por IP para tokens inválidos em `/tv/*` (bloqueio temporário com `429`), para impedir adivinhação por força bruta.
-- A rota expõe **somente** os avisos ativos do condomínio do dispositivo. Nenhum dado de gerentes, financeiro ou outros condomínios.
-- Token inválido ou dispositivo inativo: resposta `404` sem detalhes.
-- **Mídias da TV**: o Nginx serve `/media/` como `internal`, então a TV nunca acessa o arquivo direto. Ela pede `/tv/{token}/media/{id}`; o controller valida o token, confere que a mídia pertence a um aviso ativo do condomínio do dispositivo e responde com `X-Accel-Redirect`.
-- **Token em logs e Referrer**: o token aparece na URL, então (a) configure o Nginx para mascarar o token no `access_log` das rotas `/tv/`, (b) nunca registre o token em logs da aplicação, e (c) envie `Referrer-Policy: no-referrer` nessas rotas.
-- **Condomínio bloqueado manualmente** pelo superadmin (`condominios.bloqueado`): a TV mostra **somente o relógio com o horário atual**, sem avisos e sem anúncios.
-- **Aparência**: a TV usa a logo e o esquema de cores definidos pelo gerente para o condomínio; se não houver seleção, usa a logo e as cores padrão da Embracore.
+- O "login" da TV/mini PC é feito **somente pela URL com token** (`/tv/{token}`), sem usuário, senha, **sessão nem cookies**. O token tem **12 caracteres** sorteados com `random_int` de um alfabeto de **31 símbolos** sem ambíguos (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`, sem `0 O 1 I L`; ~59 bits), é único por dispositivo e revogável. É guardado **em maiúsculas** (constraint `dispositivos_token_maiusculo`) e **aceito em qualquer caixa** na URL, porque o teclado do controle remoto começa em minúsculas (`TokenDispositivo::normalizar`). Por ser curto, a segurança depende também do rate limit abaixo.
+- Rotas (todas só leitura, GET): `/tv/{token}` (página), `/tv/{token}/state` (JSON), `/tv/{token}/media/{arquivo}`, `/tv/{token}/logo?v=...`, `/tv/{token}/tema.css`. Token fora do padrão (12 caracteres `A-Za-z0-9`) nem casa com a rota (404 sem tocar no banco).
+- **Rate limit por IP para tokens inválidos** (`TvAcesso`): 30 falhas em 10 min bloqueiam o IP por 15 min; a 31ª falha ainda responde 404 e liga o bloqueio, e daí em diante **todas** as rotas `/tv/*` desse IP respondem `429` com `Retry-After` (senão o atacante continuaria adivinhando). Só falhas contam; consultas válidas e tokens malformados não. O limite é por IP (várias TVs atrás do mesmo NAT compartilham o contador; uma TV com token revogado falha cerca de 1 vez por minuto).
+- **Token inválido, inexistente ou de dispositivo revogado: sempre o mesmo `404`** sem detalhes (indistinguíveis entre si, sem enumeração), inclusive com `Referrer-Policy: no-referrer`.
+- O `/state` expõe **somente** o necessário para exibir: `bloqueado`, `logo`, `tema`, `avisos`, `version`, `server_time`, `server_epoch`, `intervalo` e `app`. Os avisos são os **ativos do condomínio do dispositivo, que ainda não terminaram e que já começaram ou começam nas próximas 24 h** (`TvService::ANTECEDENCIA_SEGUNDOS`): a janela à frente existe para a TV conseguir exibi-los na hora certa mesmo sem internet; quem decide o que está no ar a cada segundo é a TV, pelo relógio corrigido. Nenhum dado de gerentes, financeiro, endereço ou outros condomínios (`AvisoRepository` filtra por condomínio permitido, que aqui é o do dispositivo).
+- **Mídias da TV**: pelo **nome do arquivo** (aleatório, imutável), e não pelo id do aviso: `/tv/{token}/media/{arquivo}`. O controller valida o token, confere que o arquivo pertence a um aviso **visível** (mesmo critério do `/state`) do condomínio do dispositivo e entrega com `X-Accel-Redirect` (Nginx `internal`) ou pelo PHP. Cache `private, max-age=86400`.
+- **Token em logs e Referrer**: o token é uma credencial na URL. (a) O Nginx mascara o token no `access_log` (`conf.d/avisos-log.conf`: `/tv/xxxxxxxxxxxx`); o `error_log` do Nginx pode registrar a URL em erros raros. (b) A aplicação nunca registra o token em log. (c) Todas as respostas da TV (inclusive 404 e 429) enviam `Referrer-Policy: no-referrer`.
+- **Condomínio desativado ou bloqueado manualmente** (`condominios.ativo = false`; `bloqueado` na Fase 3): o `/state` vem com `bloqueado: true` e sem avisos, e a TV mostra **somente o relógio com o horário atual**, sem avisos e sem anúncios. As mídias passam a dar 404.
+- **Aparência**: a TV usa a logo e as cores do condomínio (`/state` traz `tema`, que o JS aplica por CSSOM; `/tema.css` serve a primeira pintura); sem personalização, o padrão da Embracore.
+- **Cadastro**: dispositivos são criados em `/admin/dispositivos` (somente superadmin). O token só aparece na página do dispositivo; trocar o token invalida o antigo na hora e limpa o último contato. O gerente **nunca** vê tokens.
 
 ### 6.9 Proxy reverso e HTTPS
 - O TLS termina em um **Nginx proxy reverso externo** (compartilhado, fora da VM). A VM recebe HTTP puro somente do IP do proxy (firewall); a aplicação nunca é exposta direto à internet.
@@ -169,12 +171,13 @@ Regras de camada:
 
 ## 8. Comportamento da tela da TV
 
-- A página carrega e consulta `/tv/{token}/state` a cada 30–60 s (valor configurável).
-- O endpoint retorna JSON com `version` (hash do conjunto de avisos ativos e suas mídias) e a lista de avisos. O JS só atualiza a exibição quando `version` muda.
+- A página carrega e consulta `/tv/{token}/state` a cada 30–60 s (`TV_POLL_SECONDS` no `.env`, padrão 45; o servidor limita a 30–60). Em falha, a TV espera mais (até 5 min) e volta ao normal quando a conexão volta; há uma variação de ±10% no intervalo para as TVs não consultarem todas no mesmo segundo.
+- O endpoint retorna JSON com `version` (hash de tudo que muda a exibição: avisos, mídias, logo, cores e modo bloqueado; o horário do servidor e o intervalo **não** entram) e a lista de avisos. O JS só redesenha quando `version` muda. O campo `app` é a versão do `tv.js`/`tv.css`: quando muda (deploy), a TV se recarrega sozinha; além disso ela se recarrega a cada 6 h, para liberar memória em aparelhos fracos.
 - Cada consulta atualiza `dispositivos.ultimo_ping`; isso é o heartbeat.
-- Service worker (`/public/sw.js`) faz cache do HTML, dos assets, dos avisos e das mídias para funcionar offline. Ao voltar a conexão, ressincroniza.
+- Service worker em **`/public/tv/sw.js`** (escopo `/tv/`, para não controlar o painel nem o login): página e `/state` com rede primeiro (cópia só se a rede falhar), mídias com cache primeiro e atendimento de `Range` a partir da cópia (o `<video>` precisa), `/assets/` com cópia primeiro e atualização em segundo plano. **Respostas de erro nunca entram no cache e um 404 da rede nunca é trocado pela cópia antiga**, para um dispositivo revogado parar de exibir. O JS pré-carrega as mídias dos avisos atuais e futuros e apaga do cache as que não existem mais. A página também guarda o último estado e o deslocamento do relógio em `localStorage`. **O Service Worker só existe em HTTPS (ou localhost)**: em HTTP puro a TV funciona online, mas sem cache offline.
 - **Offline e relógio do dispositivo:** sem internet, a TV não consegue perguntar ao servidor o que está ativo; ela usa a lista em cache e decide o que exibir pelo relógio local. Por isso o JSON de `/tv/{token}/state` deve incluir, em cada aviso, `inicio_em` e `fim_em` (UTC, ISO 8601) e, no topo, `server_time`. O JS calcula `deslocamento = server_time - Date.now()` a cada resposta bem-sucedida e usa `Date.now() + deslocamento` para filtrar os avisos: o que venceu durante a queda sai da tela e o agendado entra no horário certo. Isso protege contra mini PCs com relógio errado (sem NTP/bateria de BIOS). Se nunca houve resposta do servidor, usa o relógio local sem correção.
-- Avisos do tipo `urgente` têm prioridade e destaque em tela cheia.
+- Avisos do tipo `urgente` têm prioridade e destaque em tela cheia: **enquanto houver algum urgente no ar, só os urgentes são exibidos** (vermelho, título maior); acabando o período dele, os normais voltam. Sem avisos no ar: logo e relógio grande ("Nenhum aviso no momento").
+- Rotação: cada aviso fica 12 s mais 40 ms por caractere do texto (até +13 s), +3 s se urgente; vídeo toca até o fim (limite de 60 s). O relógio mostrado é o de Brasília (UTC-3, sem horário de verão desde 2019) pelo horário corrigido do servidor.
 - Não use WebSocket/SSE no PHP-FPM: ele prende workers. Polling é a decisão de arquitetura.
 
 ### Dispositivo principal: Fire Stick (Fire OS)
@@ -185,6 +188,8 @@ A tela da TV deve funcionar bem no navegador de um Fire Stick (Silk ou Fully Kio
 - **Vídeo:** MP4 com H.264 + AAC, até 1080p e 30 fps, sem depender de recursos como Picture-in-Picture. Vídeos curtos e leves; o gerente deve ser orientado sobre isso no upload.
 - **Sem interação:** a TV não depende de clique ou toque. A única interação é o gerente digitar a URL com o controle remoto na instalação, por isso o token curto (seção 6.8).
 - **Service worker** e cache offline (seção 8) devem ser testados no navegador do Fire Stick, não só no Chromium do desktop.
+- **ES5 obrigatório em `tv.js` e `sw.js`** (sem setas, `let`/`const`, template string, `fetch` na página, etc.) e **CSS da TV sem `aspect-ratio`, grid, `gap`, `clamp`, container queries**: `tests/TvArquivosTest` barra isso. Texto do servidor entra na tela **só com `textContent`** (nunca `innerHTML`).
+- **Como testar a TV de verdade:** o Chromium da VM aceita `localhost` como contexto seguro, então dá para exercitar rotação, Service Worker e modo offline num navegador real (derrubar o servidor = TV sem internet) com um cliente do protocolo DevTools. A lógica pura do `tv.js` (`window.TvLogica`) tem testes em `tests/js/logica.html`, executados pelo PHPUnit (`TvJsLogicaTest`).
 - O comportamento em mini PC (Chromium kiosk) continua suportado e não deve ser quebrado.
 
 ## 9. Testes

@@ -45,6 +45,23 @@ final class DataHora
         return (new DateTimeImmutable('@' . $epoch))->format('c');
     }
 
+    /** "agora há pouco", "há 5 min", "há 3 h", "há 2 dias" ou "nunca". */
+    public static function relativo(?int $epoch, int $agora): string
+    {
+        if ($epoch === null) {
+            return 'nunca';
+        }
+
+        $segundos = max(0, $agora - $epoch);
+
+        return match (true) {
+            $segundos < 120 => 'agora há pouco',
+            $segundos < 3600 => 'há ' . intdiv($segundos, 60) . ' min',
+            $segundos < 86400 => 'há ' . intdiv($segundos, 3600) . ' h',
+            default => 'há ' . intdiv($segundos, 86400) . (intdiv($segundos, 86400) === 1 ? ' dia' : ' dias'),
+        };
+    }
+
     private static function local(int $epoch): DateTimeImmutable
     {
         return (new DateTimeImmutable('@' . $epoch))->setTimezone(new DateTimeZone(self::FUSO));

@@ -1,0 +1,21 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+{% set menu = 'dispositivos' %}
+
+{% block titulo %}Trocar token - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/admin/dispositivos">Dispositivos</a> {{ ui.icone('seta', 14) }} <a href="/admin/dispositivos/{{ dispositivo.id }}">{{ dispositivo.nome }}</a> {{ ui.icone('seta', 14) }} <span>Trocar token</span></p>
+    <div class="pagina-topo"><h1>Trocar o token</h1></div>
+
+    <div class="cartao formulario">
+        <p class="texto-confirmacao">Gerar um novo token para <strong>{{ dispositivo.nome }}</strong> ({{ dispositivo.condominio_nome }})?</p>
+        <p class="alerta alerta-erro">{{ ui.icone('alerta', 20) }}<span>O endereço atual deixa de funcionar na hora. A TV vai mostrar só o relógio até você digitar o novo endereço nela.</span></p>
+        <p class="campo-ajuda">Use quando suspeitar que o endereço vazou, ou quando trocar de aparelho.</p>
+        <form method="post" action="/admin/dispositivos/{{ dispositivo.id }}/token" class="acoes">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="botao-perigo">{{ ui.icone('chave', 18) }}Gerar novo token</button>
+            <a class="botao botao-secundario" href="/admin/dispositivos/{{ dispositivo.id }}">Cancelar</a>
+        </form>
+    </div>
+{% endblock %}

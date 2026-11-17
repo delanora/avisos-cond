@@ -118,6 +118,56 @@ final class AvisoRepository
         return $linha === false ? null : ['midia' => $linha['midia'] === null ? null : (string) $linha['midia']];
     }
 
+    /**
+     * Avisos que a TV do condomínio precisa conhecer: ativos, que ainda não terminaram e que já
+     * começaram ou começam dentro da antecedência (assim a TV consegue exibi-los na hora certa mesmo
+     * sem internet). Quem decide o que mostrar a cada instante é a própria TV, pelo relógio corrigido.
+     *
+     * @param list<int> $permitidos condomínios permitidos (aqui, só o do dispositivo)
+     * @return list<array<string, mixed>>
+     */
+    public function visiveisNaTv(array $permitidos, int $condominioId, int $agora, int $antecedenciaSegundos): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT ' . self::COLUNAS . ' FROM avisos
+             WHERE condominio_id = :cid AND condominio_id = ANY(:permitidos::bigint[]) AND ativo
+               AND fim_em > to_timestamp(:agora::double precision)
+               AND inicio_em <= to_timestamp((:agora::bigint + :antecedencia::bigint)::double precision)
+             ORDER BY inicio_em, id'
+        );
+        $stmt->execute([
+            'cid' => $condominioId, 'permitidos' => Pg::arrayDeInteiros($permitidos),
+            'agora' => $agora, 'antecedencia' => $antecedenciaSegundos,
+        ]);
+
+        return array_map($this->normalizar(...), $stmt->fetchAll());
+    }
+
+    /**
+     * O aviso visível na TV que usa esta mídia (nome do arquivo), ou null. Só mídias de avisos
+     * visíveis (mesmo critério de visiveisNaTv) são entregues à TV.
+     *
+     * @param list<int> $permitidos
+     * @return array<string, mixed>|null
+     */
+    public function porMidiaVisivelNaTv(array $permitidos, int $condominioId, string $midia, int $agora, int $antecedenciaSegundos): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT ' . self::COLUNAS . ' FROM avisos
+             WHERE midia = :midia AND condominio_id = :cid AND condominio_id = ANY(:permitidos::bigint[]) AND ativo
+               AND fim_em > to_timestamp(:agora::double precision)
+               AND inicio_em <= to_timestamp((:agora::bigint + :antecedencia::bigint)::double precision)
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'midia' => $midia, 'cid' => $condominioId, 'permitidos' => Pg::arrayDeInteiros($permitidos),
+            'agora' => $agora, 'antecedencia' => $antecedenciaSegundos,
+        ]);
+        $linha = $stmt->fetch();
+
+        return $linha === false ? null : $this->normalizar($linha);
+    }
+
     /** @param array<string, mixed> $dados */
     private function vincular(\PDOStatement $stmt, array $dados): void
     {

@@ -214,6 +214,14 @@ final class SchemaTest extends DatabaseTestCase
         $this->dispositivo($c, 'CURTO');
     }
 
+    public function testTokenDeDispositivoPrecisaSerMaiusculo(): void
+    {
+        $c = $this->condominio();
+
+        $this->expectException(PDOException::class);
+        $this->dispositivo($c, 'abcdefgh2345');
+    }
+
     public function testVinculoNaoPodeSerDuplicado(): void
     {
         $u = $this->usuario();

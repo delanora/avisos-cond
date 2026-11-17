@@ -1,0 +1,51 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+{% set menu = 'dispositivos' %}
+
+{% block titulo %}{{ dispositivo.nome }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/admin/dispositivos">Dispositivos</a> {{ ui.icone('seta', 14) }} <span>{{ dispositivo.nome }}</span></p>
+    <div class="pagina-topo">
+        <div>
+            <h1>{{ dispositivo.nome }}</h1>
+            <p>{{ dispositivo.condominio_nome }}</p>
+        </div>
+        <div class="acoes sem-margem">
+            <a class="botao botao-secundario" href="/admin/dispositivos/{{ dispositivo.id }}/editar">{{ ui.icone('editar', 18) }}Editar</a>
+            <a class="botao botao-secundario" href="/admin/dispositivos/{{ dispositivo.id }}/token">{{ ui.icone('chave', 18) }}Trocar token</a>
+        </div>
+    </div>
+
+    {% if not dispositivo.ativo %}
+        <p class="alerta alerta-erro" role="status">{{ ui.icone('alerta', 20) }}<span>Este dispositivo está revogado: o endereço abaixo não funciona mais.</span></p>
+    {% endif %}
+
+    <section class="cartao formulario">
+        <div class="formulario-secao">
+            <h2>Endereço da TV</h2>
+            <p class="secao-ajuda">Digite este endereço no navegador da TV. O token tem só 12 caracteres para facilitar a digitação com o controle remoto; maiúsculas e minúsculas tanto faz.</p>
+            <p class="endereco-tv" id="endereco-tv"><code>{{ url }}</code></p>
+            <p class="campo-ajuda">Token: <strong class="token-destaque">{{ dispositivo.token }}</strong></p>
+        </div>
+
+        <div class="formulario-secao">
+            <h2>Como configurar no Fire Stick</h2>
+            <ol class="passos">
+                <li>Abra o navegador (Fully Kiosk Browser ou Silk) no Fire Stick.</li>
+                <li>Digite o endereço acima com o controle remoto e abra a página.</li>
+                <li>Salve como página inicial (no Fully Kiosk: "Start URL") e desative a proteção de tela do aparelho.</li>
+                <li>Pronto: a tela mostra os avisos do condomínio e se atualiza sozinha.</li>
+            </ol>
+        </div>
+
+        <div class="formulario-secao">
+            <h2>Situação</h2>
+            <p>
+                <span class="etiqueta {{ dispositivo.ativo ? 'etiqueta-ok' : 'etiqueta-off' }}">{{ dispositivo.ativo ? 'Ativo' : 'Revogado' }}</span>
+                <span class="celula-suave">Último contato: {{ ultimo_contato }}</span>
+            </p>
+            <a class="botao botao-secundario" href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ ui.icone('tv', 18) }}Abrir a tela da TV</a>
+        </div>
+    </section>
+{% endblock %}

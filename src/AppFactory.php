@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App;
 
 use App\Controllers\Admin\CondominiosController;
+use App\Controllers\Admin\DispositivosController;
 use App\Controllers\Admin\UsuariosController;
 use App\Controllers\Gerente\AparenciaController;
 use App\Controllers\Gerente\AvisosController;
@@ -14,6 +15,7 @@ use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\GerenteController;
 use App\Controllers\HomeController;
+use App\Controllers\Tv\TvController;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
 use App\Middleware\EscopoGerenteMiddleware;
@@ -23,6 +25,7 @@ use App\Middleware\RoleMiddleware;
 use App\Middleware\TamanhoMiddleware;
 use App\Repositories\AvisoRepository;
 use App\Repositories\CondominioRepository;
+use App\Repositories\DispositivoRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\RateLimitRepository;
 use App\Repositories\UsuarioRepository;
@@ -30,6 +33,7 @@ use App\Repositories\VinculoRepository;
 use App\Services\AparenciaService;
 use App\Services\AuthService;
 use App\Services\AvisoService;
+use App\Services\DispositivoService;
 use App\Services\GestaoCondominiosService;
 use App\Services\GestaoUsuariosService;
 use App\Services\Mailer;
@@ -37,6 +41,8 @@ use App\Services\PasswordHasher;
 use App\Services\PasswordResetService;
 use App\Services\PersonalizacaoService;
 use App\Services\RateLimiter;
+use App\Services\TvAcesso;
+use App\Services\TvService;
 use App\Services\UploadService;
 use App\Services\UsuarioService;
 use App\Support\Config;
@@ -67,6 +73,7 @@ final class AppFactory
         string $diretorioTemplates,
         ?PasswordHasher $hasher = null,
         ?callable $moverUpload = null,
+        ?string $versaoApp = null,
     ): Application {
         $view = new View($diretorioTemplates, 'Avisos-Cond', $config->string('APP_ENV') === 'local');
         $csrf = new Csrf($sessao);
@@ -90,6 +97,13 @@ final class AppFactory
         $aparenciaService = new AparenciaService();
         $avisoService = new AvisoService(new AvisoRepository($pdo), $upload);
         $personalizacao = new PersonalizacaoService($condominios, $upload);
+
+        // TV: token na URL, sem sessão. Intervalo de consulta configurável (30 a 60 s).
+        $dispositivos = new DispositivoRepository($pdo);
+        $intervaloTv = min(60, max(30, $config->int('TV_POLL_SECONDS', 45)));
+        $tvService = new TvService(new AvisoRepository($pdo), $dispositivos, $aparenciaService, $upload, $intervaloTv, $versaoApp ?? self::versaoDoCodigoDaTv($diretorioTemplates));
+        $tvAcesso = new TvAcesso($dispositivos, $limitador);
+        $gestaoDispositivos = new DispositivoService($dispositivos, $condominios);
 
         $auth = new AuthService($usuarios, $hasher, $limitador);
         $recuperacao = new PasswordResetService(
@@ -124,11 +138,13 @@ final class AppFactory
         $gerenteAparencia = new AparenciaController($view, $sessao, $personalizacao, $aparenciaService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
         $gerenteTema = new TemaController($aparenciaService);
+        $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'));
+        $tv = new TvController($view, $tvAcesso, $tvService, $aparenciaService, $aceleracao);
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTema, $mwEscopo, $mwTamanho,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTema, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -165,6 +181,26 @@ final class AppFactory
             $r->addRoute('GET', '/admin/condominios/{id:\d+}/excluir', $leitura([$adminCondominios, 'confirmarExclusao']));
             $r->addRoute('POST', '/admin/condominios/{id:\d+}/excluir', $escrita([$adminCondominios, 'excluir']));
 
+            $r->addRoute('GET', '/admin/dispositivos', $leitura([$adminDispositivos, 'lista']));
+            $r->addRoute('GET', '/admin/dispositivos/novo', $leitura([$adminDispositivos, 'novo']));
+            $r->addRoute('POST', '/admin/dispositivos', $escrita([$adminDispositivos, 'criar']));
+            $r->addRoute('GET', '/admin/dispositivos/{id:\d+}', $leitura([$adminDispositivos, 'detalhe']));
+            $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/editar', $leitura([$adminDispositivos, 'editar']));
+            $r->addRoute('POST', '/admin/dispositivos/{id:\d+}', $escrita([$adminDispositivos, 'atualizar']));
+            $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/token', $leitura([$adminDispositivos, 'confirmarToken']));
+            $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/token', $escrita([$adminDispositivos, 'trocarToken']));
+            $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/excluir', $leitura([$adminDispositivos, 'confirmarExclusao']));
+            $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/excluir', $escrita([$adminDispositivos, 'excluir']));
+
+            // Tela da TV: pública, identificada só pelo token da URL (sem login, sem sessão, sem CSRF: só leitura).
+            // O token aceita qualquer caixa; a validação e o rate limit de tokens inválidos ficam no TvAcesso.
+            $t = '/tv/{token:[A-Za-z0-9]{12}}';
+            $r->addRoute('GET', $t, [$tv, 'tela']);
+            $r->addRoute('GET', "{$t}/state", [$tv, 'estado']);
+            $r->addRoute('GET', "{$t}/media/{arquivo:[a-f0-9]{32}\.(?:jpg|png|webp|mp4)}", [$tv, 'midia']);
+            $r->addRoute('GET', "{$t}/logo", [$tv, 'logo']);
+            $r->addRoute('GET', "{$t}/tema.css", [$tv, 'tema']);
+
             // Área do gerente: login → papel → condomínios permitidos (do banco) → (upload) tamanho → (escrita) CSRF.
             $gLeitura = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwGerente, $mwEscopo);
             $gEscrita = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwGerente, $mwEscopo, $mwCsrf);
@@ -190,5 +226,20 @@ final class AppFactory
         });
 
         return new Application($dispatcher, $view, $logger, new SecurityHeaders());
+    }
+
+    /**
+     * Versão do JS/CSS da TV (muda a cada deploy): a TV se recarrega sozinha quando ela muda.
+     * A pasta public fica ao lado de templates.
+     */
+    private static function versaoDoCodigoDaTv(string $diretorioTemplates): string
+    {
+        $assets = dirname($diretorioTemplates) . '/public/assets';
+        $mtimes = '';
+        foreach (['tv.js', 'tv.css'] as $arquivo) {
+            $mtimes .= (string) @filemtime($assets . '/' . $arquivo);
+        }
+
+        return substr(md5($mtimes), 0, 8);
     }
 }

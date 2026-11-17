@@ -11,7 +11,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 - Decisões que mudam o escopo vão para "Decisões e pendências" ao final, com data.
 - Não invente itens: o escopo vem do `README.md` e do `AGENTS.md`. Se o escopo mudar, atualize os três arquivos juntos.
 
-**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.5 concluídos (estrutura base, banco, autenticação, painel `/admin`, painel `/gerente`); próximo: 1.6 (dispositivos e tela da TV).
+**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.6 concluídos (estrutura base, banco, autenticação, painéis `/admin` e `/gerente`, tela da TV); próximo: 1.7 (agendador).
 
 ---
 
@@ -71,15 +71,17 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [ ] Testar o upload e a prévia de **vídeo MP4** real em um Fire Stick e no navegador (os testes automáticos usam um MP4 mínimo)
 
 ### 1.6 Dispositivos e tela da TV
-- [ ] Cadastro de dispositivo e geração de token (12 caracteres, alfabeto sem ambíguos), revogável
-- [ ] `/tv/{token}`: página com rotação, relógio, logo e cores
-- [ ] `/tv/{token}/state` (JSON com `version`, avisos, `inicio_em`/`fim_em`, `server_time`) e heartbeat (`ultimo_ping`)
-- [ ] `/tv/{token}/media/{id}` com validação de token e `X-Accel-Redirect`
-- [ ] Avisos `urgente` com destaque em tela cheia
-- [ ] Rate limit de tokens inválidos em `/tv/*`; token inválido → 404
-- [ ] Service worker (cache de HTML, assets, avisos e mídias) e ajuste de relógio offline
-- [ ] Mascaramento do token no log do Nginx e `Referrer-Policy: no-referrer`
-- [ ] Testes: endpoint da TV (só avisos ativos e no período; token inválido → 404)
+- [x] Cadastro de dispositivo (`/admin/dispositivos`) e geração de token (12 caracteres, 31 símbolos sem ambíguos), revogável, com troca de token e exclusão (2026-11-17)
+- [x] `/tv/{token}`: página com rotação, relógio, logo e cores; modos sem avisos e só relógio (2026-11-17)
+- [x] `/tv/{token}/state` (JSON com `version`, avisos, `inicio_em`/`fim_em`, `server_time`) e heartbeat (`ultimo_ping`) (2026-11-17)
+- [x] `/tv/{token}/media/{arquivo}` com validação de token, só mídias de avisos visíveis, e `X-Accel-Redirect` (2026-11-17)
+- [x] Avisos `urgente` com destaque em tela cheia e prioridade na rotação (2026-11-17)
+- [x] Rate limit de tokens inválidos em `/tv/*`; token inválido → 404 (2026-11-17)
+- [x] Service worker (cache de HTML, assets, estado e mídias, com Range) e ajuste de relógio offline, verificados no Chromium real com o servidor derrubado (2026-11-17)
+- [x] Mascaramento do token no log do Nginx e `Referrer-Policy: no-referrer` (2026-11-17)
+- [x] Testes: endpoint da TV (só avisos ativos e no período; token inválido → 404), isolamento entre condomínios, rate limit, painel de dispositivos, lógica do JS no Chromium e guardas de compatibilidade (ES5/CSS); validados por mutação (2026-11-17)
+- [ ] Testar a TV num **Fire Stick real** (Fully Kiosk e Silk): rotação, relógio, vídeo MP4, memória após horas, reinício do aparelho e se o navegador libera Service Worker em HTTPS
+- [ ] Colocar HTTPS no domínio (proxy) e confirmar o modo offline da TV em produção
 
 ### 1.7 Agendador
 - [ ] `bin/cron.php` com lock (sem execução simultânea), tarefas idempotentes
@@ -150,4 +152,6 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: redesenho visual a pedido: barra superior branca, visual mais humano (Inter local, cartões arredondados, avatares, ícones, saudação por horário, login em duas colunas, telas de erro amigáveis). O Chromium foi instalado na VM só para conferir o visual por capturas de tela (pode ser removido com `apt remove chromium`).
 - 2026-11-16: bloco 1.5 decidiu: rotas do gerente escopadas pela URL (`/gerente/condominios/{id}/...`); gerente só enxerga condomínios **ativos** (admin desativa = some para o gerente); limite de upload único (`UPLOAD_MAX_MB`, hoje 10) para imagem e vídeo; avisos novos começam no próximo quarto de hora e duram 7 dias por padrão.
 - 2026-11-16: VM: `99-avisos.ini` no PHP-FPM (upload 12M/post 14M) e `location /media/` interno no Nginx com `MEDIA_ACCEL=/media/` no `.env`.
+- 2026-11-17: bloco 1.6 decidiu: token de 31 símbolos (o AGENTS dizia 32, mas 26 letras - I, L, O + 8 dígitos = 31), guardado em maiúsculas e aceito em qualquer caixa (migration 004); mídia da TV pelo **nome do arquivo** (e não pelo id do aviso); o `/state` inclui avisos que começam em até 24 h (para exibir na hora certa offline); com urgente no ar, só os urgentes são exibidos; condomínio desativado = só o relógio; o Service Worker fica em `/tv/sw.js` (escopo `/tv/`, não cobre o painel); a TV se recarrega a cada 6 h e quando o JS/CSS muda; `APP_URL` do `.env` passou a ser `http://172.16.31.116` (é o endereço mostrado para digitar na TV).
+- 2026-11-17: VM: `/etc/nginx/conf.d/avisos-log.conf` (log sem o token da TV) e `access_log` no site. Em HTTP puro o Service Worker não existe, então o modo offline só vale em HTTPS.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.

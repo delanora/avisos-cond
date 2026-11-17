@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Testes da lógica da TV</title></head>
+<body>
+<pre id="resultado">executando...</pre>
+<!-- Sem data-estado-url no body: o tv.js só expõe window.TvLogica e não inicia a tela. -->
+<script src="../../public/assets/tv.js"></script>
+<script>
+(function () {
+    'use strict';
+    var L = window.TvLogica;
+    var saida = [];
+    var falhas = 0;
+
+    function teste(nome, condicao, detalhe) {
+        saida.push((condicao ? 'OK     ' : 'FALHOU ') + nome + (!condicao && detalhe !== undefined ? '  [' + detalhe + ']' : ''));
+        if (!condicao) { falhas++; }
+    }
+    function igual(nome, obtido, esperado) {
+        teste(nome, JSON.stringify(obtido) === JSON.stringify(esperado), 'obtido=' + JSON.stringify(obtido) + ' esperado=' + JSON.stringify(esperado));
+    }
+    function aviso(id, tipo, inicio, fim, extra) {
+        var a = { id: id, titulo: 'Aviso ' + id, corpo: '', tipo: tipo, inicio_em: inicio, fim_em: fim, midia: null };
+        for (var k in extra) { if (extra.hasOwnProperty(k)) { a[k] = extra[k]; } }
+        return a;
+    }
+    function ids(lista) { var r = []; for (var i = 0; i < lista.length; i++) { r.push(lista[i].id); } return r; }
+
+    teste('TvLogica foi exposta', !!L && !!L.selecionar && !!L.duracaoMs && !!L.horaBrasilia && !!L.interpretar);
+
+    var T = function (s) { return Date.parse(s); };
+    var avisos = L.interpretar([
+        aviso(1, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
+        aviso(2, 'comum', '2026-11-16T11:00:00Z', '2026-11-16T13:00:00Z'),
+        aviso(3, 'urgente', '2026-11-16T11:30:00Z', '2026-11-16T11:45:00Z'),
+        aviso(4, 'comum', '2026-11-16T14:00:00Z', '2026-11-16T15:00:00Z')
+    ]);
+
+    // ----- selecionar -----
+    igual('antes de tudo: nada no ar', ids(L.selecionar(avisos, T('2026-11-16T09:59:59Z'))), []);
+    igual('no instante exato do início o aviso já entra', ids(L.selecionar(avisos, T('2026-11-16T10:00:00Z'))), [1]);
+    igual('dois avisos sobrepostos, ordenados pelo início', ids(L.selecionar(avisos, T('2026-11-16T11:10:00Z'))), [1, 2]);
+    igual('urgente no ar: só os urgentes aparecem', ids(L.selecionar(avisos, T('2026-11-16T11:40:00Z'))), [3]);
+    igual('fim do urgente: voltam os normais', ids(L.selecionar(avisos, T('2026-11-16T11:45:00Z'))), [1, 2]);
+    igual('no instante exato do fim o aviso já sai', ids(L.selecionar(avisos, T('2026-11-16T12:00:00Z'))), [2]);
+    igual('entre avisos: nada no ar', ids(L.selecionar(avisos, T('2026-11-16T13:30:00Z'))), []);
+    igual('aviso futuro entra na hora certa', ids(L.selecionar(avisos, T('2026-11-16T14:30:00Z'))), [4]);
+    igual('lista vazia', ids(L.selecionar(L.interpretar([]), T('2026-11-16T11:00:00Z'))), []);
+
+    var empate = L.interpretar([
+        aviso(9, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
+        aviso(5, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z')
+    ]);
+    igual('mesmo início: desempata pelo id', ids(L.selecionar(empate, T('2026-11-16T10:30:00Z'))), [5, 9]);
+
+    var doisUrgentes = L.interpretar([
+        aviso(1, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z'),
+        aviso(2, 'urgente', '2026-11-16T10:30:00Z', '2026-11-16T12:00:00Z'),
+        aviso(3, 'urgente', '2026-11-16T10:10:00Z', '2026-11-16T12:00:00Z')
+    ]);
+    igual('vários urgentes: só eles, em ordem', ids(L.selecionar(doisUrgentes, T('2026-11-16T11:00:00Z'))), [3, 2]);
+
+    // Relógio do aparelho errado, corrigido pelo deslocamento: a decisão usa o horário do servidor.
+    var deslocamento = T('2026-11-16T11:10:00Z') - T('2024-01-01T00:00:00Z'); // aparelho "em 2024"
+    var agoraAparelho = T('2024-01-01T00:00:00Z');
+    igual('com o deslocamento, aparelho com relógio errado decide pelo horário do servidor', ids(L.selecionar(avisos, agoraAparelho + deslocamento)), [1, 2]);
+    igual('sem o deslocamento, o relógio errado não mostraria nada', ids(L.selecionar(avisos, agoraAparelho)), []);
+
+    // ----- duracaoMs -----
+    igual('texto curto: 12 s', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { corpo: '' })), 12000);
+    igual('texto de 100 caracteres: 12 s + 4 s', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { corpo: new Array(101).join('a') })), 16000);
+    igual('texto enorme: extra limitado a 13 s', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { corpo: new Array(5001).join('a') })), 25000);
+    igual('urgente ganha 3 s', L.duracaoMs(aviso(1, 'urgente', 'x', 'x', { corpo: '' })), 15000);
+    igual('vídeo: sem duração fixa (até terminar)', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { midia: { tipo: 'video', url: '/v' } })), null);
+    igual('imagem: segue a regra do texto', L.duracaoMs(aviso(1, 'comum', 'x', 'x', { midia: { tipo: 'imagem', url: '/i' } })), 12000);
+    igual('corpo ausente não quebra', L.duracaoMs({ tipo: 'comum', midia: null }), 12000);
+
+    // ----- horaBrasilia (UTC-3) -----
+    igual('17:30 UTC = 14:30 em Brasília', L.horaBrasilia(T('2026-11-16T17:30:00Z')), '14:30');
+    igual('03:00 UTC = 00:00 em Brasília', L.horaBrasilia(T('2026-11-16T03:00:00Z')), '00:00');
+    igual('02:59 UTC = 23:59 do dia anterior', L.horaBrasilia(T('2026-11-16T02:59:00Z')), '23:59');
+    igual('minutos com zero à esquerda', L.horaBrasilia(T('2026-11-16T12:05:00Z')), '09:05');
+    igual('meio-dia', L.horaBrasilia(T('2026-11-16T15:00:00Z')), '12:00');
+    igual('ignora o fuso do aparelho (mesma hora em qualquer fuso)', L.horaBrasilia(T('2026-06-01T20:15:00Z')), '17:15');
+
+    // ----- interpretar -----
+    var i = L.interpretar([aviso(7, 'comum', '2026-11-16T10:00:00Z', '2026-11-16T12:00:00Z')])[0];
+    igual('interpretar converte as datas ISO', [i.id, i.inicio, i.fim], [7, T('2026-11-16T10:00:00Z'), T('2026-11-16T12:00:00Z')]);
+
+    saida.push('');
+    saida.push(falhas === 0 ? 'TODOS OS TESTES PASSARAM' : ('FALHARAM ' + falhas + ' TESTE(S)'));
+    document.getElementById('resultado').textContent = saida.join('\n');
+}());
+</script>
+</body>
+</html>

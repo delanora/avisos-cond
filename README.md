@@ -145,6 +145,7 @@ SESSION_NAME=avisos_sess
 UPLOAD_DIR=/var/www/avisos-cond/storage/uploads
 UPLOAD_MAX_MB=10
 MEDIA_ACCEL=/media/           # entrega de mídia pelo Nginx (X-Accel-Redirect); vazio = o PHP envia o arquivo
+TV_POLL_SECONDS=45            # de quantos em quantos segundos a TV consulta o servidor (30 a 60)
 
 MAIL_HOST=                    # SMTP para recuperação de senha
 MAIL_PORT=587
@@ -228,6 +229,19 @@ proxy_read_timeout 120s;       # uploads de vídeo
 # O access_log das rotas /tv/ também deve mascarar o token.
 ```
 
+**Log do Nginx sem o token da TV** (`/etc/nginx/conf.d/avisos-log.conf`, no contexto `http`):
+
+```nginx
+map $request_uri $avisos_uri_mascarada {
+    "~^/tv/[A-Za-z0-9]{12}(?<resto>.*)$"  /tv/xxxxxxxxxxxx$resto;
+    default                                $request_uri;
+}
+log_format avisos '$remote_addr - $remote_user [$time_local] "$request_method $avisos_uri_mascarada $server_protocol" '
+                  '$status $body_bytes_sent "-" "$http_user_agent"';
+```
+
+e, no `server`: `access_log /var/log/nginx/avisos.access.log avisos;`. Repita o mesmo mascaramento no log do proxy reverso externo.
+
 **PHP-FPM** (uploads): o padrão do PHP (2 MB) é menor que `UPLOAD_MAX_MB`. Crie `/etc/php/8.4/fpm/conf.d/99-avisos.ini` com `upload_max_filesize = 12M`, `post_max_size = 14M` e `max_file_uploads = 5` (sempre acima de `UPLOAD_MAX_MB`) e reinicie o `php8.4-fpm`. A aplicação valida o limite exato e mostra uma mensagem clara; envios maiores que o corpo permitido recebem erro 413.
 
 **Cron** (agendador):
@@ -242,7 +256,7 @@ O `cron.php` publica/expira avisos agendados e, na Fase 2, marca dispositivos of
 
 ## Instalando a tela no condomínio
 
-1. No painel Embracore, cadastre o dispositivo e copie a URL `https://avisos.exemplo.com.br/tv/{token}`.
+1. No painel Embracore (**Dispositivos → Novo dispositivo**), escolha o condomínio e dê um nome à TV (ex.: "Elevador social"). O sistema gera o endereço `https://avisos.exemplo.com.br/tv/{token}`; a página do dispositivo mostra o endereço e o passo a passo. O token tem 12 caracteres e vale em maiúsculas ou minúsculas. Para revogar uma TV, desmarque "Dispositivo ativo"; se o endereço vazar, use "Trocar token".
 2. **Fire Stick, Amazon Fire TV (Fire OS), opção principal**:
    1. Conecte o Fire Stick à TV e à rede, e entre com a conta Amazon da Embracore.
    2. Instale um navegador pela Appstore da Amazon. Duas opções:
@@ -261,6 +275,14 @@ O `cron.php` publica/expira avisos agendados e, na Fase 2, marca dispositivos of
 5. Em qualquer dispositivo, desative suspensão de tela e economia de energia.
 
 > A configuração do Fire Stick acima ainda precisa ser validada em hardware real (ver `ROADMAP.md`, item 1.8).
+
+### Como a TV funciona
+
+- A página consulta o servidor a cada 30-60 s (`TV_POLL_SECONDS`); cada consulta é o *heartbeat* do dispositivo (o painel mostra o último contato).
+- A rotação é feita na própria TV pelo horário corrigido do servidor, então um relógio errado no aparelho não faz avisos entrarem ou saírem na hora errada. Avisos urgentes têm prioridade e destaque em tela cheia; sem avisos, aparecem a logo e um relógio grande; se o condomínio estiver desativado, só o relógio.
+- **Sem internet** a TV continua com o último conteúdo (Service Worker + armazenamento local) e decide o que mostrar pelo relógio: o que venceu sai, o agendado entra na hora certa. **O modo offline exige HTTPS** (o navegador só libera Service Worker em HTTPS); em HTTP puro a TV funciona, mas só online.
+- Token inválido ou revogado: página "não encontrada" sem detalhes, e excesso de tentativas com token inválido bloqueia o IP por um tempo.
+- O token fica mascarado no log de acesso do Nginx (`/etc/nginx/conf.d/avisos-log.conf`, ver abaixo).
 
 ## Roadmap
 

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR" class="tv-html">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Avisos</title>
+    <link rel="stylesheet" href="/assets/tv.css">
+    {# Cores do condomínio (o JS as atualiza quando mudam). O CSP não permite estilo inline. #}
+    <link rel="stylesheet" href="/tv/{{ token }}/tema.css">
+</head>
+{# O estado inicial vai num atributo (escapado pelo Twig): a TV já nasce com os avisos, mesmo offline. #}
+<body class="tv-pagina" data-estado="{{ estado_json }}" data-estado-url="/tv/{{ token }}/state" data-intervalo="{{ intervalo }}">
+    <div class="tv" id="tv">
+        <header class="tv-topo">
+            <span class="tv-logo"><img id="tv-logo" src="/assets/logo-embracore.svg" alt=""></span>
+            <span class="tv-relogio" id="tv-relogio">--:--</span>
+        </header>
+        <div class="tv-corpo" id="tv-corpo"></div>
+        <div class="tv-ocioso" id="tv-ocioso">
+            <span class="tv-ocioso-relogio" id="tv-ocioso-relogio">--:--</span>
+            <span class="tv-ocioso-texto" id="tv-ocioso-texto">Nenhum aviso no momento</span>
+        </div>
+        <span class="tv-offline" id="tv-offline" hidden>Sem conexão</span>
+    </div>
+    <script src="/assets/tv.js" defer></script>
+</body>
+</html>

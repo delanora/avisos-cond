@@ -4,7 +4,7 @@
 {% block titulo %}Prévia na TV - {{ app_nome }}{% endblock %}
 
 {# Cores do condomínio, entregues como folha de estilo (o CSP não permite estilo inline). #}
-{% block cabecalho %}<link rel="stylesheet" href="/gerente/condominios/{{ condominio.id }}/tema.css">{% endblock %}
+{% block cabecalho %}<link rel="stylesheet" href="/assets/tv.css"><link rel="stylesheet" href="/gerente/condominios/{{ condominio.id }}/tema.css">{% endblock %}
 
 {% block conteudo %}
     <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/avisos">Avisos</a> {{ ui.icone('seta', 14) }} <span>Prévia na TV</span></p>

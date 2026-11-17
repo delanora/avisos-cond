@@ -59,6 +59,35 @@ final class DataHoraTest extends TestCase
         $this->assertNotNull(DataHora::doFormulario('  2026-11-16T14:30 '));
     }
 
+    /** @return array<string, array{?int, string}> segundos atrás => texto */
+    public static function relativos(): array
+    {
+        return [
+            'nunca' => [null, 'nunca'],
+            'agora' => [0, 'agora há pouco'],
+            '119 segundos' => [119, 'agora há pouco'],
+            '2 minutos' => [120, 'há 2 min'],
+            '59 minutos' => [3599, 'há 59 min'],
+            '1 hora' => [3600, 'há 1 h'],
+            '23 horas' => [86399, 'há 23 h'],
+            '1 dia' => [86400, 'há 1 dia'],
+            '3 dias' => [3 * 86400 + 5, 'há 3 dias'],
+        ];
+    }
+
+    #[DataProvider('relativos')]
+    public function testRelativo(?int $segundosAtras, string $esperado): void
+    {
+        $agora = 1_800_000_000;
+
+        $this->assertSame($esperado, DataHora::relativo($segundosAtras === null ? null : $agora - $segundosAtras, $agora));
+    }
+
+    public function testRelativoComRelogioNoFuturoNaoFicaNegativo(): void
+    {
+        $this->assertSame('agora há pouco', DataHora::relativo(1_800_000_500, 1_800_000_000));
+    }
+
     public function testParaBancoGeraIso8601ComFuso(): void
     {
         $this->assertSame('2026-11-16T17:30:00+00:00', DataHora::paraBanco(gmmktime(17, 30, 0, 11, 16, 2026)));
