@@ -499,10 +499,6 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 .midia-atual { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 1.15rem; }
 .midia-miniatura { display: block; max-width: 220px; max-height: 140px; border: 1px solid var(--linha); border-radius: 10px; background: #FBFAF8; }
 
-.etiqueta-tipo-urgente { color: #8F1B12; background: #FCE3E0; }
-.etiqueta-tipo-fixo { color: #3A3F8A; background: #E4E6FB; }
-.etiqueta-tipo-manutencao { color: #7A4B06; background: #FDE9C8; }
-.etiqueta-tipo-assembleia { color: #1E4A93; background: #DCE8FB; }
 .etiqueta-situacao-no-ar { color: var(--ok-texto); background: var(--ok-fundo); }
 .etiqueta-situacao-agendado { color: #1E4A93; background: #DCE8FB; }
 .pessoa-sub .etiqueta { margin: 0.35rem 0.35rem 0 0; font-size: 0.75rem; padding: 0.05rem 0.55rem; }
@@ -552,3 +548,9 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 .historico li:first-child { border-top: 0; }
 .numero-link { color: inherit; text-decoration: none; }
 .numero-link:hover { color: inherit; background: #FBFAF8; }
+
+/* Tipos de aviso: etiquetas coloridas vêm de /gerente/condominios/{id}/tipos.css; sem cor, o visual neutro. */
+.etiqueta-tipo-t0 { color: var(--tinta); background: #EFEDE8; }
+.novo-tipo { margin-top: 0.5rem; padding: 0.75rem 1rem; background: #FBFAF8; border: 1px solid var(--linha); border-radius: var(--raio); }
+.novo-tipo > summary { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; cursor: pointer; color: var(--marca-700); }
+.novo-tipo[open] > summary { margin-bottom: 0.6rem; }

@@ -95,8 +95,12 @@ final class TvServiceTest extends BancoMigradoTestCase
         $this->assertMatchesRegularExpression('/^[a-f0-9]{16}$/', $estado['version']);
 
         $aviso = $estado['avisos'][0];
-        $this->assertSame(['id', 'titulo', 'corpo', 'tipo', 'inicio_em', 'fim_em', 'midia'], array_keys($aviso));
+        $this->assertSame(['id', 'titulo', 'corpo', 'tipo', 'tipo_nome', 'fixo', 'visual', 'inicio_em', 'fim_em', 'midia'], array_keys($aviso));
         $this->assertSame('urgente', $aviso['tipo']);
+        $this->assertSame('Urgente', $aviso['tipo_nome']);
+        $this->assertTrue($aviso['fixo'], 'Urgente é um tipo fixo.');
+        $this->assertSame('#B42318', $aviso['visual']['principal']);
+        $this->assertSame(['principal', 'texto_tag', 'fundo', 'borda', 'titulo'], array_keys($aviso['visual']));
         $this->assertSame("Linha 1\nLinha 2", $aviso['corpo']);
         $this->assertSame(gmdate('Y-m-d\TH:i:s\Z', $agora - 60), $aviso['inicio_em']);
         $this->assertSame(gmdate('Y-m-d\TH:i:s\Z', $agora + 3600), $aviso['fim_em']);
@@ -211,5 +215,35 @@ final class TvServiceTest extends BancoMigradoTestCase
                 $this->addToAssertionCount(1);
             }
         }
+    }
+
+    public function testTipoCriadoPeloGerenteVaiParaATvComNomeFixoECores(): void
+    {
+        $this->pdo->exec("INSERT INTO tipos_aviso (condominio_id, chave, nome, cor, fixo) VALUES ({$this->a}, 'zeladoria', 'Zeladoria', '#336699', true), ({$this->a}, 'dedetizacao', 'Dedetização', NULL, false)");
+        $this->avisoTv($this->pdo, $this->a, 'Escada interditada', -60, 3600, ['tipo' => 'zeladoria']);
+        $this->avisoTv($this->pdo, $this->a, 'Sem cor', -30, 3600, ['tipo' => 'dedetizacao']);
+
+        [$fixo, $neutro] = $this->servico()->estado($this->acesso($this->a), time())['avisos'];
+
+        $this->assertSame(['zeladoria', 'Zeladoria', true], [$fixo['tipo'], $fixo['tipo_nome'], $fixo['fixo']]);
+        $this->assertSame('#336699', $fixo['visual']['principal']);
+        $this->assertSame(['dedetizacao', 'Dedetização', false, null], [$neutro['tipo'], $neutro['tipo_nome'], $neutro['fixo'], $neutro['visual']]);
+    }
+
+    public function testMudarACorOuOFixoDoTipoMudaAVersaoParaATvAtualizar(): void
+    {
+        $this->pdo->exec("INSERT INTO tipos_aviso (condominio_id, chave, nome, cor, fixo) VALUES ({$this->a}, 'zeladoria', 'Zeladoria', '#336699', false)");
+        $this->avisoTv($this->pdo, $this->a, 'Aviso', -60, 3600, ['tipo' => 'zeladoria']);
+        $acesso = $this->acesso($this->a);
+        $agora = time();
+        $v1 = $this->servico()->estado($acesso, $agora)['version'];
+
+        $this->pdo->exec("UPDATE tipos_aviso SET cor = '#AA0000' WHERE chave = 'zeladoria'");
+        $v2 = $this->servico()->estado($acesso, $agora)['version'];
+        $this->pdo->exec("UPDATE tipos_aviso SET fixo = true WHERE chave = 'zeladoria'");
+        $v3 = $this->servico()->estado($acesso, $agora)['version'];
+
+        $this->assertNotSame($v1, $v2);
+        $this->assertNotSame($v2, $v3);
     }
 }

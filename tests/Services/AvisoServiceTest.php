@@ -49,7 +49,8 @@ final class AvisoServiceTest extends BancoMigradoTestCase
     {
         return new AvisoService(
             new AvisoRepository($this->pdo),
-            new UploadService($this->dir, 1048576, static fn (string $de, string $para): bool => copy($de, $para))
+            new UploadService($this->dir, 1048576, static fn (string $de, string $para): bool => copy($de, $para)),
+            new \App\Services\TipoAvisoService(new \App\Repositories\TipoAvisoRepository($this->pdo))
         );
     }
 

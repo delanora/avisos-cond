@@ -1,0 +1,32 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/form.html.twig' as f %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% block titulo %}{{ editando ? 'Editar tipo' : 'Novo tipo' }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/tipos">Tipos de aviso</a> {{ ui.icone('seta', 14) }} <span>{{ editando ? 'Editar' : 'Novo' }}</span></p>
+    <div class="pagina-topo"><h1>{{ editando ? 'Editar tipo' : 'Novo tipo' }}</h1></div>
+
+    <form method="post" action="{{ acao }}" class="cartao formulario">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <section class="formulario-secao">
+            {{ f.campo('nome', 'Nome do tipo', 'text', valores.nome, erros.nome|default(''), {obrigatorio: true, max: 30}) }}
+
+            <div class="campo{% if erros.cor is defined %} campo-erro{% endif %}">
+                <label for="campo-cor">Cor principal</label>
+                <input id="campo-cor" type="color" name="cor" value="{{ valores.cor }}"{% if erros.cor is defined %} aria-invalid="true"{% endif %}>
+                <p class="campo-ajuda">Vira a cor da etiqueta; o fundo do cartão na TV é um tom mais claro desta cor, calculado sozinho.</p>
+                {% if erros.cor is defined %}<p class="erro-texto">{{ erros.cor }}</p>{% endif %}
+            </div>
+
+            <label class="opcao opcao-simples"><input type="checkbox" name="fixo" value="1"{% if valores.fixo %} checked{% endif %}> Aviso fixo (sempre à vista na faixa do topo da TV)</label>
+            <p class="campo-ajuda">Avisos fixos mostram só o texto e ficam no ar durante todo o período. Os demais passam em carrossel, com foto ou vídeo.</p>
+        </section>
+
+        <div class="acoes">
+            <button type="submit">{{ editando ? 'Salvar tipo' : 'Criar tipo' }}</button>
+            <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/tipos">Cancelar</a>
+        </div>
+    </form>
+{% endblock %}

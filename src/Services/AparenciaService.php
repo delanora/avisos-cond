@@ -80,6 +80,46 @@ final class AparenciaService
         ];
     }
 
+    /**
+     * Cores de um tipo de aviso para a TV e para a prévia, a partir da cor principal do tipo: etiqueta na cor
+     * principal, cartão no tom mais claro dela e título no tom escuro. Sem cor, o visual neutro (null).
+     *
+     * @return array{principal: string, texto_tag: string, fundo: string, borda: string, titulo: string}|null
+     */
+    public static function coresDoTipo(?string $cor): ?array
+    {
+        if ($cor === null || !self::corValida($cor)) {
+            return null;
+        }
+        $p = self::paleta($cor);
+
+        return [
+            'principal' => $p['--marca'],
+            'texto_tag' => self::corDoTexto($p['--marca']),
+            'fundo' => $p['--marca-50'],
+            'borda' => $p['--marca-100'],
+            'titulo' => $p['--marca-800'],
+        ];
+    }
+
+    /** Branco ou grafite, o que tiver mais contraste sobre o fundo informado (texto de etiquetas coloridas). */
+    public static function corDoTexto(string $fundo): string
+    {
+        if (!self::corValida($fundo)) {
+            return '#FFFFFF';
+        }
+        [$r, $g, $b] = self::rgb($fundo);
+        $canal = static function (int $v): float {
+            $c = $v / 255;
+
+            return $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+        };
+        $luminancia = 0.2126 * $canal($r) + 0.7152 * $canal($g) + 0.0722 * $canal($b);
+
+        // Branco tem L = 1; o grafite #1D2125 tem L ≈ 0,015.
+        return 1.05 / ($luminancia + 0.05) >= ($luminancia + 0.05) / 0.065 ? '#FFFFFF' : '#1D2125';
+    }
+
     /** Folha de estilo com as variáveis (o CSP não permite estilo inline). */
     public static function css(string $cor): string
     {

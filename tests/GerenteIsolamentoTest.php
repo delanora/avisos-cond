@@ -23,6 +23,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
     private int $avisoA;
     private int $avisoB;
     private string $midiaB;
+    private int $tipoB;
 
     protected function setUp(): void
     {
@@ -40,6 +41,8 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         $this->logar('gerente.b@exemplo.com.br');
         $this->avisoB = $this->criarAvisoEm($this->condB, 'SEGREDO-DO-BETA', Amostras::arquivo('beta.png', Amostras::png()));
         $this->post('/gerente/aparencia', ['cor_primaria' => '#AA0000']);
+        $this->post("/gerente/condominios/{$this->condB}/tipos", ['nome' => 'Tipo Secreto Beta', 'cor' => '#00BB77', 'fixo' => '1']);
+        $this->tipoB = (int) $this->pdo->query("SELECT id FROM tipos_aviso WHERE chave = 'tipo-secreto-beta'")->fetchColumn();
         $this->midiaB = (string) $this->pdo->query("SELECT midia FROM avisos WHERE id = {$this->avisoB}")->fetchColumn();
 
         // Dados do condomínio A, criados pelo gerente A; depois o "navegador" fica logado como A.
@@ -65,6 +68,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         sort($arquivos);
 
         return [
+            'tipos' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(condominio_id, 0) || '|' || chave || '|' || nome || '|' || coalesce(cor, '') || '|' || fixo::text, ';' ORDER BY id) FROM tipos_aviso")->fetchColumn(),
             'avisos' => $this->pdo->query("SELECT string_agg(id || '|' || condominio_id || '|' || titulo || '|' || corpo || '|' || tipo || '|' || ativo::text || '|' || coalesce(midia, ''), ';' ORDER BY id) FROM avisos")->fetchColumn(),
             'condominios' => $this->pdo->query("SELECT string_agg(id || '|' || nome || '|' || ativo::text, ';' ORDER BY id) FROM condominios")->fetchColumn(),
             'cores' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(cor_primaria, ''), ';' ORDER BY id) FROM usuarios")->fetchColumn(),
@@ -92,6 +96,8 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
             ['GET', "{$b}/avisos/{$this->avisoB}/editar"], ['GET', "{$b}/avisos/{$this->avisoB}/excluir"],
             ['GET', "{$b}/avisos/{$this->avisoB}/previa"], ['GET', "{$b}/avisos/{$this->avisoB}/midia"],
             ['POST', "{$b}/avisos"], ['POST', "{$b}/avisos/{$this->avisoB}"], ['POST', "{$b}/avisos/{$this->avisoB}/excluir"],
+            ['GET', "{$b}/tipos"], ['GET', "{$b}/tipos/novo"], ['GET', "{$b}/tipos/{$this->tipoB}/editar"], ['GET', "{$b}/tipos/{$this->tipoB}/excluir"], ['GET', "{$b}/tipos.css"],
+            ['POST', "{$b}/tipos"], ['POST', "{$b}/tipos/{$this->tipoB}"], ['POST', "{$b}/tipos/{$this->tipoB}/excluir"],
         ];
     }
 
@@ -108,7 +114,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
 
     private function assertSemVazamento(string $corpo, string $contexto): void
     {
-        foreach (['SEGREDO-DO-BETA', 'Condomínio Beta', $this->midiaB, '#AA0000'] as $segredo) {
+        foreach (['SEGREDO-DO-BETA', 'Condomínio Beta', 'Tipo Secreto Beta', 'tipo-secreto-beta', '#00BB77', $this->midiaB, '#AA0000'] as $segredo) {
             $this->assertStringNotContainsString($segredo, $corpo, "Vazou '{$segredo}' em {$contexto}");
         }
     }
@@ -191,6 +197,30 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
 
         $this->assertSame('#AA0000', $this->pdo->query("SELECT cor_primaria FROM usuarios WHERE id = {$this->gerenteB}")->fetchColumn());
         $this->assertSame('#0044CC', $this->pdo->query("SELECT cor_primaria FROM usuarios WHERE id = {$this->gerenteA}")->fetchColumn());
+    }
+
+    public function testTipoDoBNaoEhListadoNemUsadoNemEditadoPeloA(): void
+    {
+        $antes = $this->fotografia();
+
+        // Não aparece em nenhuma tela do A (formulário de aviso, lista de tipos, folha de cores).
+        foreach (["/gerente/condominios/{$this->condA}/avisos/novo", "/gerente/condominios/{$this->condA}/tipos", "/gerente/condominios/{$this->condA}/tipos.css"] as $caminho) {
+            $r = $this->get($caminho);
+            $this->assertSame(200, $r->status, $caminho);
+            $this->assertSemVazamento($r->body, $caminho);
+        }
+
+        // Não pode ser escolhido num aviso do A, nem pela chave nem pelo id.
+        $r = $this->post("/gerente/condominios/{$this->condA}/avisos", ['tipo' => 'tipo-secreto-beta', 'titulo' => 'Tentativa', 'corpo' => 'x', 'inicio_em' => '2026-11-20T08:00', 'fim_em' => '2026-11-20T12:00', 'ativo' => '1']);
+        $this->assertSame(422, $r->status);
+        $this->assertStringContainsString('Escolha um tipo válido.', $r->body);
+        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM avisos WHERE titulo = 'Tentativa'")->fetchColumn());
+
+        // Nem editado/apagado pelo A, mesmo usando o id dele na URL do condomínio do A.
+        foreach ([['GET', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}/editar"], ['POST', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}"], ['POST', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}/excluir"]] as [$metodo, $caminho]) {
+            $this->assertSame(404, $this->chamar($metodo, $caminho)->status, "{$metodo} {$caminho}");
+        }
+        $this->assertSame($antes, $this->fotografia());
     }
 
     public function testCondominioInexistenteSeComportaIgualAoDeOutroGerente(): void

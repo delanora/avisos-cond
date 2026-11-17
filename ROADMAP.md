@@ -105,8 +105,9 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] Painel de status online/offline dos dispositivos: situação (online, offline, nunca conectou, revogado) na lista com contagem e filtro, no detalhe com histórico de quedas e na página inicial do admin; offline = sem contato há mais de 3 min (2026-11-17)
 - [x] Detecção de dispositivos offline no cron (`detectar_dispositivos_offline`, a cada 1 min, grava quedas e retornos em `dispositivo_eventos`, idempotente) (2026-11-17)
 - [ ] Pareamento por código (`codigo_pareamento`)
-- [ ] Agendamento avançado (recorrência)
-- [ ] Modelos prontos de aviso (falta de água, elevador, dedetização, assembleia)
+- [ ] Agendamento avançado (recorrência): dias da semana e janela de horário dentro do período do aviso, valendo na TV (offline), no painel e na prévia
+- [x] Tipos de aviso criados pelo gerente (por condomínio): dropdown na tela do aviso, criação na própria tela ou em "Tipos de aviso", nome + cor principal (cartão em tom claro calculado) + fixo ou não; os 5 antigos viram tipos do sistema; gatilho de isolamento no banco (2026-11-18)
+- [ ] Modelos prontos de aviso (falta de água, elevador, dedetização, assembleia), que o gerente também cadastra, edita e apaga
 - [ ] Auditoria (tabela `auditoria`, registro de ações) e modo suporte do superadmin como gerente
 
 ### 2.x Autenticação de dois fatores (2FA, TOTP)
@@ -229,3 +230,4 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-17: o responsável confirmou o plano do 2FA (TOTP próprio, QR code de terceiros em SVG, plano B só com a chave em texto). Pode ser implementado quando for priorizado.
 - 2026-11-17: removido do roadmap o "QR code opcional no aviso" (decisão do responsável). Ordem da Fase 2 combinada: status online/offline + detecção offline, modelos de aviso, recorrência, auditoria + modo suporte, pareamento por código; o 2FA fica por último.
 - 2026-11-17: bloco 2.1 (status online/offline). Decisões minhas a confirmar: limite de 3 minutos sem contato para considerar a TV offline (a TV consulta a cada 30-60 s); o painel mostra a situação calculada na hora, e a tarefa do cron só alimenta o histórico (migration 008); só o admin vê a situação (o gerente não). Notificação ao cair (e-mail/WhatsApp) continua na Fase 3.
+- 2026-11-18: bloco 2.2a (tipos de aviso). Decisões minhas a confirmar: tipos pertencem ao **condomínio** (todos os gerentes dele compartilham; o isolamento segue a regra dos avisos); os cinco antigos viraram tipos do sistema, não editáveis; com isso os cartões Fixo/Manutenção/Assembleia da TV ganharam cor (antes eram todos grafite) e o Urgente deixou de ser um caso especial no CSS; apagar tipo em uso é bloqueado; o tipo é escolhido por dropdown e há uma seção "Criar um tipo novo" no mesmo formulário (sem JavaScript).

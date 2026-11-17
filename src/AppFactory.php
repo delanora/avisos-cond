@@ -10,6 +10,7 @@ use App\Controllers\Admin\UsuariosController;
 use App\Controllers\Gerente\AparenciaController;
 use App\Controllers\Gerente\AvisosController;
 use App\Controllers\Gerente\MidiaController;
+use App\Controllers\Gerente\TiposController;
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\GerenteController;
@@ -27,6 +28,7 @@ use App\Repositories\CondominioRepository;
 use App\Repositories\DispositivoRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\RateLimitRepository;
+use App\Repositories\TipoAvisoRepository;
 use App\Repositories\UsuarioRepository;
 use App\Repositories\VinculoRepository;
 use App\Services\AparenciaService;
@@ -39,6 +41,7 @@ use App\Services\Mailer;
 use App\Services\PasswordHasher;
 use App\Services\PasswordResetService;
 use App\Services\RateLimiter;
+use App\Services\TipoAvisoService;
 use App\Services\TvAcesso;
 use App\Services\TvService;
 use App\Services\UploadService;
@@ -93,7 +96,8 @@ final class AppFactory
         $upload = new UploadService($config->obrigatorio('UPLOAD_DIR'), $maximoUpload, $moverUpload);
         $aceleracao = $config->string('MEDIA_ACCEL') === '' ? null : $config->string('MEDIA_ACCEL');
         $aparenciaService = new AparenciaService($usuarios);
-        $avisoService = new AvisoService(new AvisoRepository($pdo), $upload);
+        $tipoAvisoService = new TipoAvisoService(new TipoAvisoRepository($pdo));
+        $avisoService = new AvisoService(new AvisoRepository($pdo), $upload, $tipoAvisoService);
 
         // TV: token na URL, sem sessão. Intervalo de consulta configurável (30 a 60 s).
         $dispositivos = new DispositivoRepository($pdo);
@@ -131,8 +135,9 @@ final class AppFactory
         $admin = new AdminController($view, $gestaoUsuarios, $gestaoCondominios, $gestaoDispositivos);
         $adminUsuarios = new UsuariosController($view, $sessao, $gestaoUsuarios, $gestaoCondominios);
         $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios);
-        $gerenteAvisos = new AvisosController($view, $sessao, $avisoService);
+        $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $tipoAvisoService);
         $gerenteAparencia = new AparenciaController($view, $sessao, $aparenciaService);
+        $gerenteTipos = new TiposController($view, $sessao, $tipoAvisoService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
         $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'));
         $tv = new TvController($view, $tvAcesso, $tvService, $aceleracao);
@@ -140,7 +145,7 @@ final class AppFactory
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -217,6 +222,15 @@ final class AppFactory
             $r->addRoute('POST', "{$c}/avisos/{id:\d+}/excluir", $gEscrita([$gerenteAvisos, 'excluir']));
             $r->addRoute('GET', "{$c}/avisos/{id:\d+}/previa", $gLeitura([$gerenteAvisos, 'previa']));
             $r->addRoute('GET', "{$c}/avisos/{id:\d+}/midia", $gLeitura([$gerenteMidia, 'aviso']));
+
+            $r->addRoute('GET', "{$c}/tipos", $gLeitura([$gerenteTipos, 'lista']));
+            $r->addRoute('GET', "{$c}/tipos/novo", $gLeitura([$gerenteTipos, 'novo']));
+            $r->addRoute('POST', "{$c}/tipos", $gEscrita([$gerenteTipos, 'criar']));
+            $r->addRoute('GET', "{$c}/tipos/{id:\d+}/editar", $gLeitura([$gerenteTipos, 'editar']));
+            $r->addRoute('POST', "{$c}/tipos/{id:\d+}", $gEscrita([$gerenteTipos, 'atualizar']));
+            $r->addRoute('GET', "{$c}/tipos/{id:\d+}/excluir", $gLeitura([$gerenteTipos, 'confirmarExclusao']));
+            $r->addRoute('POST', "{$c}/tipos/{id:\d+}/excluir", $gEscrita([$gerenteTipos, 'excluir']));
+            $r->addRoute('GET', "{$c}/tipos.css", $gLeitura([$gerenteTipos, 'css']));
 
         });
 

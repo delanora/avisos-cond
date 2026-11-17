@@ -20,7 +20,7 @@
         teste(nome, JSON.stringify(obtido) === JSON.stringify(esperado), 'obtido=' + JSON.stringify(obtido) + ' esperado=' + JSON.stringify(esperado));
     }
     function aviso(id, tipo, inicio, fim, extra) {
-        var a = { id: id, titulo: 'Aviso ' + id, corpo: '', tipo: tipo, inicio_em: inicio, fim_em: fim, midia: null };
+        var a = { id: id, titulo: 'Aviso ' + id, corpo: '', tipo: tipo, fixo: tipo === 'urgente' || tipo === 'fixo', inicio_em: inicio, fim_em: fim, midia: null };
         for (var k in extra) { if (extra.hasOwnProperty(k)) { a[k] = extra[k]; } }
         return a;
     }
@@ -38,9 +38,8 @@
     ]);
 
     // ----- quem é fixo -----
-    teste('urgente é fixo', L.ehFixo({ tipo: 'urgente' }));
-    teste('fixo é fixo', L.ehFixo({ tipo: 'fixo' }));
-    teste('comum, manutenção e assembleia vão para o carrossel', !L.ehFixo({ tipo: 'comum' }) && !L.ehFixo({ tipo: 'manutencao' }) && !L.ehFixo({ tipo: 'assembleia' }));
+    teste('tipo marcado como fixo (urgente, fixo ou um criado pelo gerente) é fixo', L.ehFixo({ tipo: 'urgente', fixo: true }) && L.ehFixo({ tipo: 'reuniao-do-conselho', fixo: true }));
+    teste('tipo não fixo vai para o carrossel, qualquer que seja o nome', !L.ehFixo({ tipo: 'comum', fixo: false }) && !L.ehFixo({ tipo: 'fixo', fixo: false }) && !L.ehFixo({ tipo: 'urgente' }));
 
     // ----- carrossel (não fixos), por horário -----
     igual('carrossel antes de tudo: vazio', ids(L.selecionarCarrossel(avisos, T('2026-11-16T08:00:00Z'))), []);

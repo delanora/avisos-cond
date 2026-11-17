@@ -167,7 +167,7 @@ final class GerenteTest extends AppHttpTestCase
 
         $this->assertStringContainsString('enctype="multipart/form-data"', $corpo);
         $this->assertMatchesRegularExpression('/name="inicio_em"\s+value="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}"/', $corpo);
-        $this->assertMatchesRegularExpression('/name="tipo" value="comum" checked/', $corpo);
+        $this->assertMatchesRegularExpression('/<option value="comum" selected>/', $corpo);
         $this->assertMatchesRegularExpression('/name="ativo" value="1" checked/', $corpo);
         $this->assertStringContainsString('Não aceitamos PDF', $corpo);
         $this->assertMatchesRegularExpression('/name="_csrf" value="[a-f0-9]{64}"/', $corpo);
@@ -233,7 +233,7 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('value="Falta de água"', $r->body);
         $this->assertStringContainsString('value="2026-11-20T08:00"', $r->body);
         $this->assertStringContainsString('value="2026-11-20T12:00"', $r->body);
-        $this->assertMatchesRegularExpression('/name="tipo" value="assembleia" checked/', $r->body);
+        $this->assertMatchesRegularExpression('/<option value="assembleia" selected>/', $r->body);
         $this->assertStringContainsString('Ver como fica na TV', $r->body);
     }
 
@@ -383,10 +383,10 @@ final class GerenteTest extends AppHttpTestCase
 
         $this->assertStringContainsString('<div class="tv tv-com-fixos tv-sem-carrossel">', $corpo);
         $this->assertStringContainsString('class="tv-fixos tv-fixos-cols-1 tv-fixos-rows-1"', $corpo);
-        $this->assertStringContainsString('<article class="tv-fixo tv-fixo-urgente">', $corpo);
+        $this->assertStringContainsString('<article class="tv-fixo tv-fixo-urgente tv-t', $corpo);
         $this->assertStringContainsString('<h2 class="tv-fixo-titulo">Vazamento</h2>', $corpo);
         $this->assertStringNotContainsString('tv-topo', $corpo);
-        $this->assertStringContainsString('Aviso urgente: fica sempre à vista na faixa do topo da TV', $corpo);
+        $this->assertStringContainsString('Aviso do tipo Urgente (fixo): fica sempre à vista na faixa do topo da TV', $corpo);
         $this->assertStringNotContainsString('class="tv-corpo', $corpo, 'Urgente não entra no carrossel.');
     }
 
@@ -397,8 +397,8 @@ final class GerenteTest extends AppHttpTestCase
 
         $corpo = $this->get($this->base() . "/avisos/{$id}/previa")->body;
 
-        $this->assertStringContainsString('<article class="tv-fixo tv-fixo-fixo">', $corpo);
-        $this->assertStringContainsString('Aviso fixo: fica sempre à vista', $corpo);
+        $this->assertStringContainsString('<article class="tv-fixo tv-fixo-fixo tv-t', $corpo);
+        $this->assertStringContainsString('Aviso do tipo Fixo (fixo): fica sempre à vista', $corpo);
         $this->assertStringContainsString('A foto ou o vídeo deste aviso não são exibidos na TV.', $corpo);
         $this->assertStringNotContainsString('class="tv-midia"', $corpo);
     }
@@ -409,9 +409,11 @@ final class GerenteTest extends AppHttpTestCase
 
         $corpo = $this->get($this->base() . '/avisos/novo')->body;
 
-        $this->assertMatchesRegularExpression('/name="tipo" value="fixo"/', $corpo);
+        $this->assertMatchesRegularExpression('/<select id="campo-tipo" name="tipo"/', $corpo, 'Tipo é um dropdown.');
+        $this->assertStringContainsString('<option value="fixo">Fixo (fixo)</option>', $corpo);
+        $this->assertStringContainsString('<option value="comum" selected>Comum</option>', $corpo);
         $this->assertStringContainsString('faixa no topo da TV', $corpo);
-        $this->assertStringContainsString('só aparecem em avisos do carrossel', $corpo);
+        $this->assertStringContainsString('Criar um tipo novo', $corpo);
     }
 
     public function testCriarEListarAvisoFixoMostraEtiquetaPropria(): void
@@ -421,7 +423,7 @@ final class GerenteTest extends AppHttpTestCase
         $this->criarAviso(['tipo' => 'fixo', 'titulo' => 'Horário da portaria']);
 
         $this->assertSame('fixo', $this->pdo->query('SELECT tipo FROM avisos')->fetchColumn());
-        $this->assertStringContainsString('etiqueta-tipo-fixo">Fixo<', $this->get($this->base() . '/avisos')->body);
+        $this->assertMatchesRegularExpression('/etiqueta-tipo-t\d+">Fixo</', $this->get($this->base() . '/avisos')->body);
     }
 
     public function testPreviaComImagemEComVideo(): void
@@ -433,7 +435,7 @@ final class GerenteTest extends AppHttpTestCase
         $imagem = $this->get($this->base() . "/avisos/{$comImagem}/previa")->body;
         $video = $this->get($this->base() . "/avisos/{$comVideo}/previa")->body;
 
-        $this->assertStringContainsString('class="tv-corpo tv-com-midia"', $imagem);
+        $this->assertMatchesRegularExpression('/class="tv-corpo tv-t\d+ tv-com-midia"/', $imagem);
         $this->assertStringContainsString("<img src=\"{$this->base()}/avisos/{$comImagem}/midia\"", $imagem);
         $this->assertStringContainsString("<video src=\"{$this->base()}/avisos/{$comVideo}/midia\"", $video);
     }
@@ -496,6 +498,200 @@ final class GerenteTest extends AppHttpTestCase
             unlink($this->uploads . '/' . $arquivo);
         }
         $this->assertSame(404, $this->get($this->base() . "/avisos/{$comMidia}/midia")->status);
+    }
+
+    // ---------- Tipos de aviso (nome, cor, fixo) ----------
+
+    private function tipoPorChave(string $chave): array
+    {
+        return $this->pdo->query("SELECT * FROM tipos_aviso WHERE chave = '{$chave}'")->fetch();
+    }
+
+    public function testListaDeTiposMostraOsDoSistemaSemAcoesEOsProprios(): void
+    {
+        $this->entrar();
+        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+
+        $corpo = $this->get($this->base() . '/tipos')->body;
+
+        foreach (['Comum', 'Fixo', 'Urgente', 'Manutenção', 'Assembleia', 'Zeladoria'] as $nome) {
+            $this->assertStringContainsString(">{$nome}<", $corpo);
+        }
+        $this->assertSame(5, substr_count($corpo, 'padrão do sistema'));
+        $zel = $this->tipoPorChave('zeladoria');
+        $this->assertStringContainsString("/tipos/{$zel['id']}/editar", $corpo);
+        $urgente = $this->tipoPorChave('urgente');
+        $this->assertStringNotContainsString("/tipos/{$urgente['id']}/editar", $corpo, 'Tipo do sistema não tem ação.');
+    }
+
+    public function testCriarTipoPelaTelaDeTipos(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/tipos', ['nome' => 'Reunião do Conselho', 'cor' => '#2f6fed', 'fixo' => '1']);
+
+        $this->assertSame(303, $r->status);
+        $t = $this->tipoPorChave('reuniao-do-conselho');
+        $this->assertSame(['Reunião do Conselho', '#2F6FED', true, $this->condominio], [$t['nome'], $t['cor'], (bool) $t['fixo'], (int) $t['condominio_id']]);
+        $this->assertStringContainsString('Tipo criado com sucesso.', $this->get($this->base() . '/tipos')->body);
+    }
+
+    public function testTipoInvalidoMostraErrosESemCriar(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/tipos', ['nome' => 'A', 'cor' => 'azul']);
+
+        $this->assertSame(422, $r->status);
+        $this->assertStringContainsString('Informe um nome de 2 a 30 caracteres.', $r->body);
+        $this->assertStringContainsString('Escolha uma cor válida.', $r->body);
+        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE NOT sistema')->fetchColumn());
+    }
+
+    public function testEditarTipoMudaNomeCorEFixoMasNaoAChave(): void
+    {
+        $this->entrar();
+        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $id = (int) $this->tipoPorChave('zeladoria')['id'];
+
+        $form = $this->get($this->base() . "/tipos/{$id}/editar")->body;
+        $this->assertStringContainsString('value="Zeladoria"', $form);
+        $this->assertStringContainsString('value="#336699"', $form);
+
+        $this->assertSame(303, $this->post($this->base() . "/tipos/{$id}", ['nome' => 'Zeladoria e limpeza', 'cor' => '#AA5500', 'fixo' => '1'])->status);
+
+        $t = $this->tipoPorChave('zeladoria');
+        $this->assertSame(['Zeladoria e limpeza', '#AA5500', true], [$t['nome'], $t['cor'], (bool) $t['fixo']]);
+    }
+
+    public function testEditarOuApagarTipoDoSistemaEh404(): void
+    {
+        $this->entrar();
+        $id = (int) $this->tipoPorChave('urgente')['id'];
+
+        $this->assertSame(404, $this->get($this->base() . "/tipos/{$id}/editar")->status);
+        $this->assertSame(404, $this->post($this->base() . "/tipos/{$id}", ['nome' => 'Mudou', 'cor' => '#000000'])->status);
+        $this->assertSame(404, $this->post($this->base() . "/tipos/{$id}/excluir")->status);
+        $this->assertSame('Urgente', $this->tipoPorChave('urgente')['nome']);
+    }
+
+    public function testApagarTipoLivreFuncionaEEmUsoEhRecusado(): void
+    {
+        $this->entrar();
+        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $id = (int) $this->tipoPorChave('zeladoria')['id'];
+        $this->criarAviso(['tipo' => 'zeladoria']);
+
+        $this->assertStringContainsString('é usado por 1 aviso', $this->get($this->base() . "/tipos/{$id}/excluir")->body);
+        $this->post($this->base() . "/tipos/{$id}/excluir");
+        $this->assertStringContainsString('usado por 1 aviso', $this->get($this->base() . '/tipos')->body);
+        $this->assertSame(1, (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE chave = 'zeladoria'")->fetchColumn(), 'Em uso: continua existindo.');
+
+        $this->pdo->exec('DELETE FROM avisos');
+        $this->assertSame(303, $this->post($this->base() . "/tipos/{$id}/excluir")->status);
+        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE chave = 'zeladoria'")->fetchColumn());
+    }
+
+    public function testEscritasDeTiposSemCsrfSaoBloqueadas(): void
+    {
+        $this->entrar();
+        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $id = (int) $this->tipoPorChave('zeladoria')['id'];
+
+        foreach ([$this->base() . '/tipos', $this->base() . "/tipos/{$id}", $this->base() . "/tipos/{$id}/excluir"] as $caminho) {
+            $this->assertSame(403, $this->post($caminho, ['nome' => 'HACK', 'cor' => '#000000'], comCsrf: false)->status, $caminho);
+        }
+        $this->assertSame('Zeladoria', $this->tipoPorChave('zeladoria')['nome']);
+    }
+
+    public function testFormularioDoAvisoTemDropdownComOsTiposDoCondominio(): void
+    {
+        $this->entrar();
+        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699', 'fixo' => '1']);
+
+        $corpo = $this->get($this->base() . '/avisos/novo')->body;
+
+        $this->assertStringContainsString('<option value="zeladoria">Zeladoria (fixo)</option>', $corpo);
+        $this->assertStringContainsString('<option value="manutencao">Manutenção</option>', $corpo);
+        $this->assertStringContainsString('name="novo_tipo_nome"', $corpo);
+        $this->assertStringContainsString('name="novo_tipo_cor"', $corpo);
+        $this->assertStringContainsString('name="novo_tipo_fixo"', $corpo);
+    }
+
+    public function testCriarAvisoJaCriandoUmTipoNovoNoMesmoFormulario(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['tipo' => 'comum', 'novo_tipo_nome' => 'Obra na fachada', 'novo_tipo_cor' => '#c2410c', 'novo_tipo_fixo' => '1']));
+
+        $this->assertSame(303, $r->status);
+        $t = $this->tipoPorChave('obra-na-fachada');
+        $this->assertSame(['Obra na fachada', '#C2410C', true, $this->condominio], [$t['nome'], $t['cor'], (bool) $t['fixo'], (int) $t['condominio_id']]);
+        $this->assertSame('obra-na-fachada', $this->pdo->query('SELECT tipo FROM avisos')->fetchColumn(), 'O tipo novo vale no lugar do seletor.');
+        $this->assertStringContainsString('<option value="obra-na-fachada">Obra na fachada (fixo)</option>', $this->get($this->base() . '/avisos/novo')->body);
+    }
+
+    public function testTipoNovoInvalidoNoAvisoNaoCriaNemTipoNemAviso(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['novo_tipo_nome' => 'X', 'novo_tipo_cor' => 'azul']));
+
+        $this->assertSame(422, $r->status);
+        $this->assertStringContainsString('Informe um nome de 2 a 30 caracteres.', $r->body);
+        $this->assertStringContainsString('Escolha uma cor válida.', $r->body);
+        $this->assertStringContainsString('<details class="novo-tipo" open>', $r->body, 'A seção do tipo novo reabre mostrando os erros.');
+        $this->assertSame(0, $this->contar('avisos'));
+        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE NOT sistema')->fetchColumn());
+    }
+
+    public function testAvisoInvalidoComTipoNovoNaoDeixaOTipoCriado(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['titulo' => '', 'novo_tipo_nome' => 'Obra na fachada', 'novo_tipo_cor' => '#c2410c']));
+
+        $this->assertSame(422, $r->status);
+        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE NOT sistema')->fetchColumn(), 'Só cria o tipo quando o aviso é válido.');
+    }
+
+    public function testTiposCssTemAsCoresDoCondominioEVemSoDeleEstaNaPaginaDoGerente(): void
+    {
+        $this->entrar();
+        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $id = (int) $this->tipoPorChave('zeladoria')['id'];
+
+        $r = $this->get($this->base() . '/tipos.css');
+
+        $this->assertSame(200, $r->status);
+        $this->assertStringStartsWith('text/css', $r->headers['Content-Type']);
+        $this->assertSame('nosniff', $r->headers['X-Content-Type-Options']);
+        $this->assertStringContainsString(".etiqueta-tipo-t{$id} { color: #FFFFFF; background: #336699; }", $r->body);
+        $this->assertStringContainsString("href=\"{$this->base()}/tipos.css\"", $this->get($this->base() . '/avisos')->body);
+    }
+
+    public function testEtiquetaDoTipoPropioNaListaDeAvisosUsaONomeEACor(): void
+    {
+        $this->entrar();
+        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $this->criarAviso(['tipo' => 'zeladoria']);
+        $id = (int) $this->tipoPorChave('zeladoria')['id'];
+
+        $this->assertStringContainsString("etiqueta-tipo-t{$id}\">Zeladoria<", $this->get($this->base() . '/avisos')->body);
+    }
+
+    public function testPreviaDeTipoFixoPropioFicaNaFaixaComACorDoTipo(): void
+    {
+        $this->entrar();
+        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699', 'fixo' => '1']);
+        $id = (int) $this->tipoPorChave('zeladoria')['id'];
+        $aviso = $this->criarAviso(['tipo' => 'zeladoria', 'titulo' => 'Escada interditada']);
+
+        $corpo = $this->get($this->base() . "/avisos/{$aviso}/previa")->body;
+
+        $this->assertStringContainsString("tv-fixo tv-fixo-zeladoria tv-t{$id}", $corpo);
+        $this->assertStringContainsString('<span>Zeladoria</span>', $corpo);
+        $this->assertStringContainsString('Aviso do tipo Zeladoria (fixo)', $corpo);
     }
 
     // ---------- Aparência (cor do gerente) ----------

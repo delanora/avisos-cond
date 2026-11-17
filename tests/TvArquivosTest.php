@@ -88,20 +88,18 @@ final class TvArquivosTest extends TestCase
         $this->assertStringNotContainsString('innerHTML', $this->codigo($js));
     }
 
-    public function testTiposDoJavaScriptEstaoEmSincroniaComOsDoPhp(): void
+    public function testTvNaoTemListaDeTiposNemTipoFixoNoCodigo(): void
     {
         $js = $this->ler('assets/tv.js');
 
-        // Todos os tipos conhecidos pelo painel têm rótulo na TV.
-        foreach (array_keys(\App\Services\AvisoService::TIPOS) as $tipo) {
-            $this->assertMatchesRegularExpression('/\b' . $tipo . ':\s*\'/', $js, "tv.js não tem o rótulo do tipo '{$tipo}'.");
-        }
-        // Os tipos da faixa do topo são os mesmos nos dois lados.
-        foreach (\App\Services\AvisoService::TIPOS_FIXOS as $tipo) {
-            $this->assertStringContainsString("aviso.tipo === '{$tipo}'", $js, "ehFixo() do tv.js não trata '{$tipo}'.");
-        }
-        $this->assertCount(2, \App\Services\AvisoService::TIPOS_FIXOS);
-        $this->assertSame([], array_diff(\App\Services\AvisoService::TIPOS_FIXOS, array_keys(\App\Services\AvisoService::TIPOS)));
+        // Os tipos (nome, cor e se é fixo) vêm do servidor em cada aviso: o JS não conhece nenhum tipo pelo nome.
+        $this->assertStringContainsString('aviso.fixo === true', $js, 'ehFixo() usa o campo "fixo" do servidor.');
+        $this->assertStringNotContainsString("aviso.tipo === 'fixo'", $js);
+        $this->assertStringNotContainsString('manutencao:', $js, 'Sem tabela de rótulos de tipos no JS.');
+        $this->assertStringContainsString('tipo_nome', $js);
+        $this->assertStringContainsString('aplicarVisual', $js);
+        // A cor entra por CSSOM (style.x = ...), nunca por innerHTML nem setAttribute('style').
+        $this->assertStringNotContainsString("setAttribute('style'", $js);
     }
 
     public function testServiceWorkerTemEscopoSoDaTvENaoGuardaErros(): void
@@ -224,14 +222,14 @@ final class TvArquivosTest extends TestCase
         $this->assertMatchesRegularExpression('/\.tv-sem-carrossel \.tv-fixos\s*\{[^}]*flex:\s*1 1 auto/', $css);
     }
 
-    public function testCssDaTvTemAFonteLocalEDestaqueUrgente(): void
+    public function testCssDaTvTemAFonteLocalEModosDeTela(): void
     {
         $css = $this->ler('assets/tv.css');
 
         preg_match('#url\("(/assets/[^"]+)"\)#', $css, $m);
         $this->assertFileExists(dirname(__DIR__) . '/public' . $m[1]);
         $this->assertStringContainsString('.tv-fixos', $css, 'Faixa do topo para avisos fixos e urgentes.');
-        $this->assertStringContainsString('.tv-fixo-urgente', $css);
+        $this->assertStringNotContainsString('.tv-fixo-urgente', $css, 'As cores dos tipos vêm dos dados, não do CSS.');
         $this->assertStringContainsString('.tv-sem-carrossel', $css);
         $this->assertStringContainsString('.tv-modo-relogio', $css);
         $this->assertStringContainsString('.tv-modo-ocioso', $css);

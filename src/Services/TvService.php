@@ -46,6 +46,10 @@ final class TvService
                     'titulo' => $linha['titulo'],
                     'corpo' => $linha['corpo'],
                     'tipo' => $linha['tipo'],
+                    'tipo_nome' => $linha['tipo_nome'],
+                    // Fixo = vai para a faixa do topo (só texto); a cor do tipo vira etiqueta e cartão (tom claro) na TV.
+                    'fixo' => $linha['fixo'],
+                    'visual' => AparenciaService::coresDoTipo($linha['tipo_cor']),
                     'inicio_em' => gmdate('Y-m-d\TH:i:s\Z', $linha['inicio_epoch']),
                     'fim_em' => gmdate('Y-m-d\TH:i:s\Z', $linha['fim_epoch']),
                     'midia' => $linha['midia'] === null ? null : [

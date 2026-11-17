@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/assets/app.css">
     {# Cor de destaque escolhida pelo gerente (o CSP não permite estilo inline, então vem de uma folha própria). #}
     {% if usuario.papel == 'gerente' and usuario.cor_primaria %}<link rel="stylesheet" href="/gerente/tema.css?v={{ usuario.cor_primaria|slice(1) }}">{% endif %}
+    {% if usuario.papel == 'gerente' and condominio is defined and condominio %}<link rel="stylesheet" href="/gerente/condominios/{{ condominio.id }}/tipos.css">{% endif %}
     {% block cabecalho %}{% endblock %}
 </head>
 <body>

@@ -16,22 +16,12 @@ use Throwable;
  */
 final class AvisoService
 {
-    public const TIPOS = [
-        'comum' => 'Comum',
-        'fixo' => 'Fixo',
-        'urgente' => 'Urgente',
-        'manutencao' => 'Manutenção',
-        'assembleia' => 'Assembleia',
-    ];
-
-    /** Tipos que ficam sempre visíveis na faixa do topo da TV (só texto), em vez de entrar no carrossel. */
-    public const TIPOS_FIXOS = ['urgente', 'fixo'];
-
     public const CORPO_MAX = 2000;
 
     public function __construct(
         private readonly AvisoRepository $avisos,
         private readonly UploadService $upload,
+        private readonly TipoAvisoService $tipos,
     ) {
     }
 
@@ -73,8 +63,9 @@ final class AvisoService
     {
         $this->exigirPermitido($permitidos, $condominioId);
 
-        $campos = $this->validar($dados);
+        $campos = $this->validar($permitidos, $condominioId, $dados);
         $midia = $this->guardarMidia($arquivo);
+        $campos = $this->criarTipoNovoSeHouver($permitidos, $condominioId, $campos);
 
         try {
             $id = $this->avisos->criar($permitidos, $condominioId, $campos + [
@@ -107,8 +98,9 @@ final class AvisoService
     {
         $atual = $this->buscar($permitidos, $condominioId, $id);
 
-        $campos = $this->validar($dados);
+        $campos = $this->validar($permitidos, $condominioId, $dados);
         $nova = $this->guardarMidia($arquivo);
+        $campos = $this->criarTipoNovoSeHouver($permitidos, $condominioId, $campos);
 
         $removerAtual = $nova !== null || ($dados['remover_midia'] ?? '') === '1';
         $midia = $nova !== null ? $nova['nome'] : ($removerAtual ? null : $atual['midia']);
@@ -163,18 +155,43 @@ final class AvisoService
     }
 
     /**
+     * Valida o formulário. O tipo é uma chave de tipo que o condomínio pode usar; ou, se "novo_tipo_nome" vier
+     * preenchido, um tipo novo (validado aqui e criado só depois de todo o resto estar certo).
+     *
+     * @param list<int>            $permitidos
      * @param array<string, mixed> $dados
-     * @return array{titulo: string, corpo: string, tipo: string, inicio_epoch: int, fim_epoch: int, ativo: bool}
+     * @return array{titulo: string, corpo: string, tipo: ?string, tipo_novo: ?array<string, mixed>, inicio_epoch: int, fim_epoch: int, ativo: bool}
      * @throws ValidacaoException
      */
-    private function validar(array $dados): array
+    private function validar(array $permitidos, int $condominioId, array $dados): array
     {
         $validador = new Validator($dados, [
             'titulo' => 'required|max:150',
             'corpo' => 'max:' . self::CORPO_MAX,
-            'tipo' => 'required|in:' . implode(',', array_keys(self::TIPOS)),
         ]);
         $erros = $validador->errors();
+
+        $tipo = null;
+        $tipoNovo = null;
+        $nomeNovo = is_string($dados['novo_tipo_nome'] ?? null) ? trim($dados['novo_tipo_nome']) : '';
+        if ($nomeNovo !== '') {
+            $dadosNovo = ['nome' => $nomeNovo, 'cor' => $dados['novo_tipo_cor'] ?? '', 'fixo' => $dados['novo_tipo_fixo'] ?? ''];
+            try {
+                $this->tipos->validar($condominioId, $dadosNovo);
+                $tipoNovo = $dadosNovo;
+            } catch (ValidacaoException $e) {
+                foreach ($e->erros as $campo => $mensagem) {
+                    $erros['novo_tipo_' . $campo] = $mensagem;
+                }
+            }
+        } else {
+            $chave = is_string($dados['tipo'] ?? null) ? $dados['tipo'] : '';
+            if ($chave === '' || $this->tipos->resolver($permitidos, $condominioId, $chave) === null) {
+                $erros['tipo'] = 'Escolha um tipo válido.';
+            } else {
+                $tipo = $chave;
+            }
+        }
 
         $inicio = DataHora::doFormulario(is_string($dados['inicio_em'] ?? null) ? $dados['inicio_em'] : '');
         $fim = DataHora::doFormulario(is_string($dados['fim_em'] ?? null) ? $dados['fim_em'] : '');
@@ -197,11 +214,29 @@ final class AvisoService
         return [
             'titulo' => $valores['titulo'],
             'corpo' => $valores['corpo'],
-            'tipo' => $valores['tipo'],
+            'tipo' => $tipo,
+            'tipo_novo' => $tipoNovo,
             'inicio_epoch' => (int) $inicio,
             'fim_epoch' => (int) $fim,
             'ativo' => ($dados['ativo'] ?? '') === '1',
         ];
+    }
+
+    /**
+     * Se o formulário pediu um tipo novo, cria agora (tudo o mais já foi validado) e usa a chave dele.
+     *
+     * @param list<int>            $permitidos
+     * @param array<string, mixed> $campos
+     * @return array<string, mixed> campos sem "tipo_novo" e com "tipo" definido
+     */
+    private function criarTipoNovoSeHouver(array $permitidos, int $condominioId, array $campos): array
+    {
+        if ($campos['tipo_novo'] !== null) {
+            $campos['tipo'] = $this->tipos->criar($permitidos, $condominioId, $campos['tipo_novo'])['chave'];
+        }
+        unset($campos['tipo_novo']);
+
+        return $campos;
     }
 
     /**

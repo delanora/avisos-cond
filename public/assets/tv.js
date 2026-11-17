@@ -12,13 +12,12 @@
  *    aparelho não faz avisos entrarem/saírem no horário errado.
  *  - Sem internet, continua com o último estado guardado (localStorage e Service Worker) e decide pelo
  *    relógio corrigido: o que venceu sai da tela e o agendado entra na hora certa.
- *  - Só redesenha quando "version" muda. Avisos URGENTES e FIXOS ficam numa faixa no topo (40% da altura),
+ *  - Só redesenha quando "version" muda. Avisos de tipo FIXO (ex.: Urgente e Fixo, e os que o gerente marcar) ficam numa faixa no topo (40% da altura),
  *    todos ao mesmo tempo, dividindo a faixa; os demais passam em carrossel abaixo dela.
  */
 (function () {
     'use strict';
 
-    var TIPOS = { comum: 'Comum', fixo: 'Fixo', urgente: 'Urgente', manutencao: 'Manutenção', assembleia: 'Assembleia' };
     // Ícones das etiquetas da faixa (mesmos desenhos dos painéis). Caminhos fixos no código, nunca vindos do servidor.
     var ICONES = {
         urgente: ['M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z', 'M12 9v4', 'M12 17h.01'],
@@ -48,8 +47,9 @@
         return lista;
     }
 
+    /** Fixo = o tipo do aviso foi marcado como fixo (faixa do topo, só texto). Vem do servidor em "fixo". */
     function ehFixo(aviso) {
-        return aviso.tipo === 'urgente' || aviso.tipo === 'fixo';
+        return aviso.fixo === true;
     }
 
     function noAr(a, agoraMs) {
@@ -207,6 +207,18 @@
         return svg;
     }
 
+    /**
+     * Cores do tipo do aviso: etiqueta na cor principal, cartão no tom claro e título no tom escuro. Sem "visual"
+     * (tipo sem cor) limpa tudo e vale o visual neutro do CSS. CSSOM (style.x = ...) não é bloqueado pelo CSP.
+     */
+    function aplicarVisual(cartao, etiqueta, titulo, visual, comBorda) {
+        cartao.style.backgroundColor = visual ? visual.fundo : '';
+        cartao.style.border = visual && comBorda ? '0.1em solid ' + visual.borda : '';
+        etiqueta.style.backgroundColor = visual ? visual.principal : '';
+        etiqueta.style.color = visual ? visual.texto_tag : '';
+        titulo.style.color = visual ? visual.titulo : '';
+    }
+
     /** Desenha a faixa do topo com todos os avisos fixos/urgentes; só mexe no DOM quando algo mudou. */
     function atualizarFixos(lista) {
         var ass = '';
@@ -225,13 +237,15 @@
             var cartao = criar('article', 'tv-fixo tv-fixo-' + dados.tipo);
             var conteudo = criar('div', 'tv-fixo-conteudo');
             var etiqueta = criar('span', 'tv-fixo-tipo');
-            var icone = criarIcone(dados.tipo);
+            var icone = criarIcone(dados.tipo === 'urgente' ? 'urgente' : 'fixo');
             if (icone) { etiqueta.appendChild(icone); }
-            etiqueta.appendChild(criar('span', '', TIPOS[dados.tipo] || dados.tipo));
+            etiqueta.appendChild(criar('span', '', dados.tipo_nome || dados.tipo));
             // Título à esquerda e etiqueta à direita, na mesma linha.
             var cabeca = criar('div', 'tv-cabeca');
-            cabeca.appendChild(criar('h2', 'tv-fixo-titulo', dados.titulo));
+            var titulo = criar('h2', 'tv-fixo-titulo', dados.titulo);
+            cabeca.appendChild(titulo);
             cabeca.appendChild(etiqueta);
+            aplicarVisual(cartao, etiqueta, titulo, dados.visual, true);
             conteudo.appendChild(cabeca);
             if (dados.corpo) { conteudo.appendChild(criar('p', 'tv-fixo-texto', dados.corpo)); }
             cartao.appendChild(conteudo);
@@ -249,8 +263,11 @@
 
         var bloco = criar('div', 'tv-texto-bloco');
         var cabeca = criar('div', 'tv-cabeca');
-        cabeca.appendChild(criar('h2', 'tv-titulo', d.titulo));
-        cabeca.appendChild(criar('span', 'tv-tipo', TIPOS[d.tipo] || d.tipo));
+        var tituloCarrossel = criar('h2', 'tv-titulo', d.titulo);
+        var etiquetaCarrossel = criar('span', 'tv-tipo', d.tipo_nome || d.tipo);
+        cabeca.appendChild(tituloCarrossel);
+        cabeca.appendChild(etiquetaCarrossel);
+        aplicarVisual(el.corpo, etiquetaCarrossel, tituloCarrossel, d.visual, false);
         bloco.appendChild(cabeca);
         if (d.corpo) { bloco.appendChild(criar('p', 'tv-texto', d.corpo)); }
         el.corpo.appendChild(bloco);

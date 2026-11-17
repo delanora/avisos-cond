@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers\Gerente;
 
 use App\Services\AvisoService;
+use App\Services\TipoAvisoService;
 use App\Services\ValidacaoException;
 use App\Support\DataHora;
 use App\Support\EscopoGerente;
@@ -20,6 +21,7 @@ final class AvisosController
         private readonly View $view,
         private readonly Session $sessao,
         private readonly AvisoService $avisos,
+        private readonly TipoAvisoService $tipos,
     ) {
     }
 
@@ -31,7 +33,6 @@ final class AvisosController
 
         return Response::html($this->view->render('gerente/avisos/lista.html.twig', EscopoGerente::contexto($request, $condominio) + [
             'avisos' => $this->avisos->listar($permitidos, $condominio['id']),
-            'tipos' => AvisoService::TIPOS,
             'menu' => 'avisos',
         ]));
     }
@@ -46,6 +47,7 @@ final class AvisosController
 
         return $this->formulario($request, $condominio, null, [
             'titulo' => '', 'corpo' => '', 'tipo' => 'comum', 'ativo' => true,
+            'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
             'inicio_em' => DataHora::paraFormulario($inicio),
             'fim_em' => DataHora::paraFormulario($inicio + 7 * 86400),
         ], []);
@@ -84,6 +86,7 @@ final class AvisosController
             'titulo' => $aviso['titulo'],
             'corpo' => $aviso['corpo'],
             'tipo' => $aviso['tipo'],
+            'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
             'ativo' => $aviso['ativo'],
             'inicio_em' => DataHora::paraFormulario($aviso['inicio_epoch']),
             'fim_em' => DataHora::paraFormulario($aviso['fim_epoch']),
@@ -141,7 +144,6 @@ final class AvisosController
 
         return Response::html($this->view->render('gerente/avisos/previa.html.twig', EscopoGerente::contexto($request, $condominio) + [
             'aviso' => $aviso,
-            'tipos' => AvisoService::TIPOS,
             'url_midia' => "/gerente/condominios/{$condominio['id']}/avisos/{$aviso['id']}/midia",
             'hora' => DataHora::paraFormulario(time()),
             'menu' => 'avisos',
@@ -157,6 +159,9 @@ final class AvisosController
             'titulo' => trim($texto('titulo')),
             'corpo' => trim($texto('corpo')),
             'tipo' => $texto('tipo'),
+            'novo_tipo_nome' => trim($texto('novo_tipo_nome')),
+            'novo_tipo_cor' => $texto('novo_tipo_cor') !== '' ? $texto('novo_tipo_cor') : '#2F6FED',
+            'novo_tipo_fixo' => $texto('novo_tipo_fixo') === '1',
             'ativo' => $texto('ativo') === '1',
             'inicio_em' => $texto('inicio_em'),
             'fim_em' => $texto('fim_em'),
@@ -180,7 +185,7 @@ final class AvisosController
             'url_midia' => $aviso === null ? '' : "{$base}/{$aviso['id']}/midia",
             'valores' => $valores,
             'erros' => $erros,
-            'tipos' => AvisoService::TIPOS,
+            'tipos' => $this->tipos->listar(EscopoGerente::permitidos($request), $condominio['id']),
             'menu' => 'avisos',
         ]), $status);
     }

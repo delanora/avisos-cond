@@ -128,4 +128,28 @@ final class AparenciaServiceTest extends BancoMigradoTestCase
         $this->assertFalse(AparenciaService::corValida('#abc'));
         $this->assertFalse(AparenciaService::corValida("#abc123\n"));
     }
+
+    public function testCoresDoTipoDerivamFundoClaroBordaETituloEscuro(): void
+    {
+        $c = AparenciaService::coresDoTipo('#b42318');
+
+        $this->assertSame('#B42318', $c['principal']);
+        $this->assertSame('#FFFFFF', $c['texto_tag'], 'Vermelho escuro pede texto branco.');
+        $this->assertLessThan(1.5, self::contrasteComBranco($c['fundo']), 'O fundo do cartão é quase branco.');
+        $this->assertGreaterThanOrEqual(5.0, self::contrasteComBranco($c['titulo']), 'Título legível sobre o fundo claro.');
+        $this->assertNull(AparenciaService::coresDoTipo(null));
+        $this->assertNull(AparenciaService::coresDoTipo('vermelho'));
+    }
+
+    #[DataProvider('coresDeTexto')]
+    public function testCorDoTextoEscolheOMaiorContraste(string $fundo, string $esperado): void
+    {
+        $this->assertSame($esperado, AparenciaService::corDoTexto($fundo));
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function coresDeTexto(): array
+    {
+        return ['grafite pede branco' => ['#202124', '#FFFFFF'], 'amarelo pede escuro' => ['#FACC15', '#1D2125'], 'branco pede escuro' => ['#FFFFFF', '#1D2125'], 'azul escuro pede branco' => ['#1E3A8A', '#FFFFFF'], 'inválida cai em branco' => ['azul', '#FFFFFF']];
+    }
 }

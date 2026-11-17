@@ -9,7 +9,10 @@
             <h1>Avisos</h1>
             <p>O que aparece na TV do {{ condominio.nome }}.</p>
         </div>
-        <a class="botao" href="/gerente/condominios/{{ condominio.id }}/avisos/novo">{{ ui.icone('plus', 18) }}Novo aviso</a>
+        <div class="acoes sem-margem">
+            <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/tipos">{{ ui.icone('paleta', 18) }}Tipos de aviso</a>
+            <a class="botao" href="/gerente/condominios/{{ condominio.id }}/avisos/novo">{{ ui.icone('plus', 18) }}Novo aviso</a>
+        </div>
     </div>
 
     {% if avisos|length == 0 %}
@@ -37,7 +40,7 @@
                             <td class="pessoa-celula">
                                 <span class="pessoa-nome">{{ a.titulo }}</span>
                                 <span class="pessoa-sub">
-                                    <span class="etiqueta etiqueta-tipo-{{ a.tipo }}">{{ tipos[a.tipo] }}</span>
+                                    <span class="etiqueta etiqueta-tipo-t{{ a.tipo_id }}">{{ a.tipo_nome }}</span>
                                     {% if a.midia_tipo == 'imagem' %}<span class="etiqueta">{{ ui.icone('imagem', 14) }}Imagem</span>{% endif %}
                                     {% if a.midia_tipo == 'video' %}<span class="etiqueta">{{ ui.icone('video', 14) }}Vídeo</span>{% endif %}
                                 </span>

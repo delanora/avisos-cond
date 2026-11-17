@@ -13,10 +13,19 @@ use PDO;
  */
 final class AvisoRepository
 {
-    private const COLUNAS = "id, condominio_id, titulo, corpo, tipo, midia, midia_tipo, ativo, criado_por,
-        extract(epoch FROM inicio_em)::bigint AS inicio_epoch,
-        extract(epoch FROM fim_em)::bigint AS fim_epoch,
-        extract(epoch FROM criado_em)::bigint AS criado_epoch";
+    // O tipo (nome, cor e se é fixo) vem de tipos_aviso: o do próprio condomínio tem preferência sobre o do sistema.
+    private const COLUNAS = "avisos.id, avisos.condominio_id, avisos.titulo, avisos.corpo, avisos.tipo, avisos.midia, avisos.midia_tipo,
+        avisos.ativo, avisos.criado_por,
+        coalesce(t.id, 0) AS tipo_id, coalesce(t.nome, avisos.tipo) AS tipo_nome, t.cor AS tipo_cor, coalesce(t.fixo, false) AS tipo_fixo,
+        extract(epoch FROM avisos.inicio_em)::bigint AS inicio_epoch,
+        extract(epoch FROM avisos.fim_em)::bigint AS fim_epoch,
+        extract(epoch FROM avisos.criado_em)::bigint AS criado_epoch";
+
+    private const TIPO_JOIN = "LEFT JOIN LATERAL (
+            SELECT tt.id, tt.nome, tt.cor, tt.fixo FROM tipos_aviso tt
+            WHERE tt.chave = avisos.tipo AND (tt.condominio_id = avisos.condominio_id OR tt.condominio_id IS NULL)
+            ORDER BY tt.condominio_id NULLS LAST LIMIT 1
+        ) t ON true";
 
     public function __construct(private readonly PDO $pdo)
     {
@@ -29,9 +38,9 @@ final class AvisoRepository
     public function listar(array $permitidos, int $condominioId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT ' . self::COLUNAS . ' FROM avisos
-             WHERE condominio_id = :cid AND condominio_id = ANY(:permitidos::bigint[])
-             ORDER BY inicio_em DESC, id DESC'
+            'SELECT ' . self::COLUNAS . ' FROM avisos ' . self::TIPO_JOIN . '
+             WHERE avisos.condominio_id = :cid AND avisos.condominio_id = ANY(:permitidos::bigint[])
+             ORDER BY avisos.inicio_em DESC, avisos.id DESC'
         );
         $stmt->execute(['cid' => $condominioId, 'permitidos' => Pg::arrayDeInteiros($permitidos)]);
 
@@ -45,8 +54,8 @@ final class AvisoRepository
     public function porId(array $permitidos, int $condominioId, int $id): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT ' . self::COLUNAS . ' FROM avisos
-             WHERE id = :id AND condominio_id = :cid AND condominio_id = ANY(:permitidos::bigint[])'
+            'SELECT ' . self::COLUNAS . ' FROM avisos ' . self::TIPO_JOIN . '
+             WHERE avisos.id = :id AND avisos.condominio_id = :cid AND avisos.condominio_id = ANY(:permitidos::bigint[])'
         );
         $stmt->execute(['id' => $id, 'cid' => $condominioId, 'permitidos' => Pg::arrayDeInteiros($permitidos)]);
         $linha = $stmt->fetch();
@@ -129,11 +138,11 @@ final class AvisoRepository
     public function visiveisNaTv(array $permitidos, int $condominioId, int $agora, int $antecedenciaSegundos): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT ' . self::COLUNAS . ' FROM avisos
-             WHERE condominio_id = :cid AND condominio_id = ANY(:permitidos::bigint[]) AND ativo
-               AND fim_em > to_timestamp(:agora::double precision)
-               AND inicio_em <= to_timestamp((:agora::bigint + :antecedencia::bigint)::double precision)
-             ORDER BY inicio_em, id'
+            'SELECT ' . self::COLUNAS . ' FROM avisos ' . self::TIPO_JOIN . '
+             WHERE avisos.condominio_id = :cid AND avisos.condominio_id = ANY(:permitidos::bigint[]) AND avisos.ativo
+               AND avisos.fim_em > to_timestamp(:agora::double precision)
+               AND avisos.inicio_em <= to_timestamp((:agora::bigint + :antecedencia::bigint)::double precision)
+             ORDER BY avisos.inicio_em, avisos.id'
         );
         $stmt->execute([
             'cid' => $condominioId, 'permitidos' => Pg::arrayDeInteiros($permitidos),
@@ -153,10 +162,10 @@ final class AvisoRepository
     public function porMidiaVisivelNaTv(array $permitidos, int $condominioId, string $midia, int $agora, int $antecedenciaSegundos): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT ' . self::COLUNAS . ' FROM avisos
-             WHERE midia = :midia AND condominio_id = :cid AND condominio_id = ANY(:permitidos::bigint[]) AND ativo
-               AND fim_em > to_timestamp(:agora::double precision)
-               AND inicio_em <= to_timestamp((:agora::bigint + :antecedencia::bigint)::double precision)
+            'SELECT ' . self::COLUNAS . ' FROM avisos ' . self::TIPO_JOIN . '
+             WHERE avisos.midia = :midia AND avisos.condominio_id = :cid AND avisos.condominio_id = ANY(:permitidos::bigint[]) AND avisos.ativo
+               AND avisos.fim_em > to_timestamp(:agora::double precision)
+               AND avisos.inicio_em <= to_timestamp((:agora::bigint + :antecedencia::bigint)::double precision)
              LIMIT 1'
         );
         $stmt->execute([
@@ -193,6 +202,10 @@ final class AvisoRepository
             'titulo' => (string) $linha['titulo'],
             'corpo' => (string) $linha['corpo'],
             'tipo' => (string) $linha['tipo'],
+            'tipo_id' => (int) $linha['tipo_id'],
+            'tipo_nome' => (string) $linha['tipo_nome'],
+            'tipo_cor' => $linha['tipo_cor'] === null ? null : (string) $linha['tipo_cor'],
+            'fixo' => (bool) $linha['tipo_fixo'],
             'midia' => $linha['midia'] === null ? null : (string) $linha['midia'],
             'midia_tipo' => $linha['midia_tipo'] === null ? null : (string) $linha['midia_tipo'],
             'ativo' => (bool) $linha['ativo'],
