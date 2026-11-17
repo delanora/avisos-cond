@@ -11,7 +11,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 - Decisões que mudam o escopo vão para "Decisões e pendências" ao final, com data.
 - Não invente itens: o escopo vem do `README.md` e do `AGENTS.md`. Se o escopo mudar, atualize os três arquivos juntos.
 
-**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.7 concluídos (estrutura base, banco, autenticação, painéis `/admin` e `/gerente`, tela da TV, agendador); próximo: 1.8 (entrega do MVP).
+**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.7 concluídos e a 1.8 em andamento (infra no ar em https://avisos.embracore.com.br; faltam os testes em hardware real e a cópia externa dos backups) (estrutura base, banco, autenticação, painéis `/admin` e `/gerente`, tela da TV, agendador).
 
 ---
 
@@ -89,15 +89,16 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] Testes: lock entre conexões, vencimento e espera após falha, falha isolada, tarefas de limpeza (inclusive disjuntor) e o `bin/cron.php` de verdade como subprocesso (2026-11-17)
 
 ### 1.8 Entrega do MVP
-- [ ] Configuração de Nginx/PHP-FPM e cron documentada e testada em servidor
-- [ ] Proxy reverso externo configurado (TLS, `X-Forwarded-*`, upload) e Nginx da VM com IP real (`set_real_ip_from`) e `HTTPS on`
-- [ ] Firewall da VM liberando a porta HTTP apenas para o IP do proxy
-- [ ] Teste: rate limit enxerga o IP real do cliente (não o do proxy)
-- [ ] Rotina de backup (pg_dump + `/storage/uploads`)
+- [x] Configuração de Nginx/PHP-FPM e cron documentada e testada em servidor (2026-11-17)
+- [x] Proxy reverso externo configurado (TLS, `X-Forwarded-*`, upload) e Nginx da VM com IP real (`set_real_ip_from`) e `HTTPS on` (2026-11-17; em https://avisos.embracore.com.br; ver pendência dos cabeçalhos duplicados do proxy)
+- [x] Firewall da VM liberando a porta HTTP apenas para o IP do proxy (nftables, 2026-11-17; falta você confirmar de fora que `http://172.16.31.116` não responde mais)
+- [x] Teste: rate limit enxerga o IP real do cliente (não o do proxy) (2026-11-17: chave `login:ip:<IP real>`, `X-Forwarded-For` forjado ignorado)
+- [x] Rotina de backup (pg_dump + `/storage/uploads`): `bin/backup.sh` + cron diário 03:30, retenção de 14 dias, restauração testada, `BackupCliTest` (2026-11-17)
+- [ ] Copiar os backups para fora da VM (outro servidor/NAS/nuvem) — depende de você escolher o destino
 - [ ] Teste em hardware real: **Fire Stick (Fire OS) com Fully Kiosk Browser e com Silk** (dispositivo principal), incluindo service worker offline, vídeo MP4 H.264, abertura após reinício e proteção de tela desativada
 - [ ] Teste em hardware real: mini PC com Chromium kiosk (opção secundária)
 - [ ] Validar o passo a passo de instalação do Fire Stick no README e ajustá-lo conforme o que for observado
-- [ ] README atualizado com o que foi entregue
+- [~] README atualizado com o que foi entregue (deploy, proxy, firewall e backup documentados em 2026-11-17; falta o ajuste do passo a passo do Fire Stick depois do teste em hardware)
 
 ## Fase 2 — Operação e gestão
 
@@ -142,8 +143,8 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: VM com Debian 13: PHP 8.4, PostgreSQL 17, Nginx 1.26 e Composer 2.8 dos repositórios oficiais (PHP 8.3 não existe no Debian 13). Documentação passou a exigir PHP 8.3 ou superior.
 - 2026-11-16: Apache removido da VM (não era usado); porta 80 livre para o Nginx. O projeto está em `/var/www/html/avisos-cond`; o README prevê `/var/www/avisos-cond` em produção.
 - 2026-11-16: `001_init.sql` não tem `bloqueado`/`bloqueio_motivo`, `recorrencia` nem `codigo_pareamento`: entram em migrations aditivas das fases 2 e 3. Foi adicionado `avisos.midia_tipo` (imagem/video) para a TV saber como exibir a mídia; `atualizado_em` foi omitido (a auditoria cobrirá o histórico).
-- 2026-11-16: Nginx da VM no ar (`/etc/nginx/sites-available/avisos-cond`, porta 80, PHP-FPM 8.4), servindo `public/` e bloqueando `.env`, `.git`, `src`, `vendor`, `storage` etc. O PHP-FPM roda como `www-data`: `.env` fica `root:www-data` modo 640 e `storage/` pertence a `www-data`. Ainda faltam: `set_real_ip_from` com o IP do proxy, TLS/`APP_URL` https no proxy e firewall só para o proxy (itens da 1.8).
-- Pendente: IP do proxy reverso (substitui `IP_DO_PROXY` na configuração).
+- 2026-11-16: Nginx da VM no ar (`/etc/nginx/sites-available/avisos-cond`, porta 80, PHP-FPM 8.4), servindo `public/` e bloqueando `.env`, `.git`, `src`, `vendor`, `storage` etc. O PHP-FPM roda como `www-data`: `.env` fica `root:www-data` modo 640 e `storage/` pertence a `www-data`. (Resolvido em 2026-11-17: IP real, HTTPS e firewall.)
+- 2026-11-17: proxy reverso em 172.16.31.29, HTTPS em https://avisos.embracore.com.br (`APP_URL` atualizado). Na VM: `set_real_ip_from`, mapa `$avisos_https` (só o proxy diz que é https), firewall nftables (porta 80 só do proxy, SSH intocado) e Service Worker da TV verificado offline por HTTPS num Chromium real. Pendente no proxy: ele adiciona cabeçalhos próprios (`Referrer-Policy: same-origin`, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options`, `X-XSS-Protection`) que duplicam e conflitam com os da aplicação (que pede `no-referrer` e `DENY`); remova esses do vhost do proxy e mantenha só o HSTS.
 - Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
 - 2026-11-16: PHPMailer adicionado (e-mail SMTP da recuperação de senha); justificativa no `AGENTS.md` seção 3.
 - 2026-11-16: política de senha: 10 a 128 caracteres, Argon2id (19 MiB, 2 iterações, 1 thread). Sem `MAIL_HOST` o e-mail não é enviado e o motivo vai para o log, sem o token.

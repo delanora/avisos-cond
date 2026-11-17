@@ -180,7 +180,7 @@ server {
     index index.php;
 
     # IP real do cliente vindo do proxy (obrigatório: o rate limit usa o IP).
-    # Troque pelo IP do proxy reverso.
+    # Troque pelo IP do proxy reverso (nesta instalação: 172.16.31.29).
     set_real_ip_from IP_DO_PROXY;
     real_ip_header X-Forwarded-For;
     real_ip_recursive on;
@@ -196,9 +196,9 @@ server {
         include fastcgi_params;
         fastcgi_pass unix:/run/php/php8.4-fpm.sock;  # ajuste para a versão instalada
         fastcgi_param SCRIPT_FILENAME $document_root/index.php;
-        # Todo acesso real é HTTPS (TLS termina no proxy); sem isso os cookies
-        # Secure e as URLs geradas pela aplicação ficam incorretos.
-        fastcgi_param HTTPS on;
+        # O TLS termina no proxy: sem HTTPS "ligado" os cookies Secure e as URLs ficam incorretos.
+        # $avisos_https (abaixo) só vale "on" quando a conexão vem do proxy e ele informa https.
+        fastcgi_param HTTPS $avisos_https;
     }
 
     # Mídias: só acessíveis via X-Accel-Redirect, depois que a aplicação valida o acesso
@@ -229,6 +229,39 @@ proxy_read_timeout 120s;       # uploads de vídeo
 # O access_log das rotas /tv/ também deve mascarar o token.
 ```
 
+**Confiança no proxy** (`/etc/nginx/conf.d/avisos-proxy.conf`, no contexto `http`): só o IP do proxy pode dizer que o acesso foi HTTPS (um acesso direto à VM com `X-Forwarded-Proto: https` forjado é ignorado):
+
+```nginx
+geo $realip_remote_addr $avisos_via_proxy {
+    default       0;
+    172.16.31.29  1;      # IP do proxy reverso
+}
+map "$avisos_via_proxy:$http_x_forwarded_proto" $avisos_https {
+    default  off;
+    "1:https" on;
+}
+```
+
+Com `APP_URL=https://...` no `.env`, o cookie de sessão sai com `Secure`. Verificado em 2026-11-17: o rate limit grava o IP real do cliente (não o do proxy) e ignora um `X-Forwarded-For` forjado.
+
+**Firewall da VM** (`/etc/nftables.conf`, serviço `nftables` habilitado): a porta 80 só aceita o IP do proxy e a própria VM; o resto (SSH etc.) não é alterado.
+
+```nft
+table inet avisos_fw
+delete table inet avisos_fw
+table inet avisos_fw {
+    set proxy_reverso { type ipv4_addr; elements = { 172.16.31.29 } }
+    chain input {
+        type filter hook input priority filter; policy accept;
+        iifname "lo" accept
+        tcp dport 80 ip saddr @proxy_reverso accept
+        tcp dport 80 counter drop
+    }
+}
+```
+
+Se o IP do proxy mudar, atualize **os três lugares**: `set_real_ip_from`, o `geo` acima e o conjunto do nftables.
+
 **Log do Nginx sem o token da TV** (`/etc/nginx/conf.d/avisos-log.conf`, no contexto `http`):
 
 ```nginx
@@ -258,7 +291,7 @@ O agendador executa tarefas de **manutenção**, cada uma com seu intervalo:
 |---|---|---|
 | `limpar_rate_limits` | 1 h | apaga contadores de tentativas (login, recuperação de senha, token de TV) com mais de 1 dia e sem bloqueio ativo |
 | `limpar_resets_de_senha` | 1 dia | apaga tokens de recuperação já usados ou expirados há mais de 7 dias (nunca os ainda válidos) |
-| `limpar_arquivos_orfaos` | 1 dia | apaga de `storage/uploads` arquivos que nenhum aviso nem condomínio usa, com mais de 24 h (tem travas de segurança) |
+| `limpar_arquivos_orfaos` | 1 dia | apaga de `storage/uploads` arquivos que nenhum aviso usa, com mais de 24 h (tem travas de segurança) |
 
 Não existe tarefa de "publicar" ou "expirar" avisos: o que está no ar é calculado na hora pelo início e fim de cada aviso (na TV e no painel), então nada precisa ser mudado no banco quando o horário chega.
 
@@ -266,7 +299,28 @@ Duas execuções nunca se sobrepõem (lock no PostgreSQL, solto sozinho se o pro
 
 **Rotação de logs** (`/etc/logrotate.d/avisos-cond`): semanal, 8 cópias, compactadas, para `storage/logs/*.log`.
 
-**Backup**: `pg_dump` diário do banco e cópia de `/storage/uploads`.
+**Backup** (`bin/backup.sh`): todo dia às 03:30, em `/etc/cron.d/avisos-cond-backup` (como root, para ler o `.env` e os uploads):
+
+```
+30 3 * * * root /var/www/avisos-cond/bin/backup.sh >> /var/www/avisos-cond/storage/logs/backup.log 2>&1
+```
+
+Cada execução gera, em `/var/backups/avisos-cond` (pasta `0700`; mude com `BACKUP_DIR` no `.env`), dois arquivos com a data: `avisos-AAAAMMDD-HHMMSS.dump` (`pg_dump -Fc`, já conferido com `pg_restore --list`) e `uploads-AAAAMMDD-HHMMSS.tar.gz` (conferido com `tar -t`). Só depois de um backup novo e válido ele apaga os do nosso padrão com mais de `BACKUP_KEEP_DAYS` dias (padrão 14). Se algo falha, sai com código 1, não apaga nada e não deixa arquivo pela metade. A senha do banco só vai por `PGPASSWORD` (nunca em linha de comando nem em log).
+
+**Importante: a cópia na própria VM não protege contra a perda da VM.** Copie `/var/backups/avisos-cond` para outro lugar (outro servidor, NAS ou nuvem), por exemplo com `rsync` agendado.
+
+**Restaurar** (testado em 2026-11-17 num banco temporário):
+
+```bash
+# banco: crie um banco vazio e restaure o dump (troque o nome do arquivo)
+sudo -u postgres createdb avisos_cond_restaurado
+cat /var/backups/avisos-cond/avisos-AAAAMMDD-HHMMSS.dump | sudo -u postgres pg_restore --no-owner -d avisos_cond_restaurado
+# (para voltar ao banco de produção, restaure num banco novo, confira e então aponte DB_NAME no .env para ele)
+
+# arquivos: devolva as mídias para a pasta de uploads, dono www-data
+sudo tar -xzf /var/backups/avisos-cond/uploads-AAAAMMDD-HHMMSS.tar.gz -C /var/www/avisos-cond/storage/uploads
+sudo chown -R www-data:www-data /var/www/avisos-cond/storage/uploads
+```
 
 ## Instalando a tela no condomínio
 
