@@ -246,11 +246,25 @@ e, no `server`: `access_log /var/log/nginx/avisos.access.log avisos;`. Repita o 
 
 **Cron** (agendador):
 
+Em `/etc/cron.d/avisos-cond` (a cada minuto; só roda o que estiver vencido):
+
 ```
-* * * * * www-data php /var/www/avisos-cond/bin/cron.php >> /var/www/avisos-cond/storage/logs/cron.log 2>&1
+* * * * * www-data /usr/bin/php /var/www/avisos-cond/bin/cron.php >> /var/www/avisos-cond/storage/logs/cron.log 2>&1
 ```
 
-O `cron.php` publica/expira avisos agendados e, na Fase 2, marca dispositivos offline. Não pode haver duas execuções simultâneas (usa lock) e todas as tarefas são idempotentes.
+O agendador executa tarefas de **manutenção**, cada uma com seu intervalo:
+
+| Tarefa | Intervalo | O que faz |
+|---|---|---|
+| `limpar_rate_limits` | 1 h | apaga contadores de tentativas (login, recuperação de senha, token de TV) com mais de 1 dia e sem bloqueio ativo |
+| `limpar_resets_de_senha` | 1 dia | apaga tokens de recuperação já usados ou expirados há mais de 7 dias (nunca os ainda válidos) |
+| `limpar_arquivos_orfaos` | 1 dia | apaga de `storage/uploads` arquivos que nenhum aviso nem condomínio usa, com mais de 24 h (tem travas de segurança) |
+
+Não existe tarefa de "publicar" ou "expirar" avisos: o que está no ar é calculado na hora pelo início e fim de cada aviso (na TV e no painel), então nada precisa ser mudado no banco quando o horário chega.
+
+Duas execuções nunca se sobrepõem (lock no PostgreSQL, solto sozinho se o processo morrer), todas as tarefas são idempotentes, e a falha de uma é registrada em `storage/logs/app.log` sem impedir as outras (a tarefa que falhou só é tentada de novo depois de 5 min). Comandos: `php bin/cron.php` (executa as vencidas), `php bin/cron.php --forcar` (todas agora) e `php bin/cron.php --status` (histórico de cada tarefa, guardado na tabela `tarefas_agendadas`). Código de saída 0 = ok, 1 = alguma tarefa falhou. Para criar uma tarefa nova, implemente `App\Services\Tarefas\Tarefa` e registre em `App\CronFactory`.
+
+**Rotação de logs** (`/etc/logrotate.d/avisos-cond`): semanal, 8 cópias, compactadas, para `storage/logs/*.log`.
 
 **Backup**: `pg_dump` diário do banco e cópia de `/storage/uploads`.
 

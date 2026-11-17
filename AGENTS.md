@@ -249,11 +249,14 @@ Uma tarefa só está concluída quando:
 5. Painel `/gerente`: seletor de condomínio e CRUD de avisos (com testes de isolamento).
 6. Tela `/tv/{token}`: página, endpoint de estado, rotação, service worker.
 7. Dispositivos: cadastro, token e heartbeat (`ultimo_ping`). O painel de status online/offline fica para a Fase 2.
-8. `bin/cron.php`: publicação/expiração de avisos. A detecção de dispositivos offline entra na Fase 2.
+8. `bin/cron.php`: agendador de manutenção (limpezas). **Não há tarefa de publicar/expirar avisos**: o que está no ar é calculado em tempo real por `inicio_em`/`fim_em` (TV, listas e prévia). A detecção de dispositivos offline entra na Fase 2.
 9. Recuperação de senha e personalização visual do condomínio (logo e cores) podem ser feitas junto dos passos 3 e 5.
 10. Auditoria, situação financeira (visualização e bloqueio manual) e demais itens das fases 2 e 3.
 
 ### Cron (`bin/cron.php`)
+- Estrutura: `Scheduler` (lock, vencimento, falhas) + tarefas que implementam `Services\Tarefas\Tarefa` (`nome()`, `intervaloSegundos()`, `executar(): string`), registradas em `CronFactory`. Histórico em `tarefas_agendadas` (a Fase 2 usa isso no painel de saúde). Tarefas atuais: `limpar_rate_limits`, `limpar_resets_de_senha`, `limpar_arquivos_orfaos`.
+- O cron do sistema roda a cada minuto (`/etc/cron.d/avisos-cond`, usuário `www-data`); cada tarefa só executa quando vencida. Quando nada venceu, a saída é vazia (o `cron.log` fica quieto). `--forcar` e `--status` são para uso manual. Saída 0 = ok (ou outra execução em andamento), 1 = alguma tarefa falhou.
+- **`limpar_arquivos_orfaos` é destrutiva**: só considera nomes no padrão gerado por nós, só apaga com mais de 24 h, e tem **disjuntor** (mais de 200 órfãos, ou mais da metade dos arquivos quando passam de 20, aborta sem apagar nada e falha com mensagem), para proteger contra o cron apontar para o banco ou a pasta errados. **Nunca rode `bin/cron.php` manualmente com o `UPLOAD_DIR` real e um banco de testes**; os testes usam sempre pastas temporárias (`UPLOAD_DIR` e `LOG_DIR`).
 - Roda a cada minuto, então **nunca pode haver duas execuções simultâneas**: use `flock` num arquivo de lock ou `pg_try_advisory_lock` e encerre silenciosamente se não obtiver o lock.
 - Todas as tarefas devem ser **idempotentes** (ex.: publicar/expirar aviso já tratado não faz nada; marcar um dispositivo como offline mais de uma vez não duplica registros).
 - Falha em uma tarefa é registrada em log e não impede as demais.

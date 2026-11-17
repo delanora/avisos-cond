@@ -274,6 +274,29 @@ final class UploadServiceTest extends TestCase
         $this->assertSame('application/octet-stream', UploadService::mimeDoNome('a.svg'));
     }
 
+    public function testArquivosListaSoOsNomesNoPadraoComTamanhoEData(): void
+    {
+        $this->assertSame([], $this->servico()->arquivos(), 'Pasta inexistente.');
+
+        $r = $this->servico()->guardar(Amostras::arquivo('foto.png', Amostras::png()), ['imagem']);
+        file_put_contents($this->dir . '/.gitkeep', '');
+        file_put_contents($this->dir . '/notas.txt', 'x');
+        file_put_contents($this->dir . '/' . str_repeat('a', 32) . '.php', 'x');
+        mkdir($this->dir . '/' . str_repeat('b', 32) . '.png');
+
+        $lista = $this->servico()->arquivos();
+
+        $this->assertCount(1, $lista, 'Só o arquivo com nome gerado por nós; pastas e estranhos são ignorados.');
+        $this->assertSame($r['nome'], $lista[0]['nome']);
+        $this->assertSame(strlen(Amostras::png()), $lista[0]['tamanho']);
+        $this->assertEqualsWithDelta(time(), $lista[0]['modificado_em'], 3);
+
+        rmdir($this->dir . '/' . str_repeat('b', 32) . '.png');
+        unlink($this->dir . '/.gitkeep');
+        unlink($this->dir . '/notas.txt');
+        unlink($this->dir . '/' . str_repeat('a', 32) . '.php');
+    }
+
     public function testSemArquivo(): void
     {
         $this->assertTrue(UploadService::semArquivo(null));

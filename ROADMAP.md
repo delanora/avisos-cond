@@ -11,7 +11,7 @@ Caminho do início à conclusão do projeto. **Este arquivo é a fonte de verdad
 - Decisões que mudam o escopo vão para "Decisões e pendências" ao final, com data.
 - Não invente itens: o escopo vem do `README.md` e do `AGENTS.md`. Se o escopo mudar, atualize os três arquivos juntos.
 
-**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.6 concluídos (estrutura base, banco, autenticação, painéis `/admin` e `/gerente`, tela da TV); próximo: 1.7 (agendador).
+**Status atual:** Fase 1 em andamento. Blocos 1.1 a 1.7 concluídos (estrutura base, banco, autenticação, painéis `/admin` e `/gerente`, tela da TV, agendador); próximo: 1.8 (entrega do MVP).
 
 ---
 
@@ -84,8 +84,9 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [ ] Colocar HTTPS no domínio (proxy) e confirmar o modo offline da TV em produção
 
 ### 1.7 Agendador
-- [ ] `bin/cron.php` com lock (sem execução simultânea), tarefas idempotentes
-- [ ] Publicação e expiração de avisos agendados
+- [x] `bin/cron.php` com lock no PostgreSQL (sem execução simultânea; solto sozinho se o processo morrer), intervalos por tarefa, histórico em `tarefas_agendadas`, falha isolada com espera antes de repetir, `--forcar` e `--status`; instalado em `/etc/cron.d/avisos-cond` e com logrotate (2026-11-17)
+- [x] Publicação e expiração de avisos agendados: **não precisa de tarefa**, o que está no ar é calculado em tempo real por `inicio_em`/`fim_em` (TV, listas e prévia). No lugar, o agendador faz as limpezas que o sistema precisa: contadores de rate limit, tokens de recuperação de senha e arquivos órfãos de upload (com disjuntor) (2026-11-17)
+- [x] Testes: lock entre conexões, vencimento e espera após falha, falha isolada, tarefas de limpeza (inclusive disjuntor) e o `bin/cron.php` de verdade como subprocesso (2026-11-17)
 
 ### 1.8 Entrega do MVP
 - [ ] Configuração de Nginx/PHP-FPM e cron documentada e testada em servidor
@@ -156,4 +157,5 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-17: VM: `/etc/nginx/conf.d/avisos-log.conf` (log sem o token da TV) e `access_log` no site. Em HTTP puro o Service Worker não existe, então o modo offline só vale em HTTPS.
 - 2026-11-17: a pedido, avisos urgentes e fixos passaram a ocupar uma faixa reservada de 40% da altura no topo da TV, mostrados todos juntos (a letra encolhe com a quantidade), com o carrossel abaixo. Decisões minhas a confirmar: tamanho da faixa 40%; faixa só com texto (foto/vídeo só no carrossel); "fixo" é um tipo novo (e não uma opção de qualquer tipo); com 7 ou mais avisos a faixa fica em 2 linhas de até 5 colunas.
 - 2026-11-17: redesenho visual da tela da TV a pedido: cartões sem moldura lateral e com sombra suave, faixa de fixos sem fundo nem linha divisória (mesmo fundo do carrossel), barra do topo ~20% menor com a hora sempre branca, e o conjunto no estilo dos painéis (fundo quente, cartões brancos, etiquetas em pílula com ícone). Observação: hora branca sobre cor de condomínio muito clara (ex.: amarelo) tem pouco contraste; se aparecer um caso assim, escurecer a barra automaticamente.
+- 2026-11-17: bloco 1.7 decidiu: sem tarefa "publicar/expirar" (tudo é calculado na leitura; mudar `ativo` em massa apagaria a intenção do gerente e atrapalharia estender um aviso); o lock é `pg_try_advisory_lock` (vale entre servidores e some se o processo morrer); `limpar_arquivos_orfaos` tem disjuntor; `LOG_DIR` opcional no `.env` (padrão `storage/logs`). Mais tarefas entram na Fase 2 (dispositivos offline) pela interface `Tarefa`.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.

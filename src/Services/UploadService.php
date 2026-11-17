@@ -109,6 +109,29 @@ final class UploadService
         return ['nome' => $nome, 'tipo' => $categoria];
     }
 
+    /**
+     * Arquivos guardados que seguem o padrão de nome gerado por nós (outros arquivos da pasta, como .gitkeep,
+     * são ignorados). Usado pela limpeza de arquivos órfãos.
+     *
+     * @return list<array{nome: string, tamanho: int, modificado_em: int}>
+     */
+    public function arquivos(): array
+    {
+        if (!is_dir($this->diretorio)) {
+            return [];
+        }
+
+        $lista = [];
+        foreach (scandir($this->diretorio) ?: [] as $nome) {
+            $caminho = $this->diretorio . '/' . $nome;
+            if (self::nomeValido($nome) && is_file($caminho)) {
+                $lista[] = ['nome' => $nome, 'tamanho' => (int) filesize($caminho), 'modificado_em' => (int) filemtime($caminho)];
+            }
+        }
+
+        return $lista;
+    }
+
     /** Caminho completo de um arquivo guardado, ou null se o nome for inválido ou o arquivo não existir. */
     public function caminho(string $nome): ?string
     {

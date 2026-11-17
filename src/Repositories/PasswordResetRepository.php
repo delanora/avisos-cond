@@ -52,6 +52,22 @@ final class PasswordResetRepository
         return $stmt->rowCount() === 1;
     }
 
+    /**
+     * Remove tokens que já não servem para nada (usados ou expirados) e são mais antigos que o prazo informado.
+     * Tokens ainda válidos nunca são removidos. Chamado pelo agendador.
+     */
+    public function removerAntigos(int $idadeSegundos): int
+    {
+        $stmt = $this->pdo->prepare(
+            'DELETE FROM password_resets
+             WHERE criado_em < now() - make_interval(secs => :idade)
+               AND (usado_em IS NOT NULL OR expira_em < now())'
+        );
+        $stmt->execute(['idade' => $idadeSegundos]);
+
+        return $stmt->rowCount();
+    }
+
     /** Invalida todos os tokens pendentes do usuário (novo pedido ou senha já trocada). */
     public function invalidarDoUsuario(int $usuarioId): void
     {
