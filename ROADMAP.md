@@ -114,23 +114,35 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 
 Segundo fator por **código de 6 dígitos de aplicativo autenticador** (Google Authenticator, Microsoft Authenticator, Authy etc.), sem SMS. Vale para quem entra nos painéis (`superadmin` e `gerente`); a TV continua só com o token na URL, sem 2FA.
 
-Decisões a confirmar antes de começar:
-- [ ] Quem usa: obrigatório para `superadmin` e opcional para `gerente`, ou obrigatório para todos? [confirmar]
-- [ ] "Lembrar este dispositivo por N dias" (pular o código no mesmo navegador)? Reduz o incômodo, mas enfraquece o fator. [confirmar; sugestão: não no início]
-- [ ] Biblioteca ou código próprio: TOTP (RFC 6238) cabe em ~50 linhas com `hash_hmac`; o QR code pode reaproveitar a biblioteca do "QR code opcional no aviso". Justificar no commit qualquer `composer require` (AGENTS.md 2.2)
+Decisões já tomadas (2026-11-17):
+- Os **dois perfis** (`superadmin` e `gerente`) usam o 2FA.
+- **Lembrar dispositivo no login: sim.** Prazo e regras ainda a definir [confirmar].
+- Biblioteca/código próprio de TOTP e QR code: seguir a sugestão (código próprio para o TOTP; QR code com biblioteca pequena, a mesma do "QR code opcional no aviso"; justificar no commit qualquer `composer require`, AGENTS.md 2.2).
+- Quem ativa o 2FA e **não confirma o código** na ativação continua sem 2FA; quem tem 2FA ativo e **não confirma o código no login, não entra**.
+- O superadmin **redefine e desativa** o 2FA de outros usuários; e há um comando no terminal do servidor para desativar em caso de problema.
+
+Ainda a confirmar:
+- [ ] O 2FA é **obrigatório** ou **opcional com lembrete**? O lembrete a cada login para quem não ativou (item abaixo) sugere opcional; se for obrigatório, o lembrete vira bloqueio até ativar [confirmar]
+- [ ] "Lembrar dispositivo": por quantos dias (sugestão: 30) e o que o invalida (sugestão: trocar a senha, desativar ou redefinir o 2FA, ou o botão "esquecer meus dispositivos") [confirmar]
 
 Banco e segurança do segredo:
 - [ ] Migration: em `usuarios`, `totp_segredo` (cifrado), `totp_ativado_em` e `totp_ultimo_passo` (impede reaproveitar o mesmo código); tabela `codigos_recuperacao` (usuário, hash, usado_em)
 - [ ] Cifrar o segredo TOTP em repouso com uma chave do `.env` (`APP_KEY`, hoje vazia e ainda sem uso); nunca em log; chave ausente impede ativar o 2FA em vez de gravar em texto puro
 - [ ] `TotpService`: gerar segredo (160 bits, base32), validar código com tolerância de ±1 passo (30 s), comparação em tempo constante e rejeição de passo já usado
 
+Interface (decidida em 2026-11-17):
+- [ ] Na barra superior, o ícone com a inicial do usuário (ao lado de "Sair") é **substituído por uma engrenagem**; ao clicar abre um menu (dropdown) com **Segurança** e **Aparência** (sem JavaScript inline: o CSP proíbe; usar `<details>`, como o seletor de condomínio)
+- [ ] **Aparência sai do menu principal** (hoje é um item do menu do gerente) e passa para o dropdown da engrenagem
+- [ ] Quem **não ativou** o 2FA vê, **a cada login**, um aviso em pop-up lembrando de ativar, com botão que leva à página de ativação (e opção de fechar/continuar); aparece uma vez por login, não a cada página
+
 Ativação e gestão pelo próprio usuário:
-- [ ] Página "Segurança" no painel (gerente e admin): ativar, ver situação, desativar e gerar novos códigos de recuperação
+- [ ] Página "Segurança" no painel (gerente e admin): ativar, ver situação, desativar, gerar novos códigos de recuperação e "esquecer meus dispositivos" 
 - [ ] Ativar: mostrar QR code e chave em texto, e só ativar depois de o usuário digitar um código válido; depois mostrar uma única vez os códigos de recuperação
 - [ ] Códigos de recuperação: 10 códigos aleatórios de uso único, guardados só como hash; regenerar invalida os anteriores
 - [ ] Desativar ou regenerar exige senha atual e um código válido (ou de recuperação)
 
 Login em duas etapas:
+- [ ] "Lembrar este dispositivo": caixa na tela do código; guarda um token aleatório (256 bits) em cookie `HttpOnly`/`Secure`/`SameSite=Lax` e só o **hash** no banco (tabela `dispositivos_confiaveis`: usuário, hash, criado em, expira em, último uso); com o cookie válido o código não é pedido (a senha continua sendo); expira no prazo definido e é apagado ao trocar a senha, desativar ou redefinir o 2FA, ou em "esquecer meus dispositivos"
 - [ ] Senha correta com 2FA ativo não abre a sessão: fica "pendente de 2FA" (sem acesso a `/admin`, `/gerente` nem a dados) e vai para a tela do código; ao validar, `session_regenerate_id(true)` e sessão completa
 - [ ] Tela do código com opção "usar código de recuperação"; mensagem de erro genérica; expiração curta da etapa pendente (ex.: 5 min)
 - [ ] Rate limit na verificação do código (por usuário e por IP, `429` com `Retry-After`) e bloqueio temporário após falhas seguidas
@@ -138,14 +150,19 @@ Login em duas etapas:
 - [ ] Recuperação de senha **não** contorna o 2FA: redefinir a senha não desativa o segundo fator (a troca de senha já derruba as sessões antigas)
 
 Administração e operação:
-- [ ] Superadmin pode **redefinir o 2FA** de um gerente que perdeu o aparelho e os códigos (exige a senha do próprio admin; o gerente precisa configurar de novo no próximo login); o admin não pode ver segredo nem códigos de ninguém
+- [ ] Superadmin pode **redefinir** (apagar o segredo e exigir nova configuração) e **desativar** o 2FA de **qualquer outro usuário** (gerente ou outro admin) que perdeu o aparelho e os códigos; exige a senha do próprio admin e confirmação em página própria; apaga também os dispositivos lembrados; o admin não pode ver segredo nem códigos de ninguém. Risco registrado: uma conta de admin invadida poderia desativar o 2FA dos demais, por isso a exigência de senha e a auditoria
 - [ ] Lista de usuários do `/admin` mostra quem tem 2FA ativo
 - [ ] Ações de ativar, desativar, redefinir e códigos de recuperação usados entram na auditoria (depende do item de auditoria acima)
-- [ ] Plano para o superadmin que perde o 2FA (ex.: comando `bin/reset-2fa.php` rodado no servidor)
+- [ ] Comando no terminal do servidor para **desativar o 2FA de qualquer usuário** (ex.: `php bin/reset-2fa.php email@exemplo.com`), usado quando o painel não resolve (inclusive o superadmin que perdeu o aparelho); registra em log (sem segredo), apaga os dispositivos lembrados e pede confirmação
 
 Testes (obrigatórios, AGENTS.md 9):
 - [ ] `TotpService`: vetores do RFC 6238, janela ±1, código repetido recusado, código malformado
 - [ ] Fluxo completo: ativar, sair, entrar com senha + código, entrar com código de recuperação (uso único), desativar
+- [ ] Ativação abandonada (código não confirmado) não liga o 2FA; com 2FA ligado, sem código válido não há login
+- [ ] "Lembrar dispositivo": cookie válido pula o código; expirado, de outro usuário, adulterado ou depois de trocar a senha/desativar/redefinir não pula; só o hash fica no banco
+- [ ] Pop-up de lembrete: aparece uma vez por login para quem não ativou e não aparece para quem ativou
+- [ ] Menu da engrenagem (Segurança e Aparência) e Aparência fora do menu principal
+- [ ] Admin redefine/desativa o 2FA de outro usuário (gerente é negado, exige a senha do admin) e `bin/reset-2fa.php` desativa o de um usuário sem tocar nos demais
 - [ ] Sessão pendente de 2FA não acessa nenhuma rota de `/admin` ou `/gerente` (percorrer todas), e CSRF vale na tela do código
 - [ ] Rate limit da verificação e expiração da etapa pendente
 - [ ] Isolamento: o 2FA e os códigos de um usuário nunca afetam outro; gerente não redefine 2FA de ninguém
@@ -209,3 +226,4 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-17: bloco 1.7 decidiu: sem tarefa "publicar/expirar" (tudo é calculado na leitura; mudar `ativo` em massa apagaria a intenção do gerente e atrapalharia estender um aviso); o lock é `pg_try_advisory_lock` (vale entre servidores e some se o processo morrer); `limpar_arquivos_orfaos` tem disjuntor; `LOG_DIR` opcional no `.env` (padrão `storage/logs`). Mais tarefas entram na Fase 2 (dispositivos offline) pela interface `Tarefa`.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.
 - 2026-11-17: 2FA por TOTP adicionado à Fase 2 (seção 2.x) a pedido; sem SMS. Quem é obrigado a usar, o lembrar dispositivo e a biblioteca de QR code ficam como [confirmar] antes de implementar.
+- 2026-11-17: decisões do 2FA registradas (ver seção 2.x): os dois perfis usam, lembrar dispositivo no login, engrenagem com Segurança/Aparência, pop-up de lembrete, admin redefine/desativa e comando no terminal. Pendente: obrigatório x opcional e o prazo do lembrar dispositivo.
