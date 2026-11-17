@@ -110,6 +110,51 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [ ] QR code opcional no aviso
 - [ ] Auditoria (tabela `auditoria`, registro de ações) e modo suporte do superadmin como gerente
 
+### 2.x Autenticação de dois fatores (2FA, TOTP)
+
+Segundo fator por **código de 6 dígitos de aplicativo autenticador** (Google Authenticator, Microsoft Authenticator, Authy etc.), sem SMS. Vale para quem entra nos painéis (`superadmin` e `gerente`); a TV continua só com o token na URL, sem 2FA.
+
+Decisões a confirmar antes de começar:
+- [ ] Quem usa: obrigatório para `superadmin` e opcional para `gerente`, ou obrigatório para todos? [confirmar]
+- [ ] "Lembrar este dispositivo por N dias" (pular o código no mesmo navegador)? Reduz o incômodo, mas enfraquece o fator. [confirmar; sugestão: não no início]
+- [ ] Biblioteca ou código próprio: TOTP (RFC 6238) cabe em ~50 linhas com `hash_hmac`; o QR code pode reaproveitar a biblioteca do "QR code opcional no aviso". Justificar no commit qualquer `composer require` (AGENTS.md 2.2)
+
+Banco e segurança do segredo:
+- [ ] Migration: em `usuarios`, `totp_segredo` (cifrado), `totp_ativado_em` e `totp_ultimo_passo` (impede reaproveitar o mesmo código); tabela `codigos_recuperacao` (usuário, hash, usado_em)
+- [ ] Cifrar o segredo TOTP em repouso com uma chave do `.env` (`APP_KEY`, hoje vazia e ainda sem uso); nunca em log; chave ausente impede ativar o 2FA em vez de gravar em texto puro
+- [ ] `TotpService`: gerar segredo (160 bits, base32), validar código com tolerância de ±1 passo (30 s), comparação em tempo constante e rejeição de passo já usado
+
+Ativação e gestão pelo próprio usuário:
+- [ ] Página "Segurança" no painel (gerente e admin): ativar, ver situação, desativar e gerar novos códigos de recuperação
+- [ ] Ativar: mostrar QR code e chave em texto, e só ativar depois de o usuário digitar um código válido; depois mostrar uma única vez os códigos de recuperação
+- [ ] Códigos de recuperação: 10 códigos aleatórios de uso único, guardados só como hash; regenerar invalida os anteriores
+- [ ] Desativar ou regenerar exige senha atual e um código válido (ou de recuperação)
+
+Login em duas etapas:
+- [ ] Senha correta com 2FA ativo não abre a sessão: fica "pendente de 2FA" (sem acesso a `/admin`, `/gerente` nem a dados) e vai para a tela do código; ao validar, `session_regenerate_id(true)` e sessão completa
+- [ ] Tela do código com opção "usar código de recuperação"; mensagem de erro genérica; expiração curta da etapa pendente (ex.: 5 min)
+- [ ] Rate limit na verificação do código (por usuário e por IP, `429` com `Retry-After`) e bloqueio temporário após falhas seguidas
+- [ ] O `AuthMiddleware` trata a sessão pendente como não autenticada; qualquer rota protegida redireciona para a tela do código
+- [ ] Recuperação de senha **não** contorna o 2FA: redefinir a senha não desativa o segundo fator (a troca de senha já derruba as sessões antigas)
+
+Administração e operação:
+- [ ] Superadmin pode **redefinir o 2FA** de um gerente que perdeu o aparelho e os códigos (exige a senha do próprio admin; o gerente precisa configurar de novo no próximo login); o admin não pode ver segredo nem códigos de ninguém
+- [ ] Lista de usuários do `/admin` mostra quem tem 2FA ativo
+- [ ] Ações de ativar, desativar, redefinir e códigos de recuperação usados entram na auditoria (depende do item de auditoria acima)
+- [ ] Plano para o superadmin que perde o 2FA (ex.: comando `bin/reset-2fa.php` rodado no servidor)
+
+Testes (obrigatórios, AGENTS.md 9):
+- [ ] `TotpService`: vetores do RFC 6238, janela ±1, código repetido recusado, código malformado
+- [ ] Fluxo completo: ativar, sair, entrar com senha + código, entrar com código de recuperação (uso único), desativar
+- [ ] Sessão pendente de 2FA não acessa nenhuma rota de `/admin` ou `/gerente` (percorrer todas), e CSRF vale na tela do código
+- [ ] Rate limit da verificação e expiração da etapa pendente
+- [ ] Isolamento: o 2FA e os códigos de um usuário nunca afetam outro; gerente não redefine 2FA de ninguém
+- [ ] Segredo gravado cifrado (nunca igual ao valor em texto puro) e ausente de logs e de respostas
+- [ ] Teste manual com pelo menos dois aplicativos autenticadores reais
+
+Documentação:
+- [ ] README (como ativar, o que fazer se perder o aparelho) e AGENTS.md seção 6.2 (regras do 2FA), no mesmo commit da implementação
+
 ## Fase 3 — Financeiro (visualização e bloqueio manual) e extras
 
 A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para consulta e bloqueio manual.
@@ -163,3 +208,4 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-17: a aparência saiu do condomínio e foi para o gerente, a pedido. Migration 007: `usuarios.cor_primaria` (única cor; tons claros e escuros calculados) e remoção de `condominios.logo/cor_primaria/cor_secundaria` (as logos já enviadas ficam órfãs e a tarefa `limpar_arquivos_orfaos` as apaga). A cor vale só no painel do próprio gerente (rota `/gerente/aparencia`, folha `/gerente/tema.css`); a TV não tem mais logo nem cores personalizadas; o painel do superadmin segue no verde. Decisão minha: os verdes semânticos de "sucesso" (etiqueta Ativo, alerta de salvo) e os avatares coloridos não mudam com a cor. Títulos dos cartões da TV passaram a ocupar sempre 1 linha (reticências se não couber).
 - 2026-11-17: bloco 1.7 decidiu: sem tarefa "publicar/expirar" (tudo é calculado na leitura; mudar `ativo` em massa apagaria a intenção do gerente e atrapalharia estender um aviso); o lock é `pg_try_advisory_lock` (vale entre servidores e some se o processo morrer); `limpar_arquivos_orfaos` tem disjuntor; `LOG_DIR` opcional no `.env` (padrão `storage/logs`). Mais tarefas entram na Fase 2 (dispositivos offline) pela interface `Tarefa`.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.
+- 2026-11-17: 2FA por TOTP adicionado à Fase 2 (seção 2.x) a pedido; sem SMS. Quem é obrigado a usar, o lembrar dispositivo e a biblioteca de QR code ficam como [confirmar] antes de implementar.
