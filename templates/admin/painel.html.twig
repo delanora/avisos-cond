@@ -27,6 +27,10 @@
             <span class="numero-icone">{{ ui.icone('escudo', 24) }}</span>
             <div><span class="numero-valor">{{ total_admins }}</span><span class="numero-rotulo">{{ total_admins == 1 ? 'administrador' : 'administradores' }}</span></div>
         </div>
+        <a class="numero numero-link" href="/admin/dispositivos{% if dispositivos_offline > 0 %}?situacao=offline{% endif %}">
+            <span class="numero-icone">{{ ui.icone('tv', 24) }}</span>
+            <div><span class="numero-valor">{{ dispositivos_online }}/{{ dispositivos_total }}</span><span class="numero-rotulo">TVs online{% if dispositivos_offline > 0 %} ({{ dispositivos_offline }} offline){% endif %}</span></div>
+        </a>
     </section>
 
     <section class="atalhos" aria-label="Atalhos">

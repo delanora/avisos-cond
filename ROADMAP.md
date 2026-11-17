@@ -102,12 +102,11 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 
 ## Fase 2 — Operação e gestão
 
-- [ ] Painel de status online/offline dos dispositivos
-- [ ] Detecção de dispositivos offline no cron
+- [x] Painel de status online/offline dos dispositivos: situação (online, offline, nunca conectou, revogado) na lista com contagem e filtro, no detalhe com histórico de quedas e na página inicial do admin; offline = sem contato há mais de 3 min (2026-11-17)
+- [x] Detecção de dispositivos offline no cron (`detectar_dispositivos_offline`, a cada 1 min, grava quedas e retornos em `dispositivo_eventos`, idempotente) (2026-11-17)
 - [ ] Pareamento por código (`codigo_pareamento`)
 - [ ] Agendamento avançado (recorrência)
 - [ ] Modelos prontos de aviso (falta de água, elevador, dedetização, assembleia)
-- [ ] QR code opcional no aviso
 - [ ] Auditoria (tabela `auditoria`, registro de ações) e modo suporte do superadmin como gerente
 
 ### 2.x Autenticação de dois fatores (2FA, TOTP)
@@ -117,7 +116,7 @@ Segundo fator por **código de 6 dígitos de aplicativo autenticador** (Google A
 Decisões já tomadas (2026-11-17):
 - Os **dois perfis** (`superadmin` e `gerente`) usam o 2FA.
 - **Lembrar dispositivo no login: sim.** Prazo e regras ainda a definir [confirmar].
-- (Plano abaixo **confirmado pelo responsável em 2026-11-17**.) **TOTP: código próprio** (RFC 6238 com `hash_hmac`, ~50 linhas, sem dependência, testado com os vetores do RFC). **QR code: biblioteca de terceiros pequena** (QR é complexo demais para escrever à mão), com saída em SVG para não depender da extensão GD e para o CSP aceitar; candidata: `bacon/bacon-qr-code`; a mesma serve ao "QR code opcional no aviso". Conferir versão, licença e manutenção e justificar o `composer require` no commit (AGENTS.md 2.2). Alternativa sem dependência (mostrar só a chave para digitar no app) fica como plano B.
+- (Plano abaixo **confirmado pelo responsável em 2026-11-17**.) **TOTP: código próprio** (RFC 6238 com `hash_hmac`, ~50 linhas, sem dependência, testado com os vetores do RFC). **QR code: biblioteca de terceiros pequena** (QR é complexo demais para escrever à mão), com saída em SVG para não depender da extensão GD e para o CSP aceitar; candidata: `bacon/bacon-qr-code`; só o 2FA usa QR code (o QR code em avisos foi removido do projeto). Conferir versão, licença e manutenção e justificar o `composer require` no commit (AGENTS.md 2.2). Alternativa sem dependência (mostrar só a chave para digitar no app) fica como plano B.
 - **Lembrar dispositivo: 30 dias**, cancelado ao trocar a senha, desativar ou redefinir o 2FA, ou pelo botão "esquecer meus dispositivos".
 - Quem ativa o 2FA e **não confirma o código** na ativação continua sem 2FA; quem tem 2FA ativo e **não confirma o código no login, não entra**.
 - O 2FA é **opcional**, mas o **lembrete é obrigatório**: quem não ativou vê o pop-up em **todo login** (não há "não mostrar mais"); quem não ativa continua entrando só com a senha.
@@ -226,5 +225,7 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-17: bloco 1.7 decidiu: sem tarefa "publicar/expirar" (tudo é calculado na leitura; mudar `ativo` em massa apagaria a intenção do gerente e atrapalharia estender um aviso); o lock é `pg_try_advisory_lock` (vale entre servidores e some se o processo morrer); `limpar_arquivos_orfaos` tem disjuntor; `LOG_DIR` opcional no `.env` (padrão `storage/logs`). Mais tarefas entram na Fase 2 (dispositivos offline) pela interface `Tarefa`.
 - Pendente: servidor SMTP e remetente (`MAIL_*`) para a recuperação de senha funcionar fora dos testes.
 - 2026-11-17: 2FA por TOTP adicionado à Fase 2 (seção 2.x) a pedido; sem SMS. Quem é obrigado a usar, o lembrar dispositivo e a biblioteca de QR code ficam como [confirmar] antes de implementar.
-- 2026-11-17: decisões do 2FA registradas (ver seção 2.x): os dois perfis usam, lembrar dispositivo no login, engrenagem com Segurança/Aparência, pop-up de lembrete, admin redefine/desativa e comando no terminal. Decidido depois: 2FA opcional com lembrete obrigatório a cada login. Fechado em seguida: lembrar dispositivo por 30 dias (cancelado ao trocar a senha, desativar ou redefinir), TOTP com código próprio e QR code com biblioteca de terceiros (SVG).
+- 2026-11-17: decisões do 2FA registradas (ver seção 2.x): os dois perfis usam, lembrar dispositivo no login, engrenagem com Segurança/Aparência, pop-up de lembrete, admin redefine/desativa e comando no terminal. Decidido depois: 2FA opcional com lembrete obrigatório a cada login. Fechado em seguida: lembrar dispositivo por 30 dias (cancelado ao trocar a senha, desativar ou redefinir), TOTP com código próprio e QR code com biblioteca de terceiros (SVG, usada só na ativação do 2FA).
 - 2026-11-17: o responsável confirmou o plano do 2FA (TOTP próprio, QR code de terceiros em SVG, plano B só com a chave em texto). Pode ser implementado quando for priorizado.
+- 2026-11-17: removido do roadmap o "QR code opcional no aviso" (decisão do responsável). Ordem da Fase 2 combinada: status online/offline + detecção offline, modelos de aviso, recorrência, auditoria + modo suporte, pareamento por código; o 2FA fica por último.
+- 2026-11-17: bloco 2.1 (status online/offline). Decisões minhas a confirmar: limite de 3 minutos sem contato para considerar a TV offline (a TV consulta a cada 30-60 s); o painel mostra a situação calculada na hora, e a tarefa do cron só alimenta o histórico (migration 008); só o admin vê a situação (o gerente não). Notificação ao cair (e-mail/WhatsApp) continua na Fase 3.

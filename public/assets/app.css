@@ -537,3 +537,18 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 .svg-marca-50 { fill: var(--marca-50); }
 .svg-marca-100 { fill: var(--marca-100); }
 .svg-marca-300 { fill: var(--marca-300); }
+
+/* Situação das TVs (online/offline) e filtros da lista de dispositivos. */
+.etiqueta-disp-online { color: var(--ok-texto); background: var(--ok-fundo); }
+.etiqueta-disp-offline { color: #8F1B12; background: #FCE3E0; }
+.etiqueta-disp-nunca, .etiqueta-disp-revogado { color: var(--suave); background: #EFEDE8; }
+.etiqueta-disp-online::before, .etiqueta-disp-offline::before, .etiqueta-disp-nunca::before, .etiqueta-disp-revogado::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.filtros-situacao { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1rem; }
+.filtro { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.9rem; font-size: 0.875rem; color: var(--tinta); text-decoration: none; background: var(--superficie); border: 1px solid var(--linha-forte); border-radius: 999px; }
+.filtro:hover { color: var(--marca-800); border-color: var(--marca); }
+.filtro-ativo { color: var(--marca-800); background: var(--marca-50); border-color: var(--marca); font-weight: 600; }
+.historico { margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.historico li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding: 0.55rem 0; border-top: 1px solid var(--linha); }
+.historico li:first-child { border-top: 0; }
+.numero-link { color: inherit; text-decoration: none; }
+.numero-link:hover { color: inherit; background: #FBFAF8; }

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App;
 
 use App\Repositories\ArquivoRepository;
+use App\Repositories\DispositivoRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\RateLimitRepository;
 use App\Repositories\TarefaAgendadaRepository;
 use App\Services\Scheduler;
+use App\Services\Tarefas\DetectarDispositivosOffline;
 use App\Services\Tarefas\LimparArquivosOrfaos;
 use App\Services\Tarefas\LimparRateLimits;
 use App\Services\Tarefas\LimparResetsDeSenha;
@@ -32,7 +34,7 @@ final class CronFactory
                 new LimparRateLimits(new RateLimitRepository($pdo)),
                 new LimparResetsDeSenha(new PasswordResetRepository($pdo)),
                 new LimparArquivosOrfaos($upload, new ArquivoRepository($pdo)),
-                // Fase 2: detecção de dispositivos offline.
+                new DetectarDispositivosOffline(new DispositivoRepository($pdo)),
             ]
         );
     }

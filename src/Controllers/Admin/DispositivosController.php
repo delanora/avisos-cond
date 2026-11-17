@@ -11,6 +11,7 @@ use App\Support\DataHora;
 use App\Support\Request;
 use App\Support\Response;
 use App\Support\Session;
+use App\Support\SituacaoDispositivo;
 use App\Support\View;
 
 /** Cadastro de dispositivos (TVs/mini PCs): token, revogação e exclusão (somente superadmin). */
@@ -29,7 +30,10 @@ final class DispositivosController
     public function lista(Request $request, array $vars): Response
     {
         $agora = time();
-        $lista = $this->dispositivos->listar();
+        $todos = $this->dispositivos->listarComSituacao($agora);
+        // Filtro por situação (?situacao=offline): valor fora da lista é ignorado.
+        $filtro = is_string($request->query['situacao'] ?? null) && isset(SituacaoDispositivo::ROTULOS[$request->query['situacao']]) ? $request->query['situacao'] : '';
+        $lista = $filtro === '' ? $todos : array_values(array_filter($todos, static fn (array $d): bool => $d['situacao'] === $filtro));
         $contatos = [];
         foreach ($lista as $d) {
             $contatos[$d['id']] = DataHora::relativo($d['ultimo_ping_epoch'], $agora);
@@ -38,6 +42,10 @@ final class DispositivosController
         return Response::html($this->view->render('admin/dispositivos/lista.html.twig', [
             'usuario' => $request->attribute('usuario'),
             'dispositivos' => $lista,
+            'total' => count($todos),
+            'contagem' => DispositivoService::contarPorSituacao($todos),
+            'rotulos' => SituacaoDispositivo::ROTULOS,
+            'filtro' => $filtro,
             'ultimo_contato' => $contatos,
         ]));
     }
@@ -66,12 +74,19 @@ final class DispositivosController
     public function detalhe(Request $request, array $vars): Response
     {
         $dispositivo = $this->dispositivos->buscar((int) $vars['id']);
+        $agora = time();
 
         return Response::html($this->view->render('admin/dispositivos/detalhe.html.twig', [
             'usuario' => $request->attribute('usuario'),
             'dispositivo' => $dispositivo,
             'url' => $this->urlDaTv($dispositivo['token']),
-            'ultimo_contato' => DataHora::relativo($dispositivo['ultimo_ping_epoch'], time()),
+            'ultimo_contato' => DataHora::relativo($dispositivo['ultimo_ping_epoch'], $agora),
+            'situacao' => SituacaoDispositivo::de($dispositivo['ultimo_ping_epoch'], $dispositivo['ativo'], $agora),
+            'rotulos' => SituacaoDispositivo::ROTULOS,
+            'eventos' => array_map(static fn (array $e): array => $e + [
+                'quando' => DataHora::exibir($e['registrado_epoch']),
+                'desde' => $e['ultimo_ping_epoch'] === null ? null : DataHora::exibir($e['ultimo_ping_epoch']),
+            ], $this->dispositivos->eventos($dispositivo['id'])),
         ]));
     }
 

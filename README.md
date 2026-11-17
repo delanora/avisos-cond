@@ -37,7 +37,7 @@ Existem três "superfícies" no sistema:
 ### Painel Embracore
 - CRUD de usuários gerentes e de usuários administradores (ativar/desativar, redefinir senha, excluir com confirmação).
 - CRUD de condomínios e vínculo gerente ↔ condomínios (N:N).
-- Gestão de dispositivos (Fire Sticks, mini PCs e outras TVs): geração de token e último ping (MVP); código de pareamento e painel de status online/offline (Fase 2).
+- Gestão de dispositivos (Fire Sticks, mini PCs e outras TVs): geração de token e último ping (MVP); painel de status online/offline com histórico de quedas (Fase 2, pronto) e código de pareamento (Fase 2).
 - Situação financeira por condomínio: **somente visualização** (situação, valor, vencimento, observações cadastrados manualmente) e **bloqueio/desbloqueio manual** da exibição (a TV passa a mostrar somente o relógio). A cobrança em si (boletos, Pix, faturas) é feita em um sistema à parte, fora deste projeto.
 - Log de auditoria (quem fez o quê) e acesso de suporte como gerente (com registro).
 
@@ -291,6 +291,7 @@ O agendador executa tarefas de **manutenção**, cada uma com seu intervalo:
 |---|---|---|
 | `limpar_rate_limits` | 1 h | apaga contadores de tentativas (login, recuperação de senha, token de TV) com mais de 1 dia e sem bloqueio ativo |
 | `limpar_resets_de_senha` | 1 dia | apaga tokens de recuperação já usados ou expirados há mais de 7 dias (nunca os ainda válidos) |
+| `detectar_dispositivos_offline` | 1 min | registra no histórico (`dispositivo_eventos`) quando uma TV fica offline (sem contato há mais de 3 min) e quando volta; só grava mudanças |
 | `limpar_arquivos_orfaos` | 1 dia | apaga de `storage/uploads` arquivos que nenhum aviso usa, com mais de 24 h (tem travas de segurança) |
 
 Não existe tarefa de "publicar" ou "expirar" avisos: o que está no ar é calculado na hora pelo início e fim de cada aviso (na TV e no painel), então nada precisa ser mudado no banco quando o horário chega.

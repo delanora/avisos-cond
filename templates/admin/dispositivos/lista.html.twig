@@ -13,12 +13,29 @@
         <a class="botao" href="/admin/dispositivos/novo">{{ ui.icone('plus', 18) }}Novo dispositivo</a>
     </div>
 
-    {% if dispositivos|length == 0 %}
+    {% if total > 0 %}
+        <nav class="filtros-situacao" aria-label="Filtrar por situação">
+            <a class="filtro{% if filtro == '' %} filtro-ativo{% endif %}" href="/admin/dispositivos"{% if filtro == '' %} aria-current="true"{% endif %}>Todos <strong>{{ total }}</strong></a>
+            {% for chave, rotulo in rotulos %}
+                {% if contagem[chave] > 0 or filtro == chave %}
+                    <a class="filtro{% if filtro == chave %} filtro-ativo{% endif %}" href="/admin/dispositivos?situacao={{ chave }}"{% if filtro == chave %} aria-current="true"{% endif %}>{{ rotulo }} <strong>{{ contagem[chave] }}</strong></a>
+                {% endif %}
+            {% endfor %}
+        </nav>
+    {% endif %}
+
+    {% if total == 0 %}
         <div class="cartao vazio">
             <span class="vazio-icone">{{ ui.icone('tv', 30) }}</span>
             <h2>Nenhum dispositivo cadastrado</h2>
             <p>Cadastre a TV de um condomínio para gerar o endereço que ela vai abrir.</p>
             <a class="botao" href="/admin/dispositivos/novo">{{ ui.icone('plus', 18) }}Novo dispositivo</a>
+        </div>
+    {% elseif dispositivos|length == 0 %}
+        <div class="cartao vazio">
+            <span class="vazio-icone">{{ ui.icone('tv', 30) }}</span>
+            <h2>Nenhum dispositivo nesta situação</h2>
+            <p><a href="/admin/dispositivos">Ver todos os dispositivos</a></p>
         </div>
     {% else %}
         <div class="cartao cartao-sem-espaco">
@@ -45,7 +62,7 @@
                                 </div>
                             </td>
                             <td class="celula-suave esconde-movel">{{ ultimo_contato[d.id] }}</td>
-                            <td><span class="etiqueta {{ d.ativo ? 'etiqueta-ok' : 'etiqueta-off' }}">{{ d.ativo ? 'Ativo' : 'Revogado' }}</span></td>
+                            <td><span class="etiqueta etiqueta-disp-{{ d.situacao }}">{{ rotulos[d.situacao] }}</span></td>
                             <td class="acoes-celula">
                                 <a class="botao-icone" href="/admin/dispositivos/{{ d.id }}" title="Ver endereço da TV" aria-label="Ver endereço de {{ d.nome }}">{{ ui.icone('olho', 18) }}</a>
                                 <a class="botao-icone" href="/admin/dispositivos/{{ d.id }}/editar" title="Editar" aria-label="Editar {{ d.nome }}">{{ ui.icone('editar', 18) }}</a>

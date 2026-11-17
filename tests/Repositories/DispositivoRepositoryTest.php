@@ -117,4 +117,92 @@ final class DispositivoRepositoryTest extends AppHttpTestCase
         $this->pdo->exec("DELETE FROM condominios WHERE id = {$this->b}");
         $this->assertSame(0, $this->contar('dispositivos'), 'Dispositivos saem junto com o condomínio (ON DELETE CASCADE).');
     }
+
+    // ---------- Detecção de quedas e retornos (Fase 2, 2.1) ----------
+
+    private function pingHa(int $id, ?int $segundos): void
+    {
+        $this->pdo->exec($segundos === null
+            ? "UPDATE dispositivos SET ultimo_ping = NULL WHERE id = {$id}"
+            : "UPDATE dispositivos SET ultimo_ping = now() - interval '{$segundos} seconds' WHERE id = {$id}");
+    }
+
+    public function testQuedaGeraUmEventoOfflineEORepeticaoNaoDuplica(): void
+    {
+        $id = (int) $this->repo->criar($this->a, 'Elevador', 'ABCDEFGH2345');
+        $this->pingHa($id, 600);
+
+        $this->assertSame(['offline' => 1, 'online' => 0], $this->repo->registrarMudancasDeSituacao(180));
+        $this->assertSame(['offline' => 0, 'online' => 0], $this->repo->registrarMudancasDeSituacao(180), 'Idempotente.');
+        $this->assertSame(['offline' => 0, 'online' => 0], $this->repo->registrarMudancasDeSituacao(180));
+
+        $eventos = $this->repo->eventos($id);
+        $this->assertCount(1, $eventos);
+        $this->assertSame('offline', $eventos[0]['tipo']);
+        $this->assertNotNull($eventos[0]['ultimo_ping_epoch']);
+    }
+
+    public function testVoltarOnlineGeraEventoOnlineUmaSoVezECicloPodeRepetir(): void
+    {
+        $id = (int) $this->repo->criar($this->a, 'Elevador', 'ABCDEFGH2345');
+        $this->pingHa($id, 600);
+        $this->repo->registrarMudancasDeSituacao(180);
+
+        $this->pingHa($id, 5);
+        $this->assertSame(['offline' => 0, 'online' => 1], $this->repo->registrarMudancasDeSituacao(180));
+        $this->assertSame(['offline' => 0, 'online' => 0], $this->repo->registrarMudancasDeSituacao(180));
+
+        $this->pingHa($id, 900);
+        $this->assertSame(['offline' => 1, 'online' => 0], $this->repo->registrarMudancasDeSituacao(180));
+
+        $this->assertSame(['offline', 'online', 'offline'], array_reverse(array_column($this->repo->eventos($id), 'tipo')));
+    }
+
+    public function testQuemSempreEstevaOnlineNuncaConectouOuFoiRevogadoNaoGeraEvento(): void
+    {
+        $online = (int) $this->repo->criar($this->a, 'Online', 'ABCDEFGH2345');
+        $nunca = (int) $this->repo->criar($this->a, 'Nunca', 'JKMNPQRS6789');
+        $revogado = (int) $this->repo->criar($this->b, 'Revogado', 'TUVWXYZ23456');
+        $this->pingHa($online, 10);
+        $this->pingHa($nunca, null);
+        $this->pingHa($revogado, 9000);
+        $this->pdo->exec("UPDATE dispositivos SET ativo = false WHERE id = {$revogado}");
+
+        $this->assertSame(['offline' => 0, 'online' => 0], $this->repo->registrarMudancasDeSituacao(180));
+        $this->assertSame(0, $this->contar('dispositivo_eventos'));
+    }
+
+    public function testEventosSaoPorDispositivoDoMaisRecenteParaOMaisAntigoEUsamLimite(): void
+    {
+        $um = (int) $this->repo->criar($this->a, 'Um', 'ABCDEFGH2345');
+        $dois = (int) $this->repo->criar($this->a, 'Dois', 'JKMNPQRS6789');
+        $this->pingHa($um, 600);
+        $this->pingHa($dois, 600);
+        $this->repo->registrarMudancasDeSituacao(180);
+        $this->pingHa($um, 1);
+        $this->repo->registrarMudancasDeSituacao(180);
+
+        $this->assertSame(['online', 'offline'], array_column($this->repo->eventos($um), 'tipo'));
+        $this->assertSame(['offline'], array_column($this->repo->eventos($dois), 'tipo'));
+        $this->assertCount(1, $this->repo->eventos($um, 1));
+    }
+
+    public function testEventosSaemJuntoComODispositivo(): void
+    {
+        $id = (int) $this->repo->criar($this->a, 'Elevador', 'ABCDEFGH2345');
+        $this->pingHa($id, 600);
+        $this->repo->registrarMudancasDeSituacao(180);
+
+        $this->repo->excluir($id);
+
+        $this->assertSame(0, $this->contar('dispositivo_eventos'));
+    }
+
+    public function testTipoInvalidoDeEventoEhRejeitadoPeloBanco(): void
+    {
+        $id = (int) $this->repo->criar($this->a, 'Elevador', 'ABCDEFGH2345');
+
+        $this->expectException(\PDOException::class);
+        $this->pdo->exec("INSERT INTO dispositivo_eventos (dispositivo_id, tipo) VALUES ({$id}, 'quebrado')");
+    }
 }

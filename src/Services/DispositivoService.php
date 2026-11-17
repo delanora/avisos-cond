@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Repositories\CondominioRepository;
 use App\Repositories\DispositivoRepository;
 use App\Support\NaoEncontradoException;
+use App\Support\SituacaoDispositivo;
 use App\Support\Validator;
 use RuntimeException;
 
@@ -25,6 +26,49 @@ final class DispositivoService
     public function listar(): array
     {
         return $this->dispositivos->listar();
+    }
+
+    /**
+     * Todos os dispositivos com a situação calculada na hora pelo último contato.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listarComSituacao(int $agora): array
+    {
+        return array_map(function (array $d) use ($agora): array {
+            $d['situacao'] = SituacaoDispositivo::de($d['ultimo_ping_epoch'], $d['ativo'], $agora);
+
+            return $d;
+        }, $this->dispositivos->listar());
+    }
+
+    /**
+     * Quantos dispositivos há em cada situação (todas as chaves sempre presentes).
+     *
+     * @param list<array<string, mixed>> $comSituacao resultado de listarComSituacao()
+     * @return array<string, int>
+     */
+    public static function contarPorSituacao(array $comSituacao): array
+    {
+        $contagem = array_fill_keys(array_keys(SituacaoDispositivo::ROTULOS), 0);
+        foreach ($comSituacao as $d) {
+            $contagem[$d['situacao']]++;
+        }
+
+        return $contagem;
+    }
+
+    /**
+     * Histórico de quedas e retornos.
+     *
+     * @return list<array{tipo: string, registrado_epoch: int, ultimo_ping_epoch: ?int}>
+     * @throws NaoEncontradoException
+     */
+    public function eventos(int $id): array
+    {
+        $this->buscar($id);
+
+        return $this->dispositivos->eventos($id);
     }
 
     /**

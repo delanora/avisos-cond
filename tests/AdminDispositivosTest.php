@@ -139,7 +139,7 @@ final class AdminDispositivosTest extends AppHttpTestCase
         $this->assertStringContainsString('Elevador social', $corpo);
         $this->assertStringContainsString('Residencial Sol', $corpo);
         $this->assertStringContainsString('nunca', $corpo, 'Ainda não conectou.');
-        $this->assertStringContainsString('etiqueta-ok">Ativo<', $corpo);
+        $this->assertStringContainsString('etiqueta-disp-nunca">Nunca conectou<', $corpo);
         $this->assertStringNotContainsString(self::TOKEN, $corpo, 'O token só aparece na página do dispositivo.');
     }
 
@@ -325,5 +325,104 @@ final class AdminDispositivosTest extends AppHttpTestCase
         $this->assertSame(0, $this->contar('dispositivos'));
         $_SESSION = [];
         $this->assertSame(404, $this->get('/tv/' . self::TOKEN . '/state', '198.51.100.7')->status);
+    }
+
+    // ---------- Situação online/offline (Fase 2, 2.1) ----------
+
+    private function pingHa(int $segundos, ?int $id = null): void
+    {
+        $id ??= $this->dispositivo;
+        $this->pdo->exec("UPDATE dispositivos SET ultimo_ping = now() - interval '{$segundos} seconds' WHERE id = {$id}");
+    }
+
+    public function testListaMostraOnlineOfflineENuncaConectouComContagem(): void
+    {
+        $segundo = $this->dispositivoTv($this->pdo, $this->condominio, 'JKMNPQRS6789', 'Portaria');
+        $this->dispositivoTv($this->pdo, $this->condominio, 'TUVWXYZ23456', 'Salão');
+        $this->pingHa(30);
+        $this->pingHa(600, $segundo);
+        $this->logarComoAdmin();
+
+        $corpo = $this->get('/admin/dispositivos')->body;
+
+        $this->assertStringContainsString('etiqueta-disp-online">Online<', $corpo);
+        $this->assertStringContainsString('etiqueta-disp-offline">Offline<', $corpo);
+        $this->assertStringContainsString('etiqueta-disp-nunca">Nunca conectou<', $corpo);
+        $this->assertStringContainsString('Todos <strong>3</strong>', $corpo);
+        $this->assertStringContainsString('Offline <strong>1</strong>', $corpo);
+    }
+
+    public function testFiltroPorSituacaoMostraSoAquelaSituacao(): void
+    {
+        $segundo = $this->dispositivoTv($this->pdo, $this->condominio, 'JKMNPQRS6789', 'Portaria');
+        $this->pingHa(30);
+        $this->pingHa(600, $segundo);
+        $this->logarComoAdmin();
+
+        $offline = $this->get('/admin/dispositivos?situacao=offline')->body;
+        $this->assertStringContainsString('Portaria', $offline);
+        $this->assertStringNotContainsString('Elevador social', $offline);
+
+        $this->assertStringContainsString('Elevador social', $this->get('/admin/dispositivos?situacao=online')->body);
+        $this->assertStringContainsString('Nenhum dispositivo nesta situação', $this->get('/admin/dispositivos?situacao=revogado')->body);
+        $lixo = $this->get('/admin/dispositivos?situacao=' . urlencode("x' OR 1=1 --"));
+        $this->assertSame(200, $lixo->status);
+        $this->assertStringContainsString('Elevador social', $lixo->body, 'Filtro desconhecido é ignorado.');
+        $this->assertStringContainsString('Portaria', $lixo->body);
+    }
+
+    public function testLimiteDeTresMinutosSeparaOnlineDeOffline(): void
+    {
+        $this->logarComoAdmin();
+
+        $this->pingHa(170);
+        $this->assertStringContainsString('etiqueta-disp-online', $this->get("/admin/dispositivos/{$this->dispositivo}")->body);
+
+        $this->pingHa(200);
+        $this->assertStringContainsString('etiqueta-disp-offline', $this->get("/admin/dispositivos/{$this->dispositivo}")->body);
+    }
+
+    public function testDispositivoRevogadoNaoContaComoOffline(): void
+    {
+        $this->pdo->exec("UPDATE dispositivos SET ativo = false WHERE id = {$this->dispositivo}");
+        $this->pingHa(9000);
+        $this->logarComoAdmin();
+
+        $this->assertStringContainsString('etiqueta-disp-revogado">Revogado<', $this->get('/admin/dispositivos')->body);
+        $this->assertStringNotContainsString('offline)', $this->get('/admin')->body);
+    }
+
+    public function testPaginaInicialDoAdminMostraTvsOnlineEOffline(): void
+    {
+        $segundo = $this->dispositivoTv($this->pdo, $this->condominio, 'JKMNPQRS6789', 'Portaria');
+        $this->pingHa(20);
+        $this->pingHa(900, $segundo);
+        $this->logarComoAdmin();
+
+        $corpo = $this->get('/admin')->body;
+
+        $this->assertStringContainsString('1/2', $corpo);
+        $this->assertStringContainsString('TVs online (1 offline)', $corpo);
+        $this->assertStringContainsString('href="/admin/dispositivos?situacao=offline"', $corpo);
+    }
+
+    public function testDetalheMostraHistoricoDeQuedasEMesmoAssimGerenteNaoVe(): void
+    {
+        $this->pdo->exec("INSERT INTO dispositivo_eventos (dispositivo_id, tipo, ultimo_ping_em, registrado_em) VALUES ({$this->dispositivo}, 'offline', now() - interval '2 hours', now() - interval '110 minutes'), ({$this->dispositivo}, 'online', now(), now())");
+        $this->logarComoAdmin();
+
+        $corpo = $this->get("/admin/dispositivos/{$this->dispositivo}")->body;
+
+        $this->assertStringContainsString('Histórico de conexão', $corpo);
+        $this->assertStringContainsString('Ficou offline', $corpo);
+        $this->assertStringContainsString('Voltou', $corpo);
+        $this->assertStringContainsString('último contato às', $corpo);
+    }
+
+    public function testDetalheSemQuedasDizNenhumaQueda(): void
+    {
+        $this->logarComoAdmin();
+
+        $this->assertStringContainsString('Nenhuma queda registrada.', $this->get("/admin/dispositivos/{$this->dispositivo}")->body);
     }
 }

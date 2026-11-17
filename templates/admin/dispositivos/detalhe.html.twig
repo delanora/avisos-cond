@@ -42,10 +42,27 @@
         <div class="formulario-secao">
             <h2>Situação</h2>
             <p>
-                <span class="etiqueta {{ dispositivo.ativo ? 'etiqueta-ok' : 'etiqueta-off' }}">{{ dispositivo.ativo ? 'Ativo' : 'Revogado' }}</span>
+                <span class="etiqueta etiqueta-disp-{{ situacao }}">{{ rotulos[situacao] }}</span>
                 <span class="celula-suave">Último contato: {{ ultimo_contato }}</span>
             </p>
             <a class="botao botao-secundario" href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ ui.icone('tv', 18) }}Abrir a tela da TV</a>
+        </div>
+
+        <div class="formulario-secao">
+            <h2>Histórico de conexão</h2>
+            <p class="secao-ajuda">Considera-se offline a TV sem contato há mais de 3 minutos (ela consulta o servidor a cada 30 a 60 segundos).</p>
+            {% if eventos|length == 0 %}
+                <p class="campo-ajuda">Nenhuma queda registrada.</p>
+            {% else %}
+                <ul class="historico">
+                    {% for e in eventos %}
+                        <li>
+                            <span class="etiqueta etiqueta-disp-{{ e.tipo }}">{{ e.tipo == 'offline' ? 'Ficou offline' : 'Voltou' }}</span>
+                            <span class="celula-suave">{{ e.quando }}{% if e.tipo == 'offline' and e.desde %} (último contato às {{ e.desde }}){% endif %}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
         </div>
     </section>
 {% endblock %}

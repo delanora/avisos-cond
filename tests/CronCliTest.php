@@ -61,10 +61,10 @@ final class CronCliTest extends BancoMigradoTestCase
         $r = $this->rodar();
 
         $this->assertSame(0, $r['codigo'], $r['erro'] . $r['saida']);
-        foreach (['limpar_rate_limits', 'limpar_resets_de_senha', 'limpar_arquivos_orfaos'] as $tarefa) {
+        foreach (['limpar_rate_limits', 'limpar_resets_de_senha', 'limpar_arquivos_orfaos', 'detectar_dispositivos_offline'] as $tarefa) {
             $this->assertMatchesRegularExpression('/^\[\d{4}-\d\d-\d\dT[\d:]+Z\] ' . $tarefa . ': ok - .+ \(\d+ ms\)$/m', $r['saida'], $tarefa);
         }
-        $this->assertSame(3, (int) $this->pdo->query('SELECT count(*) FROM tarefas_agendadas')->fetchColumn());
+        $this->assertSame(4, (int) $this->pdo->query('SELECT count(*) FROM tarefas_agendadas')->fetchColumn());
         $this->assertSame('', $r['erro']);
     }
 
@@ -76,7 +76,7 @@ final class CronCliTest extends BancoMigradoTestCase
 
         $this->assertSame(0, $r['codigo']);
         $this->assertSame('', $r['saida'], 'O cron roda todo minuto: sem tarefas vencidas, o log fica quieto.');
-        $this->assertSame(3, (int) $this->pdo->query('SELECT sum(execucoes) FROM tarefas_agendadas')->fetchColumn(), 'Nenhuma tarefa rodou de novo.');
+        $this->assertSame(4, (int) $this->pdo->query('SELECT sum(execucoes) FROM tarefas_agendadas')->fetchColumn(), 'Nenhuma tarefa rodou de novo.');
     }
 
     public function testForcarRodaTudoDeNovo(): void
@@ -86,8 +86,8 @@ final class CronCliTest extends BancoMigradoTestCase
         $r = $this->rodar(['--forcar']);
 
         $this->assertSame(0, $r['codigo']);
-        $this->assertSame(3, substr_count($r['saida'], ': ok - '));
-        $this->assertSame(6, (int) $this->pdo->query('SELECT sum(execucoes) FROM tarefas_agendadas')->fetchColumn());
+        $this->assertSame(4, substr_count($r['saida'], ': ok - '));
+        $this->assertSame(8, (int) $this->pdo->query('SELECT sum(execucoes) FROM tarefas_agendadas')->fetchColumn());
     }
 
     public function testStatusMostraOHistorico(): void
@@ -99,7 +99,7 @@ final class CronCliTest extends BancoMigradoTestCase
         $this->assertSame(0, $r['codigo']);
         $this->assertStringContainsString('limpar_arquivos_orfaos', $r['saida']);
         $this->assertStringContainsString('execuções: 1 | falhas: 0', $r['saida']);
-        $this->assertSame(3, substr_count($r['saida'], 'última execução:'));
+        $this->assertSame(4, substr_count($r['saida'], 'última execução:'));
     }
 
     public function testComOutraExecucaoEmAndamentoSaiSemFazerNadaECodigoZero(): void

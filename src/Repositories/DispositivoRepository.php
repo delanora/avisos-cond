@@ -115,6 +115,63 @@ final class DispositivoRepository
         $stmt->execute(['id' => $id]);
     }
 
+    /**
+     * Registra as mudanças de situação (ficou offline / voltou) das TVs ativas que já se conectaram alguma vez.
+     * Idempotente: só grava quando a situação difere do último evento do dispositivo, então rodar de novo
+     * não duplica nada. Uma TV que sempre esteve online não gera evento.
+     *
+     * @return array{offline: int, online: int} quantos eventos de cada tipo foram gravados
+     */
+    public function registrarMudancasDeSituacao(int $limiteSegundos): array
+    {
+        $stmt = $this->pdo->prepare(
+            "WITH atuais AS (
+                 SELECT d.id, d.ultimo_ping,
+                        CASE WHEN d.ultimo_ping >= now() - make_interval(secs => :limite) THEN 'online' ELSE 'offline' END AS situacao,
+                        (SELECT e.tipo FROM dispositivo_eventos e WHERE e.dispositivo_id = d.id ORDER BY e.id DESC LIMIT 1) AS ultimo_tipo
+                 FROM dispositivos d
+                 WHERE d.ativo AND d.ultimo_ping IS NOT NULL
+             )
+             INSERT INTO dispositivo_eventos (dispositivo_id, tipo, ultimo_ping_em)
+             SELECT id, situacao, ultimo_ping FROM atuais
+             WHERE (situacao = 'offline' AND ultimo_tipo IS DISTINCT FROM 'offline')
+                OR (situacao = 'online' AND ultimo_tipo = 'offline')
+             RETURNING tipo"
+        );
+        $stmt->bindValue('limite', $limiteSegundos, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $contagem = ['offline' => 0, 'online' => 0];
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $tipo) {
+            $contagem[(string) $tipo]++;
+        }
+
+        return $contagem;
+    }
+
+    /**
+     * Histórico de quedas e retornos de um dispositivo, do mais recente para o mais antigo.
+     *
+     * @return list<array{tipo: string, registrado_epoch: int, ultimo_ping_epoch: ?int}>
+     */
+    public function eventos(int $dispositivoId, int $limite = 20): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT tipo, extract(epoch FROM registrado_em)::bigint AS registrado_epoch,
+                    extract(epoch FROM ultimo_ping_em)::bigint AS ultimo_ping_epoch
+             FROM dispositivo_eventos WHERE dispositivo_id = :id ORDER BY id DESC LIMIT :limite'
+        );
+        $stmt->bindValue('id', $dispositivoId, PDO::PARAM_INT);
+        $stmt->bindValue('limite', $limite, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return array_map(static fn (array $l): array => [
+            'tipo' => (string) $l['tipo'],
+            'registrado_epoch' => (int) $l['registrado_epoch'],
+            'ultimo_ping_epoch' => $l['ultimo_ping_epoch'] === null ? null : (int) $l['ultimo_ping_epoch'],
+        ], $stmt->fetchAll());
+    }
+
     public function excluir(int $id): bool
     {
         $stmt = $this->pdo->prepare('DELETE FROM dispositivos WHERE id = :id');
