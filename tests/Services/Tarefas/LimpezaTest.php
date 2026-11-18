@@ -138,7 +138,7 @@ final class LimpezaTest extends BancoMigradoTestCase
         $emAviso = $this->arquivo($this->nomeValido());
         $orfaoVelho = $this->arquivo($this->nomeValido(), 3 * 86400, str_repeat('z', 2048));
         $orfaoNovo = $this->arquivo($this->nomeValido(), 3600);
-        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, midia, midia_tipo, inicio_em, fim_em, criado_por) VALUES ({$condominio}, 'a', '{$emAviso}', 'imagem', now(), now() + interval '1 day', {$usuario})");
+        $this->pdo->exec("INSERT INTO avisos (condominio_id, tipo_id, titulo, midia, midia_tipo, inicio_em, fim_em, criado_por) VALUES ({$condominio}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'a', '{$emAviso}', 'imagem', now(), now() + interval '1 day', {$usuario})");
 
         $resumo = $this->tarefaDeOrfaos()->executar();
 
@@ -261,7 +261,7 @@ final class LimpezaTest extends BancoMigradoTestCase
         $condominio = (int) $this->pdo->query("INSERT INTO condominios (nome) VALUES ('A') RETURNING id")->fetchColumn();
         $usuario = $this->criarUsuario('g@exemplo.com.br');
         $usado = $this->nomeValido();
-        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, midia, midia_tipo, inicio_em, fim_em, criado_por) VALUES ({$condominio}, 'a', '{$usado}', 'imagem', now(), now() + interval '1 day', {$usuario})");
+        $this->pdo->exec("INSERT INTO avisos (condominio_id, tipo_id, titulo, midia, midia_tipo, inicio_em, fim_em, criado_por) VALUES ({$condominio}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'a', '{$usado}', 'imagem', now(), now() + interval '1 day', {$usuario})");
         $repo = new ArquivoRepository($this->pdo);
 
         $nomes = [$usado];

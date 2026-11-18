@@ -30,6 +30,7 @@ use App\Repositories\DispositivoRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\RateLimitRepository;
 use App\Repositories\ModeloAvisoRepository;
+use App\Repositories\PadroesDoGerenteRepository;
 use App\Repositories\TipoAvisoRepository;
 use App\Repositories\UsuarioRepository;
 use App\Repositories\VinculoRepository;
@@ -126,7 +127,7 @@ final class AppFactory
         $mwAuth = new AuthMiddleware($sessao, $usuarios);
         $mwAdmin = new RoleMiddleware(['superadmin'], $negado);
         $mwGerente = new RoleMiddleware(['gerente'], $negado);
-        $mwEscopo = new EscopoGerenteMiddleware($condominios);
+        $mwEscopo = new EscopoGerenteMiddleware($condominios, new PadroesDoGerenteRepository($pdo));
         // Margem de 1 MB para os demais campos do formulário além do arquivo.
         $mwTamanho = new TamanhoMiddleware($negado, $maximoUpload + 1048576);
         // Limite por IP nas rotas sensíveis: máx. de requisições por janela e tempo de bloqueio (segundos).
@@ -141,7 +142,7 @@ final class AppFactory
         $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios);
         $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $tipoAvisoService, $modeloAvisoService);
         $gerenteAparencia = new AparenciaController($view, $sessao, $aparenciaService);
-        $gerenteTipos = new TiposController($view, $sessao, $tipoAvisoService);
+        $gerenteTipos = new TiposController($view, $sessao, $tipoAvisoService, new TipoAvisoRepository($pdo));
         $gerenteModelos = new ModelosController($view, $sessao, $modeloAvisoService, $tipoAvisoService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
         $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'));
@@ -217,6 +218,17 @@ final class AppFactory
             $r->addRoute('POST', '/gerente/aparencia', $gEscrita([$gerenteAparencia, 'salvar']));
             $r->addRoute('GET', '/gerente/tema.css', $gLeitura([$gerenteAparencia, 'css']));
 
+            // Tipos e modelos de aviso são DO GERENTE (sem condomínio na URL): só login, papel e, na escrita, CSRF.
+            foreach (['tipos' => $gerenteTipos, 'modelos' => $gerenteModelos] as $recurso => $controller) {
+                $r->addRoute('GET', "/gerente/{$recurso}", $gLeitura([$controller, 'lista']));
+                $r->addRoute('GET', "/gerente/{$recurso}/novo", $gLeitura([$controller, 'novo']));
+                $r->addRoute('POST', "/gerente/{$recurso}", $gEscrita([$controller, 'criar']));
+                $r->addRoute('GET', "/gerente/{$recurso}/{id:\d+}/editar", $gLeitura([$controller, 'editar']));
+                $r->addRoute('POST', "/gerente/{$recurso}/{id:\d+}", $gEscrita([$controller, 'atualizar']));
+                $r->addRoute('GET', "/gerente/{$recurso}/{id:\d+}/excluir", $gLeitura([$controller, 'confirmarExclusao']));
+                $r->addRoute('POST', "/gerente/{$recurso}/{id:\d+}/excluir", $gEscrita([$controller, 'excluir']));
+            }
+
             $c = '/gerente/condominios/{cid:\d+}';
             $r->addRoute('GET', "{$c}/avisos", $gLeitura([$gerenteAvisos, 'lista']));
             $r->addRoute('GET', "{$c}/avisos/novo", $gLeitura([$gerenteAvisos, 'novo']));
@@ -228,23 +240,7 @@ final class AppFactory
             $r->addRoute('GET', "{$c}/avisos/{id:\d+}/previa", $gLeitura([$gerenteAvisos, 'previa']));
             $r->addRoute('GET', "{$c}/avisos/{id:\d+}/midia", $gLeitura([$gerenteMidia, 'aviso']));
 
-            $r->addRoute('GET', "{$c}/tipos", $gLeitura([$gerenteTipos, 'lista']));
-            $r->addRoute('GET', "{$c}/tipos/novo", $gLeitura([$gerenteTipos, 'novo']));
-            $r->addRoute('POST', "{$c}/tipos", $gEscrita([$gerenteTipos, 'criar']));
-            $r->addRoute('GET', "{$c}/tipos/{id:\d+}/editar", $gLeitura([$gerenteTipos, 'editar']));
-            $r->addRoute('POST', "{$c}/tipos/{id:\d+}", $gEscrita([$gerenteTipos, 'atualizar']));
-            $r->addRoute('GET', "{$c}/tipos/{id:\d+}/excluir", $gLeitura([$gerenteTipos, 'confirmarExclusao']));
-            $r->addRoute('POST', "{$c}/tipos/{id:\d+}/excluir", $gEscrita([$gerenteTipos, 'excluir']));
             $r->addRoute('GET', "{$c}/tipos.css", $gLeitura([$gerenteTipos, 'css']));
-
-            $r->addRoute('GET', "{$c}/modelos", $gLeitura([$gerenteModelos, 'lista']));
-            $r->addRoute('GET', "{$c}/modelos/novo", $gLeitura([$gerenteModelos, 'novo']));
-            $r->addRoute('POST', "{$c}/modelos", $gEscrita([$gerenteModelos, 'criar']));
-            $r->addRoute('GET', "{$c}/modelos/{id:\d+}/editar", $gLeitura([$gerenteModelos, 'editar']));
-            $r->addRoute('POST', "{$c}/modelos/{id:\d+}", $gEscrita([$gerenteModelos, 'atualizar']));
-            $r->addRoute('GET', "{$c}/modelos/{id:\d+}/excluir", $gLeitura([$gerenteModelos, 'confirmarExclusao']));
-            $r->addRoute('POST', "{$c}/modelos/{id:\d+}/excluir", $gEscrita([$gerenteModelos, 'excluir']));
-
         });
 
         return new Application($dispatcher, $view, $logger, new SecurityHeaders());

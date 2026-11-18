@@ -509,7 +509,7 @@ final class AdminTest extends AppHttpTestCase
         $c = $this->criarCondominio('Residencial Sol');
         $outro = $this->criarCondominio('Outro');
         $this->pdo->exec("INSERT INTO usuario_condominio VALUES ({$g}, {$c})");
-        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, inicio_em, fim_em) VALUES ({$c}, 'a', now(), now() + interval '1 day'), ({$c}, 'b', now(), now() + interval '1 day'), ({$outro}, 'c', now(), now() + interval '1 day')");
+        $this->pdo->exec("INSERT INTO avisos (condominio_id, tipo_id, titulo, inicio_em, fim_em) VALUES ({$c}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'a', now(), now() + interval '1 day'), ({$c}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'b', now(), now() + interval '1 day'), ({$outro}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'c', now(), now() + interval '1 day')");
         $this->pdo->exec("INSERT INTO dispositivos (condominio_id, nome, token) VALUES ({$c}, 'TV', 'AAAAAAAAAAAA')");
 
         $confirmacao = $this->get("/admin/condominios/{$c}/excluir");

@@ -13,7 +13,7 @@ use App\Support\Response;
 use App\Support\Session;
 use App\Support\View;
 
-/** Modelos de aviso de UM condomínio (o da URL): lista, criar, editar e apagar os modelos próprios. */
+/** Modelos de aviso do GERENTE logado (não do condomínio): lista, criar, editar e apagar. O dono é sempre o usuário da sessão. */
 final class ModelosController
 {
     public function __construct(
@@ -24,89 +24,87 @@ final class ModelosController
     ) {
     }
 
+    private function usuarioId(Request $request): int
+    {
+        return (int) $request->attribute('usuario')['id'];
+    }
+
     /** @param array<string, string> $vars */
     public function lista(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
 
-        return Response::html($this->view->render('gerente/modelos/lista.html.twig', EscopoGerente::contexto($request, $condominio) + [
-            'modelos' => $this->modelos->listar(EscopoGerente::permitidos($request), $condominio['id']),
-            'menu' => 'avisos',
+        return Response::html($this->view->render('gerente/modelos/lista.html.twig', EscopoGerente::contexto($request) + [
+            'modelos' => $this->modelos->listar($this->usuarioId($request)),
+            'menu' => 'modelos',
         ]));
     }
 
     /** @param array<string, string> $vars */
     public function novo(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
 
-        return $this->formulario($request, $condominio, null, ['nome' => '', 'titulo' => '', 'corpo' => '', 'tipo' => 'comum'], []);
+        return $this->formulario($request, null, ['nome' => '', 'titulo' => '', 'corpo' => '', 'tipo' => 'comum'], []);
     }
 
     /** @param array<string, string> $vars */
     public function criar(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
 
         try {
-            $this->modelos->criar(EscopoGerente::permitidos($request), $condominio['id'], $request->body);
+            $this->modelos->criar($this->usuarioId($request), $request->body);
         } catch (ValidacaoException $e) {
-            return $this->formulario($request, $condominio, null, $this->valoresEnviados($request), $e->erros, 422);
+            return $this->formulario($request, null, $this->valoresEnviados($request), $e->erros, 422);
         }
 
         $this->sessao->flash('Modelo criado com sucesso.');
 
-        return Response::redirect("/gerente/condominios/{$condominio['id']}/modelos", 303);
+        return Response::redirect('/gerente/modelos', 303);
     }
 
     /** @param array<string, string> $vars */
     public function editar(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-        $m = $this->modelos->buscarProprio(EscopoGerente::permitidos($request), $condominio['id'], (int) $vars['id']);
+        $m = $this->modelos->buscarProprio($this->usuarioId($request), (int) $vars['id']);
 
-        return $this->formulario($request, $condominio, $m, ['nome' => $m['nome'], 'titulo' => $m['titulo'], 'corpo' => $m['corpo'], 'tipo' => $m['tipo']], []);
+        return $this->formulario($request, $m, ['nome' => $m['nome'], 'titulo' => $m['titulo'], 'corpo' => $m['corpo'], 'tipo' => $m['tipo']], []);
     }
 
     /** @param array<string, string> $vars */
     public function atualizar(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-        $permitidos = EscopoGerente::permitidos($request);
+        $usuario = $this->usuarioId($request);
         $id = (int) $vars['id'];
 
         try {
-            $this->modelos->atualizar($permitidos, $condominio['id'], $id, $request->body);
+            $this->modelos->atualizar($usuario, $id, $request->body);
         } catch (ValidacaoException $e) {
-            return $this->formulario($request, $condominio, $this->modelos->buscarProprio($permitidos, $condominio['id'], $id), $this->valoresEnviados($request), $e->erros, 422);
+            return $this->formulario($request, $this->modelos->buscarProprio($usuario, $id), $this->valoresEnviados($request), $e->erros, 422);
         }
 
         $this->sessao->flash('Modelo atualizado com sucesso.');
 
-        return Response::redirect("/gerente/condominios/{$condominio['id']}/modelos", 303);
+        return Response::redirect('/gerente/modelos', 303);
     }
 
     /** @param array<string, string> $vars */
     public function confirmarExclusao(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-        $m = $this->modelos->buscarProprio(EscopoGerente::permitidos($request), $condominio['id'], (int) $vars['id']);
+        $m = $this->modelos->buscarProprio($this->usuarioId($request), (int) $vars['id']);
 
-        return Response::html($this->view->render('gerente/modelos/excluir.html.twig', EscopoGerente::contexto($request, $condominio) + [
+        return Response::html($this->view->render('gerente/modelos/excluir.html.twig', EscopoGerente::contexto($request) + [
             'modelo' => $m,
-            'menu' => 'avisos',
+            'menu' => 'modelos',
         ]));
     }
 
     /** @param array<string, string> $vars */
     public function excluir(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
 
-        $this->modelos->excluir(EscopoGerente::permitidos($request), $condominio['id'], (int) $vars['id']);
+        $this->modelos->excluir($this->usuarioId($request), (int) $vars['id']);
         $this->sessao->flash('Modelo apagado.');
 
-        return Response::redirect("/gerente/condominios/{$condominio['id']}/modelos", 303);
+        return Response::redirect('/gerente/modelos', 303);
     }
 
     /** @return array<string, mixed> */
@@ -118,22 +116,21 @@ final class ModelosController
     }
 
     /**
-     * @param array<string, mixed>      $condominio
      * @param array<string, mixed>|null $modelo modelo em edição
      * @param array<string, mixed>      $valores
      * @param array<string, string>     $erros
      */
-    private function formulario(Request $request, array $condominio, ?array $modelo, array $valores, array $erros, int $status = 200): Response
+    private function formulario(Request $request, ?array $modelo, array $valores, array $erros, int $status = 200): Response
     {
-        $base = "/gerente/condominios/{$condominio['id']}/modelos";
+        $base = '/gerente/modelos';
 
-        return Response::html($this->view->render('gerente/modelos/form.html.twig', EscopoGerente::contexto($request, $condominio) + [
+        return Response::html($this->view->render('gerente/modelos/form.html.twig', EscopoGerente::contexto($request) + [
             'editando' => $modelo !== null,
             'acao' => $modelo === null ? $base : "{$base}/{$modelo['id']}",
             'valores' => $valores,
             'erros' => $erros,
-            'tipos' => $this->tipos->listar(EscopoGerente::permitidos($request), $condominio['id']),
-            'menu' => 'avisos',
+            'tipos' => $this->tipos->listar($this->usuarioId($request)),
+            'menu' => 'modelos',
         ]), $status);
     }
 }

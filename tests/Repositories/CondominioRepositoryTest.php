@@ -80,7 +80,7 @@ final class CondominioRepositoryTest extends AppHttpTestCase
         $outro = $this->repo->criar('B', null, true);
         $g = $this->criarUsuario('g@exemplo.com.br');
         (new VinculoRepository($this->pdo))->sincronizarDoUsuario($g, [$id]);
-        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, inicio_em, fim_em) VALUES ({$id}, 'x', now(), now() + interval '1 day'), ({$id}, 'y', now(), now() + interval '1 day'), ({$outro}, 'z', now(), now() + interval '1 day')");
+        $this->pdo->exec("INSERT INTO avisos (condominio_id, tipo_id, titulo, inicio_em, fim_em) VALUES ({$id}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'x', now(), now() + interval '1 day'), ({$id}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'y', now(), now() + interval '1 day'), ({$outro}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'z', now(), now() + interval '1 day')");
         $this->pdo->exec("INSERT INTO dispositivos (condominio_id, nome, token) VALUES ({$id}, 'TV', 'AAAAAAAAAAAA')");
 
         $this->assertSame(['avisos' => 2, 'dispositivos' => 1, 'gerentes' => 1], $this->repo->dependencias($id));
@@ -91,7 +91,7 @@ final class CondominioRepositoryTest extends AppHttpTestCase
     {
         $id = $this->repo->criar('A', null, true);
         $outro = $this->repo->criar('B', null, true);
-        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, inicio_em, fim_em) VALUES ({$id}, 'x', now(), now() + interval '1 day'), ({$outro}, 'z', now(), now() + interval '1 day')");
+        $this->pdo->exec("INSERT INTO avisos (condominio_id, tipo_id, titulo, inicio_em, fim_em) VALUES ({$id}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'x', now(), now() + interval '1 day'), ({$outro}, (SELECT id FROM tipos_aviso WHERE sistema AND chave = 'comum'), 'z', now(), now() + interval '1 day')");
 
         $this->assertTrue($this->repo->excluir($id));
         $this->assertFalse($this->repo->excluir($id));

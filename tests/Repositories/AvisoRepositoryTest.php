@@ -35,7 +35,7 @@ final class AvisoRepositoryTest extends AppHttpTestCase
     private function dados(string $titulo): array
     {
         return [
-            'titulo' => $titulo, 'corpo' => 'Texto', 'tipo' => 'comum', 'midia' => null, 'midia_tipo' => null,
+            'titulo' => $titulo, 'corpo' => 'Texto', 'tipo_id' => $this->tipoDeFabrica(), 'midia' => null, 'midia_tipo' => null,
             'inicio_epoch' => 1_800_000_000, 'fim_epoch' => 1_800_086_400, 'ativo' => true,
         ];
     }

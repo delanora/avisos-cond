@@ -28,6 +28,11 @@ final class AvisosController
     ) {
     }
 
+    private function usuarioId(Request $request): int
+    {
+        return (int) $request->attribute('usuario')['id'];
+    }
+
     /** @param array<string, string> $vars */
     public function lista(Request $request, array $vars): Response
     {
@@ -50,7 +55,7 @@ final class AvisosController
 
         // "Começar de um modelo": ?modelo=ID preenche título, texto e tipo (modelo de outro condomínio é 404).
         $modelo = ctype_digit((string) ($request->query['modelo'] ?? ''))
-            ? $this->modelos->paraUsar(EscopoGerente::permitidos($request), $condominio['id'], (int) $request->query['modelo'])
+            ? $this->modelos->paraUsar($this->usuarioId($request), (int) $request->query['modelo'])
             : null;
 
         return $this->formulario($request, $condominio, null, [
@@ -96,7 +101,7 @@ final class AvisosController
         return $this->formulario($request, $condominio, $aviso, [
             'titulo' => $aviso['titulo'],
             'corpo' => $aviso['corpo'],
-            'tipo' => $aviso['tipo'],
+            'tipo' => $aviso['tipo_dono'] === $this->usuarioId($request) ? $aviso['tipo'] : '__atual', // tipo de outro gerente do condomínio: "manter o atual",
             'salvar_modelo' => false,
             'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
             'dias' => Recorrencia::listaDeDias($aviso['dias_semana']),
@@ -116,7 +121,7 @@ final class AvisosController
         $id = (int) $vars['id'];
 
         try {
-            $this->avisos->atualizar($permitidos, $condominio['id'], $id, $request->body, $request->files['midia'] ?? null);
+            $this->avisos->atualizar($permitidos, $condominio['id'], $id, $request->body, $request->files['midia'] ?? null, $this->usuarioId($request));
         } catch (ValidacaoException $e) {
             $aviso = $this->avisos->buscar($permitidos, $condominio['id'], $id);
 
@@ -172,9 +177,10 @@ final class AvisosController
         if (($request->body['salvar_modelo'] ?? '') !== '1') {
             return;
         }
-        $permitidos = EscopoGerente::permitidos($request);
-        $aviso = $this->avisos->buscar($permitidos, $condominioId, $avisoId);
-        $this->modelos->criarDoAviso($permitidos, $condominioId, $aviso['titulo'], $aviso['corpo'], $aviso['tipo']);
+        $aviso = $this->avisos->buscar(EscopoGerente::permitidos($request), $condominioId, $avisoId);
+        // Só vira modelo se o tipo for do próprio gerente (o modelo guarda a chave de um tipo dele).
+        $tipo = $aviso['tipo_dono'] === $this->usuarioId($request) ? $aviso['tipo'] : 'comum';
+        $this->modelos->criarDoAviso($this->usuarioId($request), $aviso['titulo'], $aviso['corpo'], $tipo);
     }
 
     /** @return array<string, mixed> */
@@ -217,8 +223,10 @@ final class AvisosController
             'valores' => $valores,
             'erros' => $erros,
             'dias_semana' => Recorrencia::DIAS,
-            'tipos' => $this->tipos->listar(EscopoGerente::permitidos($request), $condominio['id']),
-            'modelos' => $aviso === null ? $this->modelos->listar(EscopoGerente::permitidos($request), $condominio['id']) : [],
+            'tipos' => $this->tipos->listar($this->usuarioId($request)),
+            // Ao editar um aviso cujo tipo é de outro gerente do condomínio, ele aparece como opção fixa "manter".
+            'tipo_de_outro' => $aviso !== null && $aviso['tipo_dono'] !== $this->usuarioId($request) ? $aviso : null,
+            'modelos' => $aviso === null ? $this->modelos->listar($this->usuarioId($request)) : [],
             'menu' => 'avisos',
         ]), $status);
     }

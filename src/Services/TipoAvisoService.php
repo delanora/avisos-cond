@@ -8,8 +8,8 @@ use App\Repositories\TipoAvisoRepository;
 use App\Support\NaoEncontradoException;
 
 /**
- * Tipos de aviso do condomínio: os do sistema (Comum, Fixo, Urgente, Manutenção, Assembleia) e os que o
- * gerente cria (nome, cor principal e se o aviso fica fixo na faixa do topo da TV).
+ * Tipos de aviso de cada gerente (nome, cor principal e se o aviso fica fixo na faixa do topo da TV). Os cinco de
+ * fábrica (Comum, Fixo, Urgente, Manutenção, Assembleia) são copiados para o gerente na primeira vez e depois são dele.
  */
 final class TipoAvisoService
 {
@@ -19,83 +19,67 @@ final class TipoAvisoService
     {
     }
 
-    /**
-     * @param list<int> $permitidos
-     * @return list<array<string, mixed>>
-     */
-    public function listar(array $permitidos, int $condominioId): array
+    /** @return list<array<string, mixed>> os tipos do gerente */
+    public function listar(int $usuarioId): array
     {
-        $this->exigirPermitido($permitidos, $condominioId);
+        return $this->tipos->listar($usuarioId);
+    }
 
-        return $this->tipos->listar($permitidos, $condominioId);
+    /** @return array<string, mixed>|null */
+    public function resolver(int $usuarioId, string $chave): ?array
+    {
+        return $this->tipos->porChave($usuarioId, $chave);
     }
 
     /**
-     * @param list<int> $permitidos
-     * @return array<string, mixed>|null
-     */
-    public function resolver(array $permitidos, int $condominioId, string $chave): ?array
-    {
-        $this->exigirPermitido($permitidos, $condominioId);
-
-        return $this->tipos->porChave($permitidos, $condominioId, $chave);
-    }
-
-    /**
-     * @param list<int> $permitidos
      * @return array<string, mixed>
-     * @throws NaoEncontradoException tipo inexistente, do sistema ou de outro condomínio
+     * @throws NaoEncontradoException tipo inexistente ou de outro gerente
      */
-    public function buscarProprio(array $permitidos, int $condominioId, int $id): array
+    public function buscarProprio(int $usuarioId, int $id): array
     {
-        $this->exigirPermitido($permitidos, $condominioId);
-
-        return $this->tipos->proprioPorId($permitidos, $condominioId, $id) ?? throw new NaoEncontradoException();
+        return $this->tipos->porId($usuarioId, $id) ?? throw new NaoEncontradoException();
     }
 
     /**
-     * @param list<int>            $permitidos
      * @param array<string, mixed> $dados nome, cor, fixo
      * @return array<string, mixed> o tipo criado
      * @throws ValidacaoException
      */
-    public function criar(array $permitidos, int $condominioId, array $dados): array
+    public function criar(int $usuarioId, array $dados): array
     {
-        $this->exigirPermitido($permitidos, $condominioId);
-        [$nome, $chave, $cor, $fixo] = $this->validar($condominioId, $dados);
+        [$nome, $chave, $cor, $fixo] = $this->validar($usuarioId, $dados);
 
-        $id = $this->tipos->criar($permitidos, $condominioId, $chave, $nome, $cor, $fixo) ?? throw new NaoEncontradoException();
-
-        return $this->tipos->proprioPorId($permitidos, $condominioId, $id) ?? throw new NaoEncontradoException();
+        return $this->buscarProprio($usuarioId, $this->tipos->criar($usuarioId, $chave, $nome, $cor, $fixo));
     }
 
     /**
-     * @param list<int>            $permitidos
      * @param array<string, mixed> $dados nome, cor, fixo
      * @throws ValidacaoException
      * @throws NaoEncontradoException
      */
-    public function atualizar(array $permitidos, int $condominioId, int $id, array $dados): void
+    public function atualizar(int $usuarioId, int $id, array $dados): void
     {
-        $atual = $this->buscarProprio($permitidos, $condominioId, $id);
-        [$nome, , $cor, $fixo] = $this->validar($condominioId, $dados, $id, $atual['chave']);
+        $atual = $this->buscarProprio($usuarioId, $id);
+        [$nome, , $cor, $fixo] = $this->validar($usuarioId, $dados, $id, $atual['chave']);
 
-        $this->tipos->atualizar($permitidos, $condominioId, $id, $nome, $cor, $fixo) || throw new NaoEncontradoException();
+        $this->tipos->atualizar($usuarioId, $id, $nome, $cor, $fixo) || throw new NaoEncontradoException();
     }
 
     /**
-     * @param list<int> $permitidos
-     * @throws ValidacaoException tipo em uso por algum aviso
+     * @throws ValidacaoException tipo em uso por algum aviso, ou o último tipo do gerente
      * @throws NaoEncontradoException
      */
-    public function excluir(array $permitidos, int $condominioId, int $id): void
+    public function excluir(int $usuarioId, int $id): void
     {
-        $tipo = $this->buscarProprio($permitidos, $condominioId, $id);
+        $tipo = $this->buscarProprio($usuarioId, $id);
         if ($tipo['em_uso'] > 0) {
             throw new ValidacaoException(['tipo' => "Este tipo é usado por {$tipo['em_uso']} aviso(s). Troque o tipo deles antes de apagar."]);
         }
+        if ($this->tipos->contar($usuarioId) <= 1) {
+            throw new ValidacaoException(['tipo' => 'Você precisa manter pelo menos um tipo de aviso. Crie outro antes de apagar este.']);
+        }
 
-        $this->tipos->excluir($permitidos, $condominioId, $id) || throw new NaoEncontradoException();
+        $this->tipos->excluir($usuarioId, $id) || throw new NaoEncontradoException();
     }
 
     /**
@@ -105,7 +89,7 @@ final class TipoAvisoService
      * @return array{string, string, string, bool}
      * @throws ValidacaoException
      */
-    public function validar(int $condominioId, array $dados, ?int $exceto = null, ?string $chaveAtual = null): array
+    public function validar(int $usuarioId, array $dados, ?int $exceto = null, ?string $chaveAtual = null): array
     {
         $nome = is_string($dados['nome'] ?? null) ? trim(preg_replace('/\s+/u', ' ', $dados['nome']) ?? '') : '';
         $cor = is_string($dados['cor'] ?? null) ? strtoupper(trim($dados['cor'])) : '';
@@ -119,7 +103,7 @@ final class TipoAvisoService
         }
 
         $chave = $chaveAtual ?? self::chaveDoNome($nome);
-        if ($erros === [] && $this->tipos->nomeOuChaveEmUso($condominioId, $nome, $chave, $exceto)) {
+        if ($erros === [] && $this->tipos->nomeOuChaveEmUso($usuarioId, $nome, $chave, $exceto)) {
             $erros['nome'] = 'Já existe um tipo com esse nome.';
         }
         if ($erros !== []) {
@@ -165,13 +149,5 @@ final class TipoAvisoService
         }
 
         return $css;
-    }
-
-    /** @param list<int> $permitidos */
-    private function exigirPermitido(array $permitidos, int $condominioId): void
-    {
-        if (!in_array($condominioId, $permitidos, true)) {
-            throw new NaoEncontradoException();
-        }
     }
 }

@@ -13,14 +13,16 @@ use Tests\AppHttpTestCase;
 
 final class TipoAvisoServiceTest extends AppHttpTestCase
 {
-    private int $a;
-    private int $b;
+    private int $ana;
+    private int $beto;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->a = $this->criarCondominio('Alfa');
-        $this->b = $this->criarCondominio('Beta');
+        $this->ana = $this->criarUsuario('ana@exemplo.com.br');
+        $this->beto = $this->criarUsuario('beto@exemplo.com.br');
+        $this->padroesDoGerente($this->ana);
+        $this->padroesDoGerente($this->beto);
     }
 
     private function servico(): TipoAvisoService
@@ -49,10 +51,10 @@ final class TipoAvisoServiceTest extends AppHttpTestCase
 
     public function testCriaTipoComChaveDoNomeECorEmMaiusculo(): void
     {
-        $tipo = $this->servico()->criar([$this->a], $this->a, ['nome' => '  Reunião   do Conselho ', 'cor' => '#2f6fed', 'fixo' => '1']);
+        $tipo = $this->servico()->criar($this->ana, ['nome' => '  Reunião   do Conselho ', 'cor' => '#2f6fed', 'fixo' => '1']);
 
         $this->assertSame(['reuniao-do-conselho', 'Reunião do Conselho', '#2F6FED', true, false], [$tipo['chave'], $tipo['nome'], $tipo['cor'], $tipo['fixo'], $tipo['sistema']]);
-        $this->assertSame($this->a, $tipo['condominio_id']);
+        $this->assertSame($this->ana, $tipo['usuario_id']);
     }
 
     /** @return array<string, array{array<string, mixed>, string}> */
@@ -75,79 +77,110 @@ final class TipoAvisoServiceTest extends AppHttpTestCase
     public function testValidacoesNaoCriamNada(array $dados, string $campo): void
     {
         try {
-            $this->servico()->criar([$this->a], $this->a, $dados);
+            $this->servico()->criar($this->ana, $dados);
             $this->fail('Deveria falhar.');
         } catch (ValidacaoException $e) {
             $this->assertArrayHasKey($campo, $e->erros);
         }
-        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE NOT sistema')->fetchColumn());
+        $this->assertSame(5, (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE usuario_id = {$this->ana}")->fetchColumn(), 'Só os cinco de fábrica.');
     }
 
-    public function testNomeRepetidoNoCondominioEhRecusadoMasEmOutroEhPermitido(): void
+    public function testNomeRepetidoParaOMesmoGerenteEhRecusadoMasParaOutroEhPermitido(): void
     {
-        $this->servico()->criar([$this->a, $this->b], $this->a, ['nome' => 'Zeladoria', 'cor' => '#112233']);
+        $this->servico()->criar($this->ana, ['nome' => 'Zeladoria', 'cor' => '#112233']);
 
+        $this->assertNotNull($this->servico()->criar($this->beto, ['nome' => 'Zeladoria', 'cor' => '#112233']), 'O Beto pode ter o mesmo nome.');
         $this->expectException(ValidacaoException::class);
-        try {
-            $this->servico()->criar([$this->a, $this->b], $this->a, ['nome' => 'ZELADORIA', 'cor' => '#445566']);
-        } finally {
-            $this->assertNotNull($this->servico()->criar([$this->a, $this->b], $this->b, ['nome' => 'Zeladoria', 'cor' => '#112233']));
-        }
-    }
-
-    public function testCondominioForaDosPermitidosEh404(): void
-    {
-        $this->expectException(NaoEncontradoException::class);
-
-        $this->servico()->criar([$this->a], $this->b, ['nome' => 'Invasor', 'cor' => '#112233']);
+        $this->servico()->criar($this->ana, ['nome' => 'ZELADORIA', 'cor' => '#445566']);
     }
 
     public function testAtualizarMantemAChaveEPermiteMesmoNome(): void
     {
-        $tipo = $this->servico()->criar([$this->a], $this->a, ['nome' => 'Zeladoria', 'cor' => '#112233']);
+        $tipo = $this->servico()->criar($this->ana, ['nome' => 'Zeladoria', 'cor' => '#112233']);
 
-        $this->servico()->atualizar([$this->a], $this->a, $tipo['id'], ['nome' => 'Zeladoria', 'cor' => '#AABBCC', 'fixo' => '1']);
-        $this->servico()->atualizar([$this->a], $this->a, $tipo['id'], ['nome' => 'Zeladoria geral', 'cor' => '#AABBCC']);
+        $this->servico()->atualizar($this->ana, $tipo['id'], ['nome' => 'Zeladoria', 'cor' => '#AABBCC', 'fixo' => '1']);
+        $this->servico()->atualizar($this->ana, $tipo['id'], ['nome' => 'Zeladoria geral', 'cor' => '#AABBCC']);
 
-        $depois = $this->servico()->buscarProprio([$this->a], $this->a, $tipo['id']);
+        $depois = $this->servico()->buscarProprio($this->ana, $tipo['id']);
         $this->assertSame(['zeladoria', 'Zeladoria geral', '#AABBCC', false], [$depois['chave'], $depois['nome'], $depois['cor'], $depois['fixo']]);
     }
 
-    public function testBuscarEEditarTipoDoSistemaOuDeOutroCondominioEh404(): void
+    public function testBuscarEditarOuApagarTipoDeOutroGerenteOuInexistenteEh404(): void
     {
-        $meu = $this->servico()->criar([$this->a, $this->b], $this->a, ['nome' => 'Zeladoria', 'cor' => '#112233']);
-        $sistema = (int) $this->pdo->query("SELECT id FROM tipos_aviso WHERE chave = 'comum'")->fetchColumn();
+        $daAna = $this->servico()->criar($this->ana, ['nome' => 'Zeladoria', 'cor' => '#112233']);
+        $matriz = $this->tipoDeFabrica('comum');
 
-        foreach ([[$this->b, $meu['id']], [$this->a, $sistema], [$this->a, 999999]] as [$cond, $id]) {
+        foreach ([
+            fn () => $this->servico()->buscarProprio($this->beto, $daAna['id']),
+            fn () => $this->servico()->atualizar($this->beto, $daAna['id'], ['nome' => 'Roubado', 'cor' => '#000000']),
+            fn () => $this->servico()->excluir($this->beto, $daAna['id']),
+            fn () => $this->servico()->buscarProprio($this->ana, $matriz),
+            fn () => $this->servico()->buscarProprio($this->ana, 999999),
+        ] as $acao) {
             try {
-                $this->servico()->buscarProprio([$this->a, $this->b], $cond, $id);
+                $acao();
                 $this->fail('Deveria ser 404.');
             } catch (NaoEncontradoException) {
                 $this->addToAssertionCount(1);
             }
         }
+        $this->assertSame('Zeladoria', $this->servico()->buscarProprio($this->ana, $daAna['id'])['nome']);
+    }
+
+    public function testTipoDeFabricaDoGerentePodeSerEditadoEApagadoPorEle(): void
+    {
+        $urgente = $this->servico()->resolver($this->ana, 'urgente');
+
+        $this->servico()->atualizar($this->ana, $urgente['id'], ['nome' => 'Emergência', 'cor' => '#000000', 'fixo' => '1']);
+        $this->assertSame('Emergência', $this->servico()->resolver($this->ana, 'urgente')['nome']);
+
+        $manutencao = $this->servico()->resolver($this->ana, 'manutencao');
+        $this->servico()->excluir($this->ana, $manutencao['id']);
+        $this->assertNull($this->servico()->resolver($this->ana, 'manutencao'));
+        $this->assertNotNull($this->servico()->resolver($this->beto, 'manutencao'), 'O do Beto continua.');
+        $this->assertSame('Urgente', $this->servico()->resolver($this->beto, 'urgente')['nome'], 'E a edição da Ana não chega no Beto.');
+    }
+
+    public function testNaoApagaOUltimoTipo(): void
+    {
+        foreach ($this->servico()->listar($this->ana) as $i => $t) {
+            if ($i < 4) {
+                $this->servico()->excluir($this->ana, $t['id']);
+            }
+        }
+        $ultimo = $this->servico()->listar($this->ana)[0];
+
+        try {
+            $this->servico()->excluir($this->ana, $ultimo['id']);
+            $this->fail('Deveria manter pelo menos um tipo.');
+        } catch (ValidacaoException $e) {
+            $this->assertStringContainsString('pelo menos um tipo', $e->erros['tipo']);
+        }
+        $this->assertCount(1, $this->servico()->listar($this->ana));
     }
 
     public function testExcluirTipoEmUsoDizQuantosAvisosEExcluirLivreFunciona(): void
     {
-        $tipo = $this->servico()->criar([$this->a], $this->a, ['nome' => 'Zeladoria', 'cor' => '#112233']);
-        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, tipo, inicio_em, fim_em) VALUES ({$this->a}, 'x', 'zeladoria', now(), now() + interval '1 day')");
+        $tipo = $this->servico()->criar($this->ana, ['nome' => 'Zeladoria', 'cor' => '#112233']);
+        $cond = $this->criarCondominio('Alfa');
+        $this->vincular($this->ana, $cond);
+        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, tipo_id, inicio_em, fim_em) VALUES ({$cond}, 'x', {$tipo['id']}, now(), now() + interval '1 day')");
 
         try {
-            $this->servico()->excluir([$this->a], $this->a, $tipo['id']);
+            $this->servico()->excluir($this->ana, $tipo['id']);
             $this->fail('Em uso não pode ser apagado.');
         } catch (ValidacaoException $e) {
             $this->assertStringContainsString('usado por 1 aviso', $e->erros['tipo']);
         }
 
         $this->pdo->exec('DELETE FROM avisos');
-        $this->servico()->excluir([$this->a], $this->a, $tipo['id']);
-        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE NOT sistema')->fetchColumn());
+        $this->servico()->excluir($this->ana, $tipo['id']);
+        $this->assertSame(5, (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE usuario_id = {$this->ana}")->fetchColumn(), 'Só os cinco de fábrica.');
     }
 
     public function testCssSoTemRegrasDeTiposComCorEComValoresValidados(): void
     {
-        $tipos = $this->servico()->listar([$this->a], $this->a);
+        $tipos = $this->servico()->listar($this->ana);
         $css = TipoAvisoService::css($tipos);
 
         $urgente = array_values(array_filter($tipos, static fn (array $t): bool => $t['chave'] === 'urgente'))[0];

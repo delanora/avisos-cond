@@ -219,9 +219,12 @@ final class TvServiceTest extends BancoMigradoTestCase
 
     public function testTipoCriadoPeloGerenteVaiParaATvComNomeFixoECores(): void
     {
-        $this->pdo->exec("INSERT INTO tipos_aviso (condominio_id, chave, nome, cor, fixo) VALUES ({$this->a}, 'zeladoria', 'Zeladoria', '#336699', true), ({$this->a}, 'dedetizacao', 'Dedetização', NULL, false)");
-        $this->avisoTv($this->pdo, $this->a, 'Escada interditada', -60, 3600, ['tipo' => 'zeladoria']);
-        $this->avisoTv($this->pdo, $this->a, 'Sem cor', -30, 3600, ['tipo' => 'dedetizacao']);
+        $gerente = $this->criarUsuario('dono.tipo@exemplo.com.br');
+        $this->vincular($gerente, $this->a);
+        $zeladoria = $this->tipoDoGerenteNovo($gerente, 'zeladoria', 'Zeladoria', '#336699', true);
+        $semCor = $this->tipoDoGerenteNovo($gerente, 'dedetizacao', 'Dedetização', null, false);
+        $this->avisoTv($this->pdo, $this->a, 'Escada interditada', -60, 3600, ['tipo_id' => $zeladoria]);
+        $this->avisoTv($this->pdo, $this->a, 'Sem cor', -30, 3600, ['tipo_id' => $semCor]);
 
         [$fixo, $neutro] = $this->servico()->estado($this->acesso($this->a), time())['avisos'];
 
@@ -232,15 +235,17 @@ final class TvServiceTest extends BancoMigradoTestCase
 
     public function testMudarACorOuOFixoDoTipoMudaAVersaoParaATvAtualizar(): void
     {
-        $this->pdo->exec("INSERT INTO tipos_aviso (condominio_id, chave, nome, cor, fixo) VALUES ({$this->a}, 'zeladoria', 'Zeladoria', '#336699', false)");
-        $this->avisoTv($this->pdo, $this->a, 'Aviso', -60, 3600, ['tipo' => 'zeladoria']);
+        $gerente = $this->criarUsuario('dono.tipo@exemplo.com.br');
+        $this->vincular($gerente, $this->a);
+        $zeladoria = $this->tipoDoGerenteNovo($gerente, 'zeladoria', 'Zeladoria', '#336699', false);
+        $this->avisoTv($this->pdo, $this->a, 'Aviso', -60, 3600, ['tipo_id' => $zeladoria]);
         $acesso = $this->acesso($this->a);
         $agora = time();
         $v1 = $this->servico()->estado($acesso, $agora)['version'];
 
-        $this->pdo->exec("UPDATE tipos_aviso SET cor = '#AA0000' WHERE chave = 'zeladoria'");
+        $this->pdo->exec("UPDATE tipos_aviso SET cor = '#AA0000' WHERE id = {$zeladoria}");
         $v2 = $this->servico()->estado($acesso, $agora)['version'];
-        $this->pdo->exec("UPDATE tipos_aviso SET fixo = true WHERE chave = 'zeladoria'");
+        $this->pdo->exec("UPDATE tipos_aviso SET fixo = true WHERE id = {$zeladoria}");
         $v3 = $this->servico()->estado($acesso, $agora)['version'];
 
         $this->assertNotSame($v1, $v2);
@@ -260,5 +265,10 @@ final class TvServiceTest extends BancoMigradoTestCase
         $this->assertSame(['dias' => [0], 'inicio' => null, 'fim' => null], $dias['repete']);
         $this->assertSame(['dias' => null, 'inicio' => '18:00', 'fim' => '20:00'], $horario['repete']);
         $this->assertNull($normal['repete']);
+    }
+
+    private function tipoDoGerenteNovo(int $usuario, string $chave, string $nome, ?string $cor, bool $fixo): int
+    {
+        return (new \App\Repositories\TipoAvisoRepository($this->pdo))->criar($usuario, $chave, $nome, $cor, $fixo);
     }
 }

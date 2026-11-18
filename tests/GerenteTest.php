@@ -20,6 +20,7 @@ final class GerenteTest extends AppHttpTestCase
         $this->condominio = $this->criarCondominio($nomeCondominio);
         (new VinculoRepository($this->pdo))->sincronizarDoUsuario($this->gerente, [$this->condominio]);
         $this->logar();
+        $this->get('/gerente'); // primeiro acesso: o painel entrega ao gerente a cópia dele dos tipos e modelos de fábrica
     }
 
     private function base(): string
@@ -422,7 +423,7 @@ final class GerenteTest extends AppHttpTestCase
 
         $this->criarAviso(['tipo' => 'fixo', 'titulo' => 'Horário da portaria']);
 
-        $this->assertSame('fixo', $this->pdo->query('SELECT tipo FROM avisos')->fetchColumn());
+        $this->assertSame('fixo', $this->pdo->query('SELECT t.chave FROM avisos a JOIN tipos_aviso t ON t.id = a.tipo_id')->fetchColumn());
         $this->assertMatchesRegularExpression('/etiqueta-tipo-t\d+">Fixo</', $this->get($this->base() . '/avisos')->body);
     }
 
@@ -500,114 +501,152 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertSame(404, $this->get($this->base() . "/avisos/{$comMidia}/midia")->status);
     }
 
-    // ---------- Tipos de aviso (nome, cor, fixo) ----------
+    // ---------- Tipos de aviso (do gerente: nome, cor, fixo) ----------
 
-    private function tipoPorChave(string $chave): array
+    private function tipoPorChave(string $chave): array|false
     {
-        return $this->pdo->query("SELECT * FROM tipos_aviso WHERE chave = '{$chave}'")->fetch();
+        return $this->pdo->query("SELECT * FROM tipos_aviso WHERE usuario_id = {$this->gerente} AND chave = '{$chave}'")->fetch();
     }
 
-    public function testListaDeTiposMostraOsDoSistemaSemAcoesEOsProprios(): void
+    private function totalDeTipos(): int
+    {
+        return (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE usuario_id = {$this->gerente}")->fetchColumn();
+    }
+
+    public function testPrimeiroAcessoDoGerenteEntregaAsCopiasDeFabricaUmaSoVez(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
 
-        $corpo = $this->get($this->base() . '/tipos')->body;
+        $this->assertSame(5, $this->totalDeTipos());
+        $this->assertSame(4, (int) $this->pdo->query("SELECT count(*) FROM modelos_aviso WHERE usuario_id = {$this->gerente}")->fetchColumn());
+
+        $urgente = $this->tipoPorChave('urgente');
+        $this->post('/gerente/tipos/' . $urgente['id'] . '/excluir');
+        $this->get('/gerente');
+        $this->get('/gerente/tipos');
+
+        $this->assertSame(4, $this->totalDeTipos(), 'O que o gerente apagou não volta.');
+    }
+
+    public function testListaDeTiposMostraOsDeFabricaEOsProprios(): void
+    {
+        $this->entrar();
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+
+        $corpo = $this->get('/gerente/tipos')->body;
 
         foreach (['Comum', 'Fixo', 'Urgente', 'Manutenção', 'Assembleia', 'Zeladoria'] as $nome) {
             $this->assertStringContainsString(">{$nome}<", $corpo);
         }
-        $this->assertSame(5, substr_count($corpo, 'padrão do sistema'));
-        $zel = $this->tipoPorChave('zeladoria');
-        $this->assertStringContainsString("/tipos/{$zel['id']}/editar", $corpo);
-        $urgente = $this->tipoPorChave('urgente');
-        $this->assertStringNotContainsString("/tipos/{$urgente['id']}/editar", $corpo, 'Tipo do sistema não tem ação.');
+        foreach (['zeladoria', 'urgente', 'comum'] as $chave) {
+            $this->assertStringContainsString('/tipos/' . $this->tipoPorChave($chave)['id'] . '/editar', $corpo, "{$chave}: todos têm ação.");
+            $this->assertStringContainsString('/tipos/' . $this->tipoPorChave($chave)['id'] . '/excluir', $corpo);
+        }
     }
 
     public function testCriarTipoPelaTelaDeTipos(): void
     {
         $this->entrar();
 
-        $r = $this->post($this->base() . '/tipos', ['nome' => 'Reunião do Conselho', 'cor' => '#2f6fed', 'fixo' => '1']);
+        $r = $this->post('/gerente/tipos', ['nome' => 'Reunião do Conselho', 'cor' => '#2f6fed', 'fixo' => '1']);
 
         $this->assertSame(303, $r->status);
         $t = $this->tipoPorChave('reuniao-do-conselho');
-        $this->assertSame(['Reunião do Conselho', '#2F6FED', true, $this->condominio], [$t['nome'], $t['cor'], (bool) $t['fixo'], (int) $t['condominio_id']]);
-        $this->assertStringContainsString('Tipo criado com sucesso.', $this->get($this->base() . '/tipos')->body);
+        $this->assertSame(['Reunião do Conselho', '#2F6FED', true, $this->gerente], [$t['nome'], $t['cor'], (bool) $t['fixo'], (int) $t['usuario_id']]);
+        $this->assertStringContainsString('Tipo criado com sucesso.', $this->get('/gerente/tipos')->body);
     }
 
     public function testTipoInvalidoMostraErrosESemCriar(): void
     {
         $this->entrar();
 
-        $r = $this->post($this->base() . '/tipos', ['nome' => 'A', 'cor' => 'azul']);
+        $r = $this->post('/gerente/tipos', ['nome' => 'A', 'cor' => 'azul']);
 
         $this->assertSame(422, $r->status);
         $this->assertStringContainsString('Informe um nome de 2 a 30 caracteres.', $r->body);
         $this->assertStringContainsString('Escolha uma cor válida.', $r->body);
-        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE NOT sistema')->fetchColumn());
+        $this->assertSame(5, $this->totalDeTipos());
     }
 
     public function testEditarTipoMudaNomeCorEFixoMasNaoAChave(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
         $id = (int) $this->tipoPorChave('zeladoria')['id'];
 
-        $form = $this->get($this->base() . "/tipos/{$id}/editar")->body;
+        $form = $this->get("/gerente/tipos/{$id}/editar")->body;
         $this->assertStringContainsString('value="Zeladoria"', $form);
         $this->assertStringContainsString('value="#336699"', $form);
 
-        $this->assertSame(303, $this->post($this->base() . "/tipos/{$id}", ['nome' => 'Zeladoria e limpeza', 'cor' => '#AA5500', 'fixo' => '1'])->status);
+        $this->assertSame(303, $this->post("/gerente/tipos/{$id}", ['nome' => 'Zeladoria e limpeza', 'cor' => '#AA5500', 'fixo' => '1'])->status);
 
         $t = $this->tipoPorChave('zeladoria');
         $this->assertSame(['Zeladoria e limpeza', '#AA5500', true], [$t['nome'], $t['cor'], (bool) $t['fixo']]);
     }
 
-    public function testEditarOuApagarTipoDoSistemaEh404(): void
+    public function testTipoDeFabricaDoGerenteEDeleEleEditaEApaga(): void
     {
         $this->entrar();
         $id = (int) $this->tipoPorChave('urgente')['id'];
 
-        $this->assertSame(404, $this->get($this->base() . "/tipos/{$id}/editar")->status);
-        $this->assertSame(404, $this->post($this->base() . "/tipos/{$id}", ['nome' => 'Mudou', 'cor' => '#000000'])->status);
-        $this->assertSame(404, $this->post($this->base() . "/tipos/{$id}/excluir")->status);
-        $this->assertSame('Urgente', $this->tipoPorChave('urgente')['nome']);
+        $this->assertSame(200, $this->get("/gerente/tipos/{$id}/editar")->status);
+        $this->assertSame(303, $this->post("/gerente/tipos/{$id}", ['nome' => 'Emergência', 'cor' => '#000000', 'fixo' => '1'])->status);
+        $this->assertSame('Emergência', $this->tipoPorChave('urgente')['nome']);
+
+        $manutencao = (int) $this->tipoPorChave('manutencao')['id'];
+        $this->assertSame(303, $this->post("/gerente/tipos/{$manutencao}/excluir")->status);
+        $this->assertSame(4, $this->totalDeTipos());
+    }
+
+    public function testNaoApagaOUltimoTipo(): void
+    {
+        $this->entrar();
+        foreach (['fixo', 'urgente', 'manutencao', 'assembleia'] as $chave) {
+            $this->post('/gerente/tipos/' . $this->tipoPorChave($chave)['id'] . '/excluir');
+        }
+        $this->assertSame(1, $this->totalDeTipos());
+        $ultimo = (int) $this->tipoPorChave('comum')['id'];
+
+        $this->assertStringContainsString('seu último tipo de aviso', $this->get("/gerente/tipos/{$ultimo}/excluir")->body);
+        $this->post("/gerente/tipos/{$ultimo}/excluir");
+
+        $this->assertSame(1, $this->totalDeTipos());
+        $this->assertStringContainsString('pelo menos um tipo', $this->get('/gerente/tipos')->body);
     }
 
     public function testApagarTipoLivreFuncionaEEmUsoEhRecusado(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
         $id = (int) $this->tipoPorChave('zeladoria')['id'];
         $this->criarAviso(['tipo' => 'zeladoria']);
 
-        $this->assertStringContainsString('é usado por 1 aviso', $this->get($this->base() . "/tipos/{$id}/excluir")->body);
-        $this->post($this->base() . "/tipos/{$id}/excluir");
-        $this->assertStringContainsString('usado por 1 aviso', $this->get($this->base() . '/tipos')->body);
-        $this->assertSame(1, (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE chave = 'zeladoria'")->fetchColumn(), 'Em uso: continua existindo.');
+        $this->assertStringContainsString('é usado por 1 aviso', $this->get("/gerente/tipos/{$id}/excluir")->body);
+        $this->post("/gerente/tipos/{$id}/excluir");
+        $this->assertStringContainsString('usado por 1 aviso', $this->get('/gerente/tipos')->body);
+        $this->assertNotFalse($this->tipoPorChave('zeladoria'), 'Em uso: continua existindo.');
 
         $this->pdo->exec('DELETE FROM avisos');
-        $this->assertSame(303, $this->post($this->base() . "/tipos/{$id}/excluir")->status);
-        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE chave = 'zeladoria'")->fetchColumn());
+        $this->assertSame(303, $this->post("/gerente/tipos/{$id}/excluir")->status);
+        $this->assertFalse($this->tipoPorChave('zeladoria'));
     }
 
     public function testEscritasDeTiposSemCsrfSaoBloqueadas(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
         $id = (int) $this->tipoPorChave('zeladoria')['id'];
 
-        foreach ([$this->base() . '/tipos', $this->base() . "/tipos/{$id}", $this->base() . "/tipos/{$id}/excluir"] as $caminho) {
+        foreach (['/gerente/tipos', "/gerente/tipos/{$id}", "/gerente/tipos/{$id}/excluir"] as $caminho) {
             $this->assertSame(403, $this->post($caminho, ['nome' => 'HACK', 'cor' => '#000000'], comCsrf: false)->status, $caminho);
         }
         $this->assertSame('Zeladoria', $this->tipoPorChave('zeladoria')['nome']);
     }
 
-    public function testFormularioDoAvisoTemDropdownComOsTiposDoCondominio(): void
+    public function testFormularioDoAvisoTemDropdownComOsTiposDoGerente(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699', 'fixo' => '1']);
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699', 'fixo' => '1']);
 
         $corpo = $this->get($this->base() . '/avisos/novo')->body;
 
@@ -626,8 +665,8 @@ final class GerenteTest extends AppHttpTestCase
 
         $this->assertSame(303, $r->status);
         $t = $this->tipoPorChave('obra-na-fachada');
-        $this->assertSame(['Obra na fachada', '#C2410C', true, $this->condominio], [$t['nome'], $t['cor'], (bool) $t['fixo'], (int) $t['condominio_id']]);
-        $this->assertSame('obra-na-fachada', $this->pdo->query('SELECT tipo FROM avisos')->fetchColumn(), 'O tipo novo vale no lugar do seletor.');
+        $this->assertSame(['Obra na fachada', '#C2410C', true, $this->gerente], [$t['nome'], $t['cor'], (bool) $t['fixo'], (int) $t['usuario_id']]);
+        $this->assertSame((int) $t['id'], (int) $this->pdo->query('SELECT tipo_id FROM avisos')->fetchColumn(), 'O tipo novo vale no lugar do seletor.');
         $this->assertStringContainsString('<option value="obra-na-fachada">Obra na fachada (fixo)</option>', $this->get($this->base() . '/avisos/novo')->body);
     }
 
@@ -642,7 +681,7 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('Escolha uma cor válida.', $r->body);
         $this->assertStringContainsString('<details class="novo-tipo" open>', $r->body, 'A seção do tipo novo reabre mostrando os erros.');
         $this->assertSame(0, $this->contar('avisos'));
-        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE NOT sistema')->fetchColumn());
+        $this->assertSame(5, $this->totalDeTipos());
     }
 
     public function testAvisoInvalidoComTipoNovoNaoDeixaOTipoCriado(): void
@@ -652,13 +691,13 @@ final class GerenteTest extends AppHttpTestCase
         $r = $this->post($this->base() . '/avisos', $this->aviso(['titulo' => '', 'novo_tipo_nome' => 'Obra na fachada', 'novo_tipo_cor' => '#c2410c']));
 
         $this->assertSame(422, $r->status);
-        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE NOT sistema')->fetchColumn(), 'Só cria o tipo quando o aviso é válido.');
+        $this->assertSame(5, $this->totalDeTipos(), 'Só cria o tipo quando o aviso é válido.');
     }
 
-    public function testTiposCssTemAsCoresDoCondominioEVemSoDeleEstaNaPaginaDoGerente(): void
+    public function testTiposCssTemAsCoresDoGerenteEDosAvisosDoCondominio(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
         $id = (int) $this->tipoPorChave('zeladoria')['id'];
 
         $r = $this->get($this->base() . '/tipos.css');
@@ -673,7 +712,7 @@ final class GerenteTest extends AppHttpTestCase
     public function testEtiquetaDoTipoPropioNaListaDeAvisosUsaONomeEACor(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
         $this->criarAviso(['tipo' => 'zeladoria']);
         $id = (int) $this->tipoPorChave('zeladoria')['id'];
 
@@ -683,7 +722,7 @@ final class GerenteTest extends AppHttpTestCase
     public function testPreviaDeTipoFixoPropioFicaNaFaixaComACorDoTipo(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699', 'fixo' => '1']);
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699', 'fixo' => '1']);
         $id = (int) $this->tipoPorChave('zeladoria')['id'];
         $aviso = $this->criarAviso(['tipo' => 'zeladoria', 'titulo' => 'Escada interditada']);
 
@@ -763,14 +802,19 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringNotContainsString('Este aviso se repete', $this->get($this->base() . "/avisos/{$semRepetir}/previa")->body);
     }
 
-    // ---------- Modelos de aviso ----------
+    // ---------- Modelos de aviso (do gerente) ----------
 
-    private function modeloPorNome(string $nome): array
+    private function modeloPorNome(string $nome): array|false
     {
-        return $this->pdo->query("SELECT * FROM modelos_aviso WHERE nome = '{$nome}'")->fetch();
+        return $this->pdo->query("SELECT * FROM modelos_aviso WHERE usuario_id = {$this->gerente} AND nome = '{$nome}'")->fetch();
     }
 
-    public function testFormularioNovoOferecaOsModelosProntos(): void
+    private function totalDeModelos(): int
+    {
+        return (int) $this->pdo->query("SELECT count(*) FROM modelos_aviso WHERE usuario_id = {$this->gerente}")->fetchColumn();
+    }
+
+    public function testFormularioNovoOferecaOsModelosDoGerente(): void
     {
         $this->entrar();
 
@@ -795,49 +839,51 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('<option value="urgente" selected>', $corpo);
     }
 
-    public function testModeloInexistenteOuDeOutroCondominioNaTelaNovaEh404(): void
+    public function testModeloInexistenteOuDeOutroGerenteNaTelaNovaEh404(): void
     {
         $this->entrar();
-        $outro = $this->criarCondominio('Outro');
-        $this->pdo->exec("INSERT INTO modelos_aviso (condominio_id, nome, titulo) VALUES ({$outro}, 'Segredo do outro', 'T')");
-        $id = (int) $this->modeloPorNome('Segredo do outro')['id'];
+        $outro = $this->criarUsuario('outro.gerente@exemplo.com.br');
+        $this->padroesDoGerente($outro);
+        $this->pdo->exec("INSERT INTO modelos_aviso (usuario_id, nome, titulo) VALUES ({$outro}, 'Segredo do outro', 'T')");
+        $id = (int) $this->pdo->query("SELECT id FROM modelos_aviso WHERE nome = 'Segredo do outro'")->fetchColumn();
 
         $this->assertSame(404, $this->get($this->base() . "/avisos/novo?modelo={$id}")->status);
         $this->assertSame(404, $this->get($this->base() . '/avisos/novo?modelo=999999')->status);
         $this->assertSame(200, $this->get($this->base() . '/avisos/novo?modelo=abc')->status, 'Valor que não é número é ignorado.');
         $this->assertStringNotContainsString('Segredo do outro', $this->get($this->base() . '/avisos/novo')->body);
+        $this->assertStringNotContainsString('Segredo do outro', $this->get('/gerente/modelos')->body);
     }
 
-    public function testListaDeModelosMostraOsDoSistemaSemAcoesDeEdicao(): void
+    public function testListaDeModelosMostraTodosComAcoesDeEdicao(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/modelos', ['nome' => 'Reunião do bloco', 'titulo' => 'Reunião', 'corpo' => 'x', 'tipo' => 'comum']);
+        $this->post('/gerente/modelos', ['nome' => 'Reunião do bloco', 'titulo' => 'Reunião', 'corpo' => 'x', 'tipo' => 'comum']);
 
-        $corpo = $this->get($this->base() . '/modelos')->body;
+        $corpo = $this->get('/gerente/modelos')->body;
 
-        $this->assertStringContainsString('Modelo do sistema', $corpo);
         $this->assertStringContainsString('Reunião do bloco', $corpo);
-        $sistema = $this->modeloPorNome('Assembleia');
-        $proprio = $this->modeloPorNome('Reunião do bloco');
-        $this->assertStringNotContainsString("/modelos/{$sistema['id']}/editar", $corpo);
-        $this->assertStringContainsString("/modelos/{$proprio['id']}/editar", $corpo);
-        $this->assertStringContainsString("/avisos/novo?modelo={$sistema['id']}", $corpo, 'Atalho para criar aviso com o modelo.');
+        foreach (['Assembleia', 'Reunião do bloco'] as $nome) {
+            $m = $this->modeloPorNome($nome);
+            $this->assertStringContainsString("/modelos/{$m['id']}/editar", $corpo, "{$nome}: todos podem ser editados.");
+            $this->assertStringContainsString("/modelos/{$m['id']}/excluir", $corpo);
+        }
+        $this->assertStringContainsString('/avisos/novo?modelo=' . $this->modeloPorNome('Assembleia')['id'], $corpo, 'Atalho para criar aviso com o modelo (um só condomínio).');
     }
 
     public function testCriarEditarEApagarModelo(): void
     {
         $this->entrar();
 
-        $this->assertSame(303, $this->post($this->base() . '/modelos', ['nome' => 'Reunião do bloco', 'titulo' => 'Reunião', 'corpo' => 'Dia [data]', 'tipo' => 'assembleia'])->status);
+        $this->assertSame(303, $this->post('/gerente/modelos', ['nome' => 'Reunião do bloco', 'titulo' => 'Reunião', 'corpo' => 'Dia [data]', 'tipo' => 'assembleia'])->status);
         $m = $this->modeloPorNome('Reunião do bloco');
-        $this->assertSame([$this->condominio, 'assembleia'], [(int) $m['condominio_id'], $m['tipo']]);
+        $this->assertSame([$this->gerente, 'assembleia'], [(int) $m['usuario_id'], $m['tipo']]);
 
-        $this->assertStringContainsString('value="Reunião do bloco"', $this->get($this->base() . "/modelos/{$m['id']}/editar")->body);
-        $this->assertSame(303, $this->post($this->base() . "/modelos/{$m['id']}", ['nome' => 'Reunião geral', 'titulo' => 'Reunião geral', 'corpo' => 'x', 'tipo' => 'comum'])->status);
+        $this->assertStringContainsString('value="Reunião do bloco"', $this->get("/gerente/modelos/{$m['id']}/editar")->body);
+        $this->assertSame(303, $this->post("/gerente/modelos/{$m['id']}", ['nome' => 'Reunião geral', 'titulo' => 'Reunião geral', 'corpo' => 'x', 'tipo' => 'comum'])->status);
         $this->assertSame('Reunião geral', $this->pdo->query("SELECT nome FROM modelos_aviso WHERE id = {$m['id']}")->fetchColumn());
 
-        $this->assertStringContainsString('Reunião geral', $this->get($this->base() . "/modelos/{$m['id']}/excluir")->body);
-        $this->assertSame(303, $this->post($this->base() . "/modelos/{$m['id']}/excluir")->status);
+        $this->assertStringContainsString('Reunião geral', $this->get("/gerente/modelos/{$m['id']}/excluir")->body);
+        $this->assertSame(303, $this->post("/gerente/modelos/{$m['id']}/excluir")->status);
         $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM modelos_aviso WHERE id = {$m['id']}")->fetchColumn());
     }
 
@@ -845,34 +891,38 @@ final class GerenteTest extends AppHttpTestCase
     {
         $this->entrar();
 
-        $r = $this->post($this->base() . '/modelos', ['nome' => '', 'titulo' => '', 'corpo' => '', 'tipo' => 'propaganda']);
+        $r = $this->post('/gerente/modelos', ['nome' => '', 'titulo' => '', 'corpo' => '', 'tipo' => 'propaganda']);
 
         $this->assertSame(422, $r->status);
         $this->assertStringContainsString('Escolha um tipo válido.', $r->body);
-        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM modelos_aviso WHERE NOT sistema')->fetchColumn());
+        $this->assertSame(4, $this->totalDeModelos());
     }
 
-    public function testEditarOuApagarModeloDoSistemaEh404(): void
+    public function testModeloDeFabricaDoGerenteEDeleEleEditaEApaga(): void
     {
         $this->entrar();
         $id = (int) $this->modeloPorNome('Assembleia')['id'];
 
-        $this->assertSame(404, $this->get($this->base() . "/modelos/{$id}/editar")->status);
-        $this->assertSame(404, $this->post($this->base() . "/modelos/{$id}", ['nome' => 'X', 'titulo' => 'X', 'corpo' => '', 'tipo' => 'comum'])->status);
-        $this->assertSame(404, $this->post($this->base() . "/modelos/{$id}/excluir")->status);
-        $this->assertSame('Assembleia geral', $this->modeloPorNome('Assembleia')['titulo']);
+        $this->assertSame(200, $this->get("/gerente/modelos/{$id}/editar")->status);
+        $this->assertSame(303, $this->post("/gerente/modelos/{$id}", ['nome' => 'Assembleia', 'titulo' => 'Assembleia extraordinária', 'corpo' => 'x', 'tipo' => 'assembleia'])->status);
+        $this->assertSame('Assembleia extraordinária', $this->modeloPorNome('Assembleia')['titulo']);
+
+        $this->assertSame(303, $this->post("/gerente/modelos/{$id}/excluir")->status);
+        $this->assertFalse($this->modeloPorNome('Assembleia'));
+        $this->get('/gerente');
+        $this->assertSame(3, $this->totalDeModelos(), 'O que foi apagado não volta.');
     }
 
     public function testEscritasDeModelosSemCsrfSaoBloqueadas(): void
     {
         $this->entrar();
-        $this->post($this->base() . '/modelos', ['nome' => 'Reunião do bloco', 'titulo' => 'Reunião', 'corpo' => '', 'tipo' => 'comum']);
+        $this->post('/gerente/modelos', ['nome' => 'Reunião do bloco', 'titulo' => 'Reunião', 'corpo' => '', 'tipo' => 'comum']);
         $id = (int) $this->modeloPorNome('Reunião do bloco')['id'];
 
-        foreach ([$this->base() . '/modelos', $this->base() . "/modelos/{$id}", $this->base() . "/modelos/{$id}/excluir"] as $caminho) {
+        foreach (['/gerente/modelos', "/gerente/modelos/{$id}", "/gerente/modelos/{$id}/excluir"] as $caminho) {
             $this->assertSame(403, $this->post($caminho, ['nome' => 'HACK', 'titulo' => 'HACK', 'corpo' => '', 'tipo' => 'comum'], comCsrf: false)->status, $caminho);
         }
-        $this->assertSame(1, (int) $this->pdo->query("SELECT count(*) FROM modelos_aviso WHERE nome = 'Reunião do bloco'")->fetchColumn());
+        $this->assertSame('Reunião do bloco', $this->modeloPorNome('Reunião do bloco')['nome']);
     }
 
     public function testSalvarAvisoComoModeloGuardaTituloTextoETipo(): void
@@ -882,7 +932,7 @@ final class GerenteTest extends AppHttpTestCase
         $this->post($this->base() . '/avisos', $this->aviso(['titulo' => 'Corte de energia', 'corpo' => 'Sábado de manhã', 'tipo' => 'urgente', 'salvar_modelo' => '1']));
 
         $m = $this->modeloPorNome('Corte de energia');
-        $this->assertSame(['Corte de energia', 'Sábado de manhã', 'urgente', $this->condominio], [$m['titulo'], $m['corpo'], $m['tipo'], (int) $m['condominio_id']]);
+        $this->assertSame(['Corte de energia', 'Sábado de manhã', 'urgente', $this->gerente], [$m['titulo'], $m['corpo'], $m['tipo'], (int) $m['usuario_id']]);
         $this->assertSame(1, $this->contar('avisos'));
     }
 
@@ -892,7 +942,7 @@ final class GerenteTest extends AppHttpTestCase
 
         $this->criarAviso();
 
-        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM modelos_aviso WHERE NOT sistema')->fetchColumn());
+        $this->assertSame(4, $this->totalDeModelos(), 'Só os quatro de fábrica.');
     }
 
     // ---------- Aparência (cor do gerente) ----------

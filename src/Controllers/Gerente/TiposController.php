@@ -6,124 +6,126 @@ namespace App\Controllers\Gerente;
 
 use App\Services\TipoAvisoService;
 use App\Services\ValidacaoException;
+use App\Repositories\TipoAvisoRepository;
 use App\Support\EscopoGerente;
 use App\Support\Request;
 use App\Support\Response;
 use App\Support\Session;
 use App\Support\View;
 
-/** Tipos de aviso de UM condomínio (o da URL): lista, criar, editar e apagar os tipos próprios. */
+/**
+ * Tipos de aviso do GERENTE logado (não do condomínio): lista, criar, editar e apagar. Nada aqui recebe
+ * condominio_id nem id de usuário do cliente; o dono é sempre o usuário da sessão.
+ */
 final class TiposController
 {
     public function __construct(
         private readonly View $view,
         private readonly Session $sessao,
         private readonly TipoAvisoService $tipos,
+        private readonly TipoAvisoRepository $repositorio,
     ) {
+    }
+
+    private function usuarioId(Request $request): int
+    {
+        return (int) $request->attribute('usuario')['id'];
     }
 
     /** @param array<string, string> $vars */
     public function lista(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-
-        return Response::html($this->view->render('gerente/tipos/lista.html.twig', EscopoGerente::contexto($request, $condominio) + [
-            'tipos' => $this->tipos->listar(EscopoGerente::permitidos($request), $condominio['id']),
-            'menu' => 'avisos',
+        return Response::html($this->view->render('gerente/tipos/lista.html.twig', EscopoGerente::contexto($request) + [
+            'tipos' => $this->tipos->listar($this->usuarioId($request)),
+            'menu' => 'tipos',
         ]));
     }
 
     /** @param array<string, string> $vars */
     public function novo(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-
-        return $this->formulario($request, $condominio, null, ['nome' => '', 'cor' => '#2F6FED', 'fixo' => false], []);
+        return $this->formulario($request, null, ['nome' => '', 'cor' => '#2F6FED', 'fixo' => false], []);
     }
 
     /** @param array<string, string> $vars */
     public function criar(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-
         try {
-            $this->tipos->criar(EscopoGerente::permitidos($request), $condominio['id'], $request->body);
+            $this->tipos->criar($this->usuarioId($request), $request->body);
         } catch (ValidacaoException $e) {
-            return $this->formulario($request, $condominio, null, $this->valoresEnviados($request), $e->erros, 422);
+            return $this->formulario($request, null, $this->valoresEnviados($request), $e->erros, 422);
         }
 
         $this->sessao->flash('Tipo criado com sucesso.');
 
-        return Response::redirect("/gerente/condominios/{$condominio['id']}/tipos", 303);
+        return Response::redirect('/gerente/tipos', 303);
     }
 
     /** @param array<string, string> $vars */
     public function editar(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-        $tipo = $this->tipos->buscarProprio(EscopoGerente::permitidos($request), $condominio['id'], (int) $vars['id']);
+        $tipo = $this->tipos->buscarProprio($this->usuarioId($request), (int) $vars['id']);
 
-        return $this->formulario($request, $condominio, $tipo, ['nome' => $tipo['nome'], 'cor' => $tipo['cor'] ?? '#2F6FED', 'fixo' => $tipo['fixo']], []);
+        return $this->formulario($request, $tipo, ['nome' => $tipo['nome'], 'cor' => $tipo['cor'] ?? '#2F6FED', 'fixo' => $tipo['fixo']], []);
     }
 
     /** @param array<string, string> $vars */
     public function atualizar(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-        $permitidos = EscopoGerente::permitidos($request);
+        $usuario = $this->usuarioId($request);
         $id = (int) $vars['id'];
 
         try {
-            $this->tipos->atualizar($permitidos, $condominio['id'], $id, $request->body);
+            $this->tipos->atualizar($usuario, $id, $request->body);
         } catch (ValidacaoException $e) {
-            return $this->formulario($request, $condominio, $this->tipos->buscarProprio($permitidos, $condominio['id'], $id), $this->valoresEnviados($request), $e->erros, 422);
+            return $this->formulario($request, $this->tipos->buscarProprio($usuario, $id), $this->valoresEnviados($request), $e->erros, 422);
         }
 
         $this->sessao->flash('Tipo atualizado com sucesso.');
 
-        return Response::redirect("/gerente/condominios/{$condominio['id']}/tipos", 303);
+        return Response::redirect('/gerente/tipos', 303);
     }
 
     /** @param array<string, string> $vars */
     public function confirmarExclusao(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-        $tipo = $this->tipos->buscarProprio(EscopoGerente::permitidos($request), $condominio['id'], (int) $vars['id']);
+        $tipo = $this->tipos->buscarProprio($this->usuarioId($request), (int) $vars['id']);
 
-        return Response::html($this->view->render('gerente/tipos/excluir.html.twig', EscopoGerente::contexto($request, $condominio) + [
+        return Response::html($this->view->render('gerente/tipos/excluir.html.twig', EscopoGerente::contexto($request) + [
             'tipo' => $tipo,
-            'menu' => 'avisos',
+            'ultimo' => count($this->tipos->listar($this->usuarioId($request))) <= 1,
+            'menu' => 'tipos',
         ]));
     }
 
     /** @param array<string, string> $vars */
     public function excluir(Request $request, array $vars): Response
     {
-        $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
-
         try {
-            $this->tipos->excluir(EscopoGerente::permitidos($request), $condominio['id'], (int) $vars['id']);
+            $this->tipos->excluir($this->usuarioId($request), (int) $vars['id']);
         } catch (ValidacaoException $e) {
             $this->sessao->flash($e->erros['tipo'] ?? 'Não foi possível apagar o tipo.');
 
-            return Response::redirect("/gerente/condominios/{$condominio['id']}/tipos", 303);
+            return Response::redirect('/gerente/tipos', 303);
         }
 
         $this->sessao->flash('Tipo apagado.');
 
-        return Response::redirect("/gerente/condominios/{$condominio['id']}/tipos", 303);
+        return Response::redirect('/gerente/tipos', 303);
     }
 
     /**
-     * Folha de estilo com as cores dos tipos deste condomínio (etiquetas do painel e prévia da TV).
+     * Folha de estilo com as cores dos tipos usados numa tela do condomínio: os do gerente logado e os dos avisos
+     * do condomínio (que podem ser de outro gerente dele).
      *
      * @param array<string, string> $vars
      */
     public function css(Request $request, array $vars): Response
     {
         $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
+        $tipos = $this->repositorio->paraCores($this->usuarioId($request), EscopoGerente::permitidos($request), $condominio['id']);
 
-        return new Response(200, TipoAvisoService::css($this->tipos->listar(EscopoGerente::permitidos($request), $condominio['id'])), [
+        return new Response(200, TipoAvisoService::css($tipos), [
             'Content-Type' => 'text/css; charset=utf-8',
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-cache',
@@ -139,22 +141,19 @@ final class TiposController
     }
 
     /**
-     * @param array<string, mixed>      $condominio
      * @param array<string, mixed>|null $tipo tipo em edição
      * @param array<string, mixed>      $valores
      * @param array<string, string>     $erros
      */
-    private function formulario(Request $request, array $condominio, ?array $tipo, array $valores, array $erros, int $status = 200): Response
+    private function formulario(Request $request, ?array $tipo, array $valores, array $erros, int $status = 200): Response
     {
-        $base = "/gerente/condominios/{$condominio['id']}/tipos";
-
-        return Response::html($this->view->render('gerente/tipos/form.html.twig', EscopoGerente::contexto($request, $condominio) + [
+        return Response::html($this->view->render('gerente/tipos/form.html.twig', EscopoGerente::contexto($request) + [
             'editando' => $tipo !== null,
             'tipo' => $tipo,
-            'acao' => $tipo === null ? $base : "{$base}/{$tipo['id']}",
+            'acao' => $tipo === null ? '/gerente/tipos' : "/gerente/tipos/{$tipo['id']}",
             'valores' => $valores,
             'erros' => $erros,
-            'menu' => 'avisos',
+            'menu' => 'tipos',
         ]), $status);
     }
 }

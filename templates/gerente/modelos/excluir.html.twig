@@ -4,16 +4,16 @@
 {% block titulo %}Excluir modelo - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
-    <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/modelos">Modelos de aviso</a> {{ ui.icone('seta', 14) }} <span>Excluir</span></p>
+    <p class="migalha"><a href="/gerente/modelos">Modelos de aviso</a> {{ ui.icone('seta', 14) }} <span>Excluir</span></p>
     <div class="pagina-topo"><h1>Excluir modelo</h1></div>
 
     <div class="cartao formulario">
         <p class="texto-confirmacao">Tem certeza de que deseja excluir o modelo <strong>{{ modelo.nome }}</strong>?</p>
         <p class="alerta alerta-erro">{{ ui.icone('alerta', 20) }}<span>Os avisos já criados com ele não mudam. Esta ação não pode ser desfeita.</span></p>
-        <form method="post" action="/gerente/condominios/{{ condominio.id }}/modelos/{{ modelo.id }}/excluir" class="acoes">
+        <form method="post" action="/gerente/modelos/{{ modelo.id }}/excluir" class="acoes">
             <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
             <button type="submit" class="botao-perigo">{{ ui.icone('lixeira', 18) }}Excluir modelo</button>
-            <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/modelos">Cancelar</a>
+            <a class="botao botao-secundario" href="/gerente/modelos">Cancelar</a>
         </form>
     </div>
 {% endblock %}

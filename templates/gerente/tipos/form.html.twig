@@ -5,7 +5,7 @@
 {% block titulo %}{{ editando ? 'Editar tipo' : 'Novo tipo' }} - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
-    <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/tipos">Tipos de aviso</a> {{ ui.icone('seta', 14) }} <span>{{ editando ? 'Editar' : 'Novo' }}</span></p>
+    <p class="migalha"><a href="/gerente/tipos">Tipos de aviso</a> {{ ui.icone('seta', 14) }} <span>{{ editando ? 'Editar' : 'Novo' }}</span></p>
     <div class="pagina-topo"><h1>{{ editando ? 'Editar tipo' : 'Novo tipo' }}</h1></div>
 
     <form method="post" action="{{ acao }}" class="cartao formulario">
@@ -26,7 +26,7 @@
 
         <div class="acoes">
             <button type="submit">{{ editando ? 'Salvar tipo' : 'Criar tipo' }}</button>
-            <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/tipos">Cancelar</a>
+            <a class="botao botao-secundario" href="/gerente/tipos">Cancelar</a>
         </div>
     </form>
 {% endblock %}

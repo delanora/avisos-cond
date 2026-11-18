@@ -12,15 +12,19 @@ use PDO;
 trait AvisosDeTeste
 {
     /**
-     * @param array<string, mixed> $extra campos a sobrescrever (titulo, corpo, tipo, midia, midia_tipo, ativo)
+     * @param array<string, mixed> $extra campos a sobrescrever (titulo, corpo, tipo = chave de tipo de fábrica, tipo_id, midia, midia_tipo, ativo)
      * @param int $inicio segundos a partir de agora (negativo = já começou)
      * @param int $fim segundos a partir de agora
      */
     protected function avisoTv(PDO $pdo, int $condominioId, string $titulo, int $inicio, int $fim, array $extra = []): int
     {
         $agora = time();
+        // "tipo" (chave) escolhe um tipo de fábrica (matriz); "tipo_id" escolhe um tipo específico (ex.: de um gerente).
+        $chave = (string) ($extra['tipo'] ?? 'comum');
+        $tipoId = $extra['tipo_id'] ?? (int) $pdo->query("SELECT id FROM tipos_aviso WHERE sistema AND chave = " . $pdo->quote($chave))->fetchColumn();
+        unset($extra['tipo']);
         $dados = $extra + [
-            'titulo' => $titulo, 'corpo' => "Texto de {$titulo}", 'tipo' => 'comum', 'midia' => null, 'midia_tipo' => null,
+            'titulo' => $titulo, 'corpo' => "Texto de {$titulo}", 'tipo_id' => $tipoId, 'midia' => null, 'midia_tipo' => null,
             'inicio_epoch' => $agora + $inicio, 'fim_epoch' => $agora + $fim, 'ativo' => true,
         ];
         $usuario = (int) $pdo->query('SELECT id FROM usuarios ORDER BY id LIMIT 1')->fetchColumn() ?: 1;

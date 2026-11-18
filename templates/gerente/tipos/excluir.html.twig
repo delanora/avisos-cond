@@ -4,20 +4,22 @@
 {% block titulo %}Excluir tipo - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
-    <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/tipos">Tipos de aviso</a> {{ ui.icone('seta', 14) }} <span>Excluir</span></p>
+    <p class="migalha"><a href="/gerente/tipos">Tipos de aviso</a> {{ ui.icone('seta', 14) }} <span>Excluir</span></p>
     <div class="pagina-topo"><h1>Excluir tipo</h1></div>
 
     <div class="cartao formulario">
         <p class="texto-confirmacao">Tem certeza de que deseja excluir o tipo <strong>{{ tipo.nome }}</strong>?</p>
-        {% if tipo.em_uso > 0 %}
+        {% if ultimo %}
+            <p class="alerta alerta-erro">{{ ui.icone('alerta', 20) }}<span>Este é o seu último tipo de aviso: você precisa manter pelo menos um. Crie outro antes de apagar este.</span></p>
+        {% elseif tipo.em_uso > 0 %}
             <p class="alerta alerta-erro">{{ ui.icone('alerta', 20) }}<span>Este tipo é usado por {{ tipo.em_uso }} aviso(s). Troque o tipo deles antes de apagar; enquanto isso, ele não pode ser excluído.</span></p>
         {% else %}
             <p class="alerta alerta-erro">{{ ui.icone('alerta', 20) }}<span>Nenhum aviso usa este tipo. Esta ação não pode ser desfeita.</span></p>
         {% endif %}
-        <form method="post" action="/gerente/condominios/{{ condominio.id }}/tipos/{{ tipo.id }}/excluir" class="acoes">
+        <form method="post" action="/gerente/tipos/{{ tipo.id }}/excluir" class="acoes">
             <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-            <button type="submit" class="botao-perigo"{% if tipo.em_uso > 0 %} disabled{% endif %}>{{ ui.icone('lixeira', 18) }}Excluir tipo</button>
-            <a class="botao botao-secundario" href="/gerente/condominios/{{ condominio.id }}/tipos">Cancelar</a>
+            <button type="submit" class="botao-perigo"{% if tipo.em_uso > 0 or ultimo %} disabled{% endif %}>{{ ui.icone('lixeira', 18) }}Excluir tipo</button>
+            <a class="botao botao-secundario" href="/gerente/tipos">Cancelar</a>
         </form>
     </div>
 {% endblock %}

@@ -42,10 +42,10 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         $this->logar('gerente.b@exemplo.com.br');
         $this->avisoB = $this->criarAvisoEm($this->condB, 'SEGREDO-DO-BETA', Amostras::arquivo('beta.png', Amostras::png()));
         $this->post('/gerente/aparencia', ['cor_primaria' => '#AA0000']);
-        $this->post("/gerente/condominios/{$this->condB}/tipos", ['nome' => 'Tipo Secreto Beta', 'cor' => '#00BB77', 'fixo' => '1']);
-        $this->tipoB = (int) $this->pdo->query("SELECT id FROM tipos_aviso WHERE chave = 'tipo-secreto-beta'")->fetchColumn();
-        $this->post("/gerente/condominios/{$this->condB}/modelos", ['nome' => 'Modelo Secreto Beta', 'titulo' => 'Titulo Secreto Beta', 'corpo' => 'Corpo Secreto Beta', 'tipo' => 'comum']);
-        $this->modeloB = (int) $this->pdo->query("SELECT id FROM modelos_aviso WHERE nome = 'Modelo Secreto Beta'")->fetchColumn();
+        $this->post('/gerente/tipos', ['nome' => 'Tipo Secreto Beta', 'cor' => '#00BB77', 'fixo' => '1']);
+        $this->tipoB = (int) $this->pdo->query("SELECT id FROM tipos_aviso WHERE chave = 'tipo-secreto-beta' AND usuario_id = {$this->gerenteB}")->fetchColumn();
+        $this->post('/gerente/modelos', ['nome' => 'Modelo Secreto Beta', 'titulo' => 'Titulo Secreto Beta', 'corpo' => 'Corpo Secreto Beta', 'tipo' => 'comum']);
+        $this->modeloB = (int) $this->pdo->query("SELECT id FROM modelos_aviso WHERE nome = 'Modelo Secreto Beta' AND usuario_id = {$this->gerenteB}")->fetchColumn();
         $this->midiaB = (string) $this->pdo->query("SELECT midia FROM avisos WHERE id = {$this->avisoB}")->fetchColumn();
 
         // Dados do condomínio A, criados pelo gerente A; depois o "navegador" fica logado como A.
@@ -71,9 +71,9 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         sort($arquivos);
 
         return [
-            'modelos' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(condominio_id, 0) || '|' || nome || '|' || titulo || '|' || corpo || '|' || tipo, ';' ORDER BY id) FROM modelos_aviso")->fetchColumn(),
-            'tipos' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(condominio_id, 0) || '|' || chave || '|' || nome || '|' || coalesce(cor, '') || '|' || fixo::text, ';' ORDER BY id) FROM tipos_aviso")->fetchColumn(),
-            'avisos' => $this->pdo->query("SELECT string_agg(id || '|' || condominio_id || '|' || titulo || '|' || corpo || '|' || tipo || '|' || ativo::text || '|' || coalesce(midia, ''), ';' ORDER BY id) FROM avisos")->fetchColumn(),
+            'modelos' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(usuario_id, 0) || '|' || nome || '|' || titulo || '|' || corpo || '|' || tipo, ';' ORDER BY id) FROM modelos_aviso")->fetchColumn(),
+            'tipos' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(usuario_id, 0) || '|' || chave || '|' || nome || '|' || coalesce(cor, '') || '|' || fixo::text, ';' ORDER BY id) FROM tipos_aviso")->fetchColumn(),
+            'avisos' => $this->pdo->query("SELECT string_agg(id || '|' || condominio_id || '|' || titulo || '|' || corpo || '|' || tipo_id || '|' || ativo::text || '|' || coalesce(midia, ''), ';' ORDER BY id) FROM avisos")->fetchColumn(),
             'condominios' => $this->pdo->query("SELECT string_agg(id || '|' || nome || '|' || ativo::text, ';' ORDER BY id) FROM condominios")->fetchColumn(),
             'cores' => $this->pdo->query("SELECT string_agg(id || '|' || coalesce(cor_primaria, ''), ';' ORDER BY id) FROM usuarios")->fetchColumn(),
             'vinculos' => $this->pdo->query("SELECT string_agg(usuario_id || '-' || condominio_id, ';' ORDER BY usuario_id, condominio_id) FROM usuario_condominio")->fetchColumn(),
@@ -100,10 +100,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
             ['GET', "{$b}/avisos/{$this->avisoB}/editar"], ['GET', "{$b}/avisos/{$this->avisoB}/excluir"],
             ['GET', "{$b}/avisos/{$this->avisoB}/previa"], ['GET', "{$b}/avisos/{$this->avisoB}/midia"],
             ['POST', "{$b}/avisos"], ['POST', "{$b}/avisos/{$this->avisoB}"], ['POST', "{$b}/avisos/{$this->avisoB}/excluir"],
-            ['GET', "{$b}/tipos"], ['GET', "{$b}/tipos/novo"], ['GET', "{$b}/tipos/{$this->tipoB}/editar"], ['GET', "{$b}/tipos/{$this->tipoB}/excluir"], ['GET', "{$b}/tipos.css"],
-            ['POST', "{$b}/tipos"], ['POST', "{$b}/tipos/{$this->tipoB}"], ['POST', "{$b}/tipos/{$this->tipoB}/excluir"],
-            ['GET', "{$b}/modelos"], ['GET', "{$b}/modelos/novo"], ['GET', "{$b}/modelos/{$this->modeloB}/editar"], ['GET', "{$b}/modelos/{$this->modeloB}/excluir"],
-            ['POST', "{$b}/modelos"], ['POST', "{$b}/modelos/{$this->modeloB}"], ['POST', "{$b}/modelos/{$this->modeloB}/excluir"],
+            ['GET', "{$b}/tipos.css"],
         ];
     }
 
@@ -210,7 +207,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         $antes = $this->fotografia();
 
         // Não aparece em nenhuma tela do A (formulário de aviso, lista de tipos, folha de cores).
-        foreach (["/gerente/condominios/{$this->condA}/avisos/novo", "/gerente/condominios/{$this->condA}/tipos", "/gerente/condominios/{$this->condA}/tipos.css"] as $caminho) {
+        foreach (["/gerente/condominios/{$this->condA}/avisos/novo", '/gerente/tipos', "/gerente/condominios/{$this->condA}/tipos.css"] as $caminho) {
             $r = $this->get($caminho);
             $this->assertSame(200, $r->status, $caminho);
             $this->assertSemVazamento($r->body, $caminho);
@@ -223,7 +220,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM avisos WHERE titulo = 'Tentativa'")->fetchColumn());
 
         // Nem editado/apagado pelo A, mesmo usando o id dele na URL do condomínio do A.
-        foreach ([['GET', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}/editar"], ['POST', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}"], ['POST', "/gerente/condominios/{$this->condA}/tipos/{$this->tipoB}/excluir"]] as [$metodo, $caminho]) {
+        foreach ([['GET', "/gerente/tipos/{$this->tipoB}/editar"], ['GET', "/gerente/tipos/{$this->tipoB}/excluir"], ['POST', "/gerente/tipos/{$this->tipoB}"], ['POST', "/gerente/tipos/{$this->tipoB}/excluir"]] as [$metodo, $caminho]) {
             $this->assertSame(404, $this->chamar($metodo, $caminho)->status, "{$metodo} {$caminho}");
         }
         $this->assertSame($antes, $this->fotografia());
@@ -233,20 +230,108 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
     {
         $antes = $this->fotografia();
 
-        foreach (["/gerente/condominios/{$this->condA}/avisos/novo", "/gerente/condominios/{$this->condA}/modelos"] as $caminho) {
+        foreach (["/gerente/condominios/{$this->condA}/avisos/novo", '/gerente/modelos'] as $caminho) {
             $r = $this->get($caminho);
             $this->assertSame(200, $r->status, $caminho);
             $this->assertSemVazamento($r->body, $caminho);
         }
 
         // Usar o modelo do B na tela de aviso do A, ou mexer nele pelo id, é 404 e não muda nada.
-        foreach ([['GET', "/gerente/condominios/{$this->condA}/avisos/novo?modelo={$this->modeloB}"], ['GET', "/gerente/condominios/{$this->condA}/modelos/{$this->modeloB}/editar"],
-                  ['POST', "/gerente/condominios/{$this->condA}/modelos/{$this->modeloB}"], ['POST', "/gerente/condominios/{$this->condA}/modelos/{$this->modeloB}/excluir"]] as [$metodo, $caminho]) {
+        foreach ([['GET', "/gerente/condominios/{$this->condA}/avisos/novo?modelo={$this->modeloB}"], ['GET', "/gerente/modelos/{$this->modeloB}/editar"], ['GET', "/gerente/modelos/{$this->modeloB}/excluir"],
+                  ['POST', "/gerente/modelos/{$this->modeloB}"], ['POST', "/gerente/modelos/{$this->modeloB}/excluir"]] as [$metodo, $caminho]) {
             $r = $this->chamar($metodo, $caminho);
             $this->assertSame(404, $r->status, "{$metodo} {$caminho}");
             $this->assertSemVazamento($r->body, "{$metodo} {$caminho}");
         }
         $this->assertSame($antes, $this->fotografia());
+    }
+
+    // ---------- Dois gerentes do MESMO condomínio: tipos e modelos continuam sendo de cada um ----------
+
+    /** @return array{int, int, int} [id do gerente C, id do tipo dele, id do modelo dele]; deixa o navegador logado como C */
+    private function gerenteCNoMesmoCondominioDoA(): array
+    {
+        $c = $this->criarUsuario('gerente.c@exemplo.com.br');
+        (new VinculoRepository($this->pdo))->sincronizarDoUsuario($c, [$this->condA]);
+        $_SESSION = [];
+        $this->logar('gerente.c@exemplo.com.br');
+        $this->post('/gerente/tipos', ['nome' => 'Tipo Secreto do C', 'cor' => '#CC0077', 'fixo' => '1']);
+        $this->post('/gerente/modelos', ['nome' => 'Modelo Secreto do C', 'titulo' => 'Titulo Secreto do C', 'corpo' => 'Corpo Secreto do C', 'tipo' => 'comum']);
+        $tipo = (int) $this->pdo->query("SELECT id FROM tipos_aviso WHERE usuario_id = {$c} AND chave = 'tipo-secreto-do-c'")->fetchColumn();
+        $modelo = (int) $this->pdo->query("SELECT id FROM modelos_aviso WHERE usuario_id = {$c} AND nome = 'Modelo Secreto do C'")->fetchColumn();
+
+        return [$c, $tipo, $modelo];
+    }
+
+    public function testTiposEModelosDoCNaoAparecemParaOAMesmoNoMesmoCondominio(): void
+    {
+        [, $tipoC, $modeloC] = $this->gerenteCNoMesmoCondominioDoA();
+        $_SESSION = [];
+        $this->logar('gerente.a@exemplo.com.br');
+        $antes = $this->fotografia();
+
+        foreach (["/gerente/condominios/{$this->condA}/avisos/novo", '/gerente/tipos', '/gerente/modelos'] as $caminho) {
+            $corpo = $this->get($caminho)->body;
+            foreach (['Tipo Secreto do C', 'tipo-secreto-do-c', 'Modelo Secreto do C', 'Titulo Secreto do C', 'Corpo Secreto do C', '#CC0077'] as $segredo) {
+                $this->assertStringNotContainsString($segredo, $corpo, "Vazou '{$segredo}' em {$caminho}");
+            }
+        }
+        foreach ([['GET', "/gerente/tipos/{$tipoC}/editar"], ['POST', "/gerente/tipos/{$tipoC}"], ['POST', "/gerente/tipos/{$tipoC}/excluir"],
+                  ['GET', "/gerente/modelos/{$modeloC}/editar"], ['POST', "/gerente/modelos/{$modeloC}"], ['POST', "/gerente/modelos/{$modeloC}/excluir"],
+                  ['GET', "/gerente/condominios/{$this->condA}/avisos/novo?modelo={$modeloC}"]] as [$metodo, $caminho]) {
+            $this->assertSame(404, $this->chamar($metodo, $caminho)->status, "{$metodo} {$caminho}");
+        }
+        $this->assertSame($antes, $this->fotografia());
+    }
+
+    public function testAnaoUsaOTipoDoCNemPelaChaveNemCriandoAvisoNoMesmoCondominio(): void
+    {
+        [, $tipoC] = $this->gerenteCNoMesmoCondominioDoA();
+        $_SESSION = [];
+        $this->logar('gerente.a@exemplo.com.br');
+
+        $r = $this->post("/gerente/condominios/{$this->condA}/avisos", ['tipo' => 'tipo-secreto-do-c', 'titulo' => 'Tentativa', 'corpo' => 'x', 'inicio_em' => '2026-11-20T08:00', 'fim_em' => '2026-11-20T12:00', 'ativo' => '1']);
+        $this->assertSame(422, $r->status);
+        $this->assertStringContainsString('Escolha um tipo válido.', $r->body);
+
+        // "__atual" só vale ao EDITAR um aviso que já tem o tipo; ao criar não dá para pegar o do C.
+        $r = $this->post("/gerente/condominios/{$this->condA}/avisos", ['tipo' => '__atual', 'titulo' => 'Tentativa', 'corpo' => 'x', 'inicio_em' => '2026-11-20T08:00', 'fim_em' => '2026-11-20T12:00', 'ativo' => '1']);
+        $this->assertSame(422, $r->status);
+        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM avisos WHERE titulo = 'Tentativa'")->fetchColumn());
+        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM avisos WHERE tipo_id = {$tipoC}")->fetchColumn());
+    }
+
+    public function testAvisoCriadoPeloCComOTipoDeleApareceParaOAComEtiquetaEPodeSerEditadoSemPerderOTipo(): void
+    {
+        [$c, $tipoC] = $this->gerenteCNoMesmoCondominioDoA();
+        $this->post("/gerente/condominios/{$this->condA}/avisos", ['tipo' => 'tipo-secreto-do-c', 'titulo' => 'AVISO-DO-C', 'corpo' => 'x', 'inicio_em' => '2026-11-20T08:00', 'fim_em' => '2026-11-20T12:00', 'ativo' => '1']);
+        $avisoC = (int) $this->pdo->query("SELECT id FROM avisos WHERE titulo = 'AVISO-DO-C'")->fetchColumn();
+        $_SESSION = [];
+        $this->logar('gerente.a@exemplo.com.br');
+
+        // O aviso é do condomínio (compartilhado): o A o vê com a etiqueta e a cor do tipo do C.
+        $lista = $this->get("/gerente/condominios/{$this->condA}/avisos")->body;
+        $this->assertStringContainsString("etiqueta-tipo-t{$tipoC}\">Tipo Secreto do C<", $lista);
+        $this->assertStringContainsString('#CC0077', $this->get("/gerente/condominios/{$this->condA}/tipos.css")->body);
+        // Na edição aparece como "manter o tipo atual"; os tipos do A continuam sendo só os do A.
+        $edicao = $this->get("/gerente/condominios/{$this->condA}/avisos/{$avisoC}/editar")->body;
+        $this->assertStringContainsString('<option value="__atual" selected>Tipo Secreto do C', $edicao);
+        $this->assertStringNotContainsString('value="tipo-secreto-do-c"', $edicao);
+
+        $this->post("/gerente/condominios/{$this->condA}/avisos/{$avisoC}", ['tipo' => '__atual', 'titulo' => 'AVISO-DO-C editado', 'corpo' => 'x', 'inicio_em' => '2026-11-20T08:00', 'fim_em' => '2026-11-20T12:00', 'ativo' => '1']);
+        $this->assertSame($tipoC, (int) $this->pdo->query("SELECT tipo_id FROM avisos WHERE id = {$avisoC}")->fetchColumn(), 'Editar não troca o tipo do C.');
+        $this->assertSame('AVISO-DO-C editado', $this->pdo->query("SELECT titulo FROM avisos WHERE id = {$avisoC}")->fetchColumn());
+        $this->assertSame($c, (int) $this->pdo->query("SELECT usuario_id FROM tipos_aviso WHERE id = {$tipoC}")->fetchColumn());
+    }
+
+    public function testCNaoApagaOTipoQueTemAvisoENemOAApagaPeloIdDoC(): void
+    {
+        [, $tipoC] = $this->gerenteCNoMesmoCondominioDoA();
+        $this->post("/gerente/condominios/{$this->condA}/avisos", ['tipo' => 'tipo-secreto-do-c', 'titulo' => 'AVISO-DO-C', 'corpo' => 'x', 'inicio_em' => '2026-11-20T08:00', 'fim_em' => '2026-11-20T12:00', 'ativo' => '1']);
+
+        $this->post("/gerente/tipos/{$tipoC}/excluir");
+
+        $this->assertSame(1, (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE id = {$tipoC}")->fetchColumn(), 'Em uso: continua.');
     }
 
     public function testCondominioInexistenteSeComportaIgualAoDeOutroGerente(): void
@@ -329,6 +414,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
         $semVinculo = $this->criarUsuario('livre@exemplo.com.br');
         $_SESSION = [];
         $this->logar('livre@exemplo.com.br');
+        $this->get('/gerente'); // o primeiro acesso entrega a ele a cópia dos tipos e modelos de fábrica
         $antes = $this->fotografia();
 
         foreach ([[$this->condA, $this->avisoA], [$this->condB, $this->avisoB]] as [$cond, $aviso]) {

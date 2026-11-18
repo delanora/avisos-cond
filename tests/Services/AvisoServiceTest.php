@@ -26,6 +26,9 @@ final class AvisoServiceTest extends BancoMigradoTestCase
         $this->a = $this->condominio('A');
         $this->b = $this->condominio('B');
         $this->usuario = $this->criarUsuario('g@exemplo.com.br');
+        $this->padroesDoGerente($this->usuario);
+        $this->vincular($this->usuario, $this->a);
+        $this->vincular($this->usuario, $this->b);
     }
 
     protected function tearDown(): void
@@ -174,7 +177,7 @@ final class AvisoServiceTest extends BancoMigradoTestCase
     {
         $id = $this->servico()->criar([$this->a], $this->a, $this->dados(), null, $this->usuario);
 
-        $this->servico()->atualizar([$this->a], $this->a, $id, ['titulo' => 'Novo título', 'tipo' => 'urgente', 'ativo' => ''] + $this->dados(), null);
+        $this->servico()->atualizar([$this->a], $this->a, $id, ['titulo' => 'Novo título', 'tipo' => 'urgente', 'ativo' => ''] + $this->dados(), null, $this->usuario);
 
         $aviso = $this->servico()->buscar([$this->a], $this->a, $id);
         $this->assertSame('Novo título', $aviso['titulo']);
@@ -187,7 +190,7 @@ final class AvisoServiceTest extends BancoMigradoTestCase
         $id = $this->servico()->criar([$this->a], $this->a, $this->dados(), Amostras::arquivo('a.jpg', Amostras::jpg()), $this->usuario);
         $antiga = $this->servico()->buscar([$this->a], $this->a, $id)['midia'];
 
-        $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(), Amostras::arquivo('v.mp4', Amostras::mp4()));
+        $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(), Amostras::arquivo('v.mp4', Amostras::mp4()), $this->usuario);
 
         $aviso = $this->servico()->buscar([$this->a], $this->a, $id);
         $this->assertSame('video', $aviso['midia_tipo']);
@@ -201,7 +204,7 @@ final class AvisoServiceTest extends BancoMigradoTestCase
         $id = $this->servico()->criar([$this->a], $this->a, $this->dados(), Amostras::arquivo('a.jpg', Amostras::jpg()), $this->usuario);
         $antes = $this->servico()->buscar([$this->a], $this->a, $id)['midia'];
 
-        $this->servico()->atualizar([$this->a], $this->a, $id, ['titulo' => 'Outro'] + $this->dados(), Amostras::nenhum());
+        $this->servico()->atualizar([$this->a], $this->a, $id, ['titulo' => 'Outro'] + $this->dados(), Amostras::nenhum(), $this->usuario);
 
         $this->assertSame($antes, $this->servico()->buscar([$this->a], $this->a, $id)['midia']);
         $this->assertFileExists($this->dir . '/' . $antes);
@@ -211,7 +214,7 @@ final class AvisoServiceTest extends BancoMigradoTestCase
     {
         $id = $this->servico()->criar([$this->a], $this->a, $this->dados(), Amostras::arquivo('a.jpg', Amostras::jpg()), $this->usuario);
 
-        $this->servico()->atualizar([$this->a], $this->a, $id, ['remover_midia' => '1'] + $this->dados(), null);
+        $this->servico()->atualizar([$this->a], $this->a, $id, ['remover_midia' => '1'] + $this->dados(), null, $this->usuario);
 
         $aviso = $this->servico()->buscar([$this->a], $this->a, $id);
         $this->assertNull($aviso['midia']);
@@ -225,7 +228,7 @@ final class AvisoServiceTest extends BancoMigradoTestCase
         $antes = $this->servico()->buscar([$this->a], $this->a, $id)['midia'];
 
         try {
-            $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(), Amostras::arquivo('x.svg', Amostras::svg()));
+            $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(), Amostras::arquivo('x.svg', Amostras::svg()), $this->usuario);
             $this->fail('Era esperada uma ValidacaoException.');
         } catch (ValidacaoException $e) {
             $this->assertArrayHasKey('midia', $e->erros);
@@ -252,8 +255,8 @@ final class AvisoServiceTest extends BancoMigradoTestCase
         foreach ([
             fn () => $this->servico()->buscar([$this->a], $this->a, $idB),
             fn () => $this->servico()->buscar([$this->a], $this->b, $idB),
-            fn () => $this->servico()->atualizar([$this->a], $this->a, $idB, $this->dados(), null),
-            fn () => $this->servico()->atualizar([$this->a], $this->b, $idB, $this->dados(), null),
+            fn () => $this->servico()->atualizar([$this->a], $this->a, $idB, $this->dados(), null, $this->usuario),
+            fn () => $this->servico()->atualizar([$this->a], $this->b, $idB, $this->dados(), null, $this->usuario),
             fn () => $this->servico()->excluir([$this->a], $this->a, $idB),
             fn () => $this->servico()->excluir([$this->a], $this->b, $idB),
             fn () => $this->servico()->listar([$this->a], $this->b),
@@ -353,11 +356,11 @@ final class AvisoServiceTest extends BancoMigradoTestCase
     {
         $id = $this->servico()->criar([$this->a], $this->a, $this->dados(['dias' => ['1'], 'hora_inicio' => '08:00', 'hora_fim' => '09:00']), null, $this->usuario);
 
-        $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(['dias' => ['3', '4']]), null);
+        $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(['dias' => ['3', '4']]), null, $this->usuario);
         $depois = $this->servico()->buscar([$this->a], $this->a, $id);
         $this->assertSame([0b0011000, null, null], [$depois['dias_semana'], $depois['hora_inicio'], $depois['hora_fim']]);
 
-        $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(), null);
+        $this->servico()->atualizar([$this->a], $this->a, $id, $this->dados(), null, $this->usuario);
         $limpo = $this->servico()->buscar([$this->a], $this->a, $id);
         $this->assertSame([null, null, null], [$limpo['dias_semana'], $limpo['hora_inicio'], $limpo['hora_fim']]);
     }

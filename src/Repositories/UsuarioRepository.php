@@ -8,7 +8,7 @@ use PDO;
 
 final class UsuarioRepository
 {
-    private const COLUNAS = 'id, nome, email, senha_hash, papel, ativo, cor_primaria,
+    private const COLUNAS = 'id, nome, email, senha_hash, papel, ativo, cor_primaria, padroes_criados,
         extract(epoch FROM senha_alterada_em)::bigint AS senha_alterada_epoch';
 
     public function __construct(private readonly PDO $pdo)
@@ -162,6 +162,7 @@ final class UsuarioRepository
             'senha_hash' => (string) $linha['senha_hash'],
             'papel' => (string) $linha['papel'],
             'ativo' => (bool) $linha['ativo'],
+            'padroes_criados' => (bool) ($linha['padroes_criados'] ?? false),
             'cor_primaria' => isset($linha['cor_primaria']) ? (string) $linha['cor_primaria'] : null,
             'senha_alterada_epoch' => $linha['senha_alterada_epoch'] === null ? null : (int) $linha['senha_alterada_epoch'],
         ];

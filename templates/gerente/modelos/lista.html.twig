@@ -1,16 +1,16 @@
 {% extends 'layouts/base.html.twig' %}
 {% import 'macros/ui.html.twig' as ui %}
 
-{% block titulo %}Modelos de aviso - {{ condominio.nome }} - {{ app_nome }}{% endblock %}
+{% block titulo %}Modelos de aviso - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
-    <p class="migalha"><a href="/gerente/condominios/{{ condominio.id }}/avisos">Avisos</a> {{ ui.icone('seta', 14) }} <span>Modelos de aviso</span></p>
+    <p class="migalha"><a href="/gerente">Avisos</a> {{ ui.icone('seta', 14) }} <span>Modelos de aviso</span></p>
     <div class="pagina-topo">
         <div>
             <h1>Modelos de aviso</h1>
-            <p>Textos prontos para criar avisos mais rápido. Ao criar um aviso, escolha um modelo e ajuste o que precisar.</p>
+            <p>Os seus textos prontos para criar avisos mais rápido. Só você os vê e pode editar ou apagar qualquer um, inclusive os que já vinham prontos.</p>
         </div>
-        <a class="botao" href="/gerente/condominios/{{ condominio.id }}/modelos/novo">{{ ui.icone('plus', 18) }}Novo modelo</a>
+        <a class="botao" href="/gerente/modelos/novo">{{ ui.icone('plus', 18) }}Novo modelo</a>
     </div>
 
     <div class="cartao cartao-sem-espaco">
@@ -30,17 +30,15 @@
                             <div class="pessoa">
                                 <div>
                                     <span class="pessoa-nome">{{ m.nome }}</span>
-                                    <span class="pessoa-sub">{% if m.sistema %}Modelo do sistema · {% endif %}{{ m.titulo }}</span>
+                                    <span class="pessoa-sub">{{ m.titulo }}</span>
                                 </div>
                             </div>
                         </td>
                         <td class="celula-suave esconde-movel">{{ m.tipo }}</td>
                         <td class="acoes-celula">
-                            <a class="botao-icone" href="/gerente/condominios/{{ condominio.id }}/avisos/novo?modelo={{ m.id }}" title="Criar aviso com este modelo" aria-label="Criar aviso com o modelo {{ m.nome }}">{{ ui.icone('plus', 18) }}</a>
-                            {% if not m.sistema %}
-                                <a class="botao-icone" href="/gerente/condominios/{{ condominio.id }}/modelos/{{ m.id }}/editar" title="Editar" aria-label="Editar {{ m.nome }}">{{ ui.icone('editar', 18) }}</a>
-                                <a class="botao-icone perigo" href="/gerente/condominios/{{ condominio.id }}/modelos/{{ m.id }}/excluir" title="Excluir" aria-label="Excluir {{ m.nome }}">{{ ui.icone('lixeira', 18) }}</a>
-                            {% endif %}
+                            {% if condominios|length == 1 %}<a class="botao-icone" href="/gerente/condominios/{{ condominios[0].id }}/avisos/novo?modelo={{ m.id }}" title="Criar aviso com este modelo" aria-label="Criar aviso com o modelo {{ m.nome }}">{{ ui.icone('plus', 18) }}</a>{% endif %}
+                            <a class="botao-icone" href="/gerente/modelos/{{ m.id }}/editar" title="Editar" aria-label="Editar {{ m.nome }}">{{ ui.icone('editar', 18) }}</a>
+                            <a class="botao-icone perigo" href="/gerente/modelos/{{ m.id }}/excluir" title="Excluir" aria-label="Excluir {{ m.nome }}">{{ ui.icone('lixeira', 18) }}</a>
                         </td>
                     </tr>
                 {% endfor %}

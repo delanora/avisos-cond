@@ -11,84 +11,95 @@ use Tests\AppHttpTestCase;
 final class ModeloAvisoRepositoryTest extends AppHttpTestCase
 {
     private ModeloAvisoRepository $repo;
-    private int $a;
-    private int $b;
+    private int $ana;
+    private int $beto;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repo = new ModeloAvisoRepository($this->pdo);
-        $this->a = $this->criarCondominio('Alfa');
-        $this->b = $this->criarCondominio('Beta');
+        $this->ana = $this->criarUsuario('ana@exemplo.com.br');
+        $this->beto = $this->criarUsuario('beto@exemplo.com.br');
     }
 
-    public function testListaOsQuatroDoSistemaDepoisOsDoCondominio(): void
+    public function testGerenteRecebeOsQuatroModelosDeFabricaEOutroNaoVeOsDele(): void
     {
-        $this->repo->criar([$this->a], $this->a, 'Zeladoria', 'Título Z', 'Texto', 'comum');
-        $this->repo->criar([$this->a], $this->a, 'Assuntos gerais', 'Título A', 'Texto', 'comum');
+        $this->padroesDoGerente($this->ana);
 
-        $nomes = array_column($this->repo->listar([$this->a], $this->a), 'nome');
-
-        $this->assertSame(['Falta de água', 'Manutenção do elevador', 'Dedetização', 'Assembleia', 'Assuntos gerais', 'Zeladoria'], $nomes);
+        $this->assertSame(['Falta de água', 'Manutenção do elevador', 'Dedetização', 'Assembleia'], array_column($this->repo->listar($this->ana), 'nome'));
+        $this->assertSame([], $this->repo->listar($this->beto), 'O Beto ainda não recebeu os dele.');
     }
 
-    public function testModeloDeUmCondominioNaoApareceNemSeUsaNoOutro(): void
+    public function testListaNaOrdemDeCriacaoComOsDeFabricaPrimeiro(): void
     {
-        $id = (int) $this->repo->criar([$this->a, $this->b], $this->a, 'Só do Alfa', 'T', 'x', 'comum');
+        $this->padroesDoGerente($this->ana);
+        $this->repo->criar($this->ana, 'Zeladoria', 'T', 'x', 'comum');
+        $this->repo->criar($this->ana, 'Assuntos gerais', 'T', 'x', 'comum');
 
-        $this->assertNotContains('Só do Alfa', array_column($this->repo->listar([$this->a, $this->b], $this->b), 'nome'));
-        $this->assertNull($this->repo->utilizavelPorId([$this->a, $this->b], $this->b, $id));
-        $this->assertNull($this->repo->proprioPorId([$this->a, $this->b], $this->b, $id));
-        $this->assertNotNull($this->repo->utilizavelPorId([$this->a, $this->b], $this->a, $id));
+        $nomes = array_column($this->repo->listar($this->ana), 'nome');
+
+        $this->assertSame(['Zeladoria', 'Assuntos gerais'], array_slice($nomes, 4));
     }
 
-    public function testCondominioForaDosPermitidosNaoListaNemCria(): void
+    public function testModeloDeUmGerenteNaoApareceNemSeUsaPeloOutro(): void
     {
-        $this->assertSame([], $this->repo->listar([$this->a], $this->b));
-        $this->assertNull($this->repo->criar([$this->a], $this->b, 'Invasor', 'T', 'x', 'comum'));
-        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM modelos_aviso WHERE nome = 'Invasor'")->fetchColumn());
-    }
+        $id = $this->repo->criar($this->ana, 'Só da Ana', 'T', 'x', 'comum');
 
-    public function testModeloDoSistemaValeParaTodosMasNaoSeEditaNemApaga(): void
-    {
-        $sistema = (int) $this->pdo->query("SELECT id FROM modelos_aviso WHERE nome = 'Dedetização'")->fetchColumn();
-
-        $this->assertNotNull($this->repo->utilizavelPorId([$this->b], $this->b, $sistema));
-        $this->assertNull($this->repo->proprioPorId([$this->a], $this->a, $sistema));
-        $this->assertFalse($this->repo->atualizar([$this->a], $this->a, $sistema, 'X', 'X', 'X', 'comum'));
-        $this->assertFalse($this->repo->excluir([$this->a], $this->a, $sistema));
-        $this->assertSame('Dedetização', $this->repo->utilizavelPorId([$this->a], $this->a, $sistema)['nome']);
+        $this->assertNotContains('Só da Ana', array_column($this->repo->listar($this->beto), 'nome'));
+        $this->assertNull($this->repo->porId($this->beto, $id));
+        $this->assertNotNull($this->repo->porId($this->ana, $id));
     }
 
     public function testEditarEApagarSoOsProprios(): void
     {
-        $id = (int) $this->repo->criar([$this->a, $this->b], $this->a, 'Meu', 'T', 'x', 'comum');
+        $id = $this->repo->criar($this->ana, 'Meu', 'T', 'x', 'comum');
 
-        $this->assertFalse($this->repo->atualizar([$this->b], $this->b, $id, 'Roubado', 'T', 'x', 'comum'), 'Modelo do A pelo B.');
-        $this->assertFalse($this->repo->excluir([$this->b], $this->b, $id));
-        $this->assertTrue($this->repo->atualizar([$this->a], $this->a, $id, 'Meu novo', 'Novo título', 'Novo texto', 'urgente'));
-        $m = $this->repo->proprioPorId([$this->a], $this->a, $id);
+        $this->assertFalse($this->repo->atualizar($this->beto, $id, 'Roubado', 'T', 'x', 'comum'), 'Modelo da Ana pelo Beto.');
+        $this->assertFalse($this->repo->excluir($this->beto, $id));
+        $this->assertTrue($this->repo->atualizar($this->ana, $id, 'Meu novo', 'Novo título', 'Novo texto', 'urgente'));
+        $m = $this->repo->porId($this->ana, $id);
         $this->assertSame(['Meu novo', 'Novo título', 'Novo texto', 'urgente'], [$m['nome'], $m['titulo'], $m['corpo'], $m['tipo']]);
-        $this->assertTrue($this->repo->excluir([$this->a], $this->a, $id));
+        $this->assertTrue($this->repo->excluir($this->ana, $id));
     }
 
-    public function testNomeEmUsoConsideraSistemaECondominioSemMaiusculas(): void
+    public function testModelosDeFabricaPodemSerApagadosECadaGerenteApagaSoOsSeus(): void
     {
-        $id = (int) $this->repo->criar([$this->a], $this->a, 'Zeladoria', 'T', 'x', 'comum');
+        $this->padroesDoGerente($this->ana);
+        $this->padroesDoGerente($this->beto);
+        $dedetizacaoDaAna = (int) $this->pdo->query("SELECT id FROM modelos_aviso WHERE usuario_id = {$this->ana} AND nome = 'Dedetização'")->fetchColumn();
 
-        $this->assertTrue($this->repo->nomeEmUso($this->a, 'ASSEMBLEIA'), 'Nome de modelo do sistema.');
-        $this->assertTrue($this->repo->nomeEmUso($this->a, 'zeladoria'));
-        $this->assertFalse($this->repo->nomeEmUso($this->a, 'Zeladoria', $id), 'Ele mesmo não conta (edição).');
-        $this->assertFalse($this->repo->nomeEmUso($this->b, 'Zeladoria'), 'Outro condomínio pode ter o mesmo nome.');
+        $this->assertTrue($this->repo->excluir($this->ana, $dedetizacaoDaAna));
+
+        $this->assertNotContains('Dedetização', array_column($this->repo->listar($this->ana), 'nome'));
+        $this->assertContains('Dedetização', array_column($this->repo->listar($this->beto), 'nome'), 'O do Beto continua.');
+        $this->assertSame(1, (int) $this->pdo->query('SELECT count(*) FROM modelos_aviso WHERE sistema AND nome = \'Dedetização\'')->fetchColumn(), 'A matriz também.');
     }
 
-    public function testBancoRejeitaSistemaComCondominioENomeRepetido(): void
+    public function testMatrizDeFabricaNaoEhAcessivelPorNenhumGerente(): void
     {
-        $this->repo->criar([$this->a], $this->a, 'Zeladoria', 'T', 'x', 'comum');
+        $matriz = (int) $this->pdo->query("SELECT id FROM modelos_aviso WHERE sistema AND nome = 'Assembleia'")->fetchColumn();
+
+        $this->assertNull($this->repo->porId($this->ana, $matriz));
+        $this->assertFalse($this->repo->atualizar($this->ana, $matriz, 'X', 'X', 'X', 'comum'));
+        $this->assertFalse($this->repo->excluir($this->ana, $matriz));
+    }
+
+    public function testNomeEmUsoSoConsideraOsDoMesmoGerenteSemMaiusculas(): void
+    {
+        $id = $this->repo->criar($this->ana, 'Zeladoria', 'T', 'x', 'comum');
+
+        $this->assertTrue($this->repo->nomeEmUso($this->ana, 'zeladoria'));
+        $this->assertFalse($this->repo->nomeEmUso($this->ana, 'Zeladoria', $id), 'Ele mesmo não conta (edição).');
+        $this->assertFalse($this->repo->nomeEmUso($this->beto, 'Zeladoria'), 'Outro gerente pode ter o mesmo nome.');
+    }
+
+    public function testBancoRejeitaMatrizComDonoENomeRepetidoDoMesmoGerente(): void
+    {
+        $this->repo->criar($this->ana, 'Zeladoria', 'T', 'x', 'comum');
 
         foreach ([
-            "INSERT INTO modelos_aviso (condominio_id, nome, titulo, sistema) VALUES ({$this->a}, 'X', 'T', true)",
-            "INSERT INTO modelos_aviso (condominio_id, nome, titulo) VALUES ({$this->a}, 'ZELADORIA', 'T')",
+            "INSERT INTO modelos_aviso (usuario_id, nome, titulo, sistema) VALUES ({$this->ana}, 'X', 'T', true)",
+            "INSERT INTO modelos_aviso (usuario_id, nome, titulo) VALUES ({$this->ana}, 'ZELADORIA', 'T')",
         ] as $sql) {
             try {
                 $this->pdo->exec($sql);
@@ -99,13 +110,13 @@ final class ModeloAvisoRepositoryTest extends AppHttpTestCase
         }
     }
 
-    public function testModelosSaemJuntoComOCondominio(): void
+    public function testModelosSaemJuntoComOGerente(): void
     {
-        $this->repo->criar([$this->b], $this->b, 'Do Beta', 'T', 'x', 'comum');
+        $this->repo->criar($this->beto, 'Do Beto', 'T', 'x', 'comum');
 
-        $this->pdo->exec("DELETE FROM condominios WHERE id = {$this->b}");
+        $this->pdo->exec("DELETE FROM usuarios WHERE id = {$this->beto}");
 
-        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM modelos_aviso WHERE nome = 'Do Beta'")->fetchColumn());
-        $this->assertSame(4, (int) $this->pdo->query('SELECT count(*) FROM modelos_aviso WHERE sistema')->fetchColumn(), 'Os do sistema ficam.');
+        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM modelos_aviso WHERE nome = 'Do Beto'")->fetchColumn());
+        $this->assertSame(4, (int) $this->pdo->query('SELECT count(*) FROM modelos_aviso WHERE sistema')->fetchColumn(), 'As matrizes ficam.');
     }
 }

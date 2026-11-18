@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Repositories;
 
+use App\Repositories\PadroesDoGerenteRepository;
 use App\Repositories\TipoAvisoRepository;
 use PDOException;
 use Tests\AppHttpTestCase;
@@ -11,96 +12,128 @@ use Tests\AppHttpTestCase;
 final class TipoAvisoRepositoryTest extends AppHttpTestCase
 {
     private TipoAvisoRepository $repo;
-    private int $a;
-    private int $b;
+    private int $ana;
+    private int $beto;
+    private int $cond;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->repo = new TipoAvisoRepository($this->pdo);
-        $this->a = $this->criarCondominio('Alfa');
-        $this->b = $this->criarCondominio('Beta');
+        $this->ana = $this->criarUsuario('ana@exemplo.com.br');
+        $this->beto = $this->criarUsuario('beto@exemplo.com.br');
+        $this->cond = $this->criarCondominio('Alfa');
+        $this->vincular($this->ana, $this->cond);
+        $this->vincular($this->beto, $this->cond);
     }
 
-    private function aviso(int $condominio, string $tipo): void
+    private function aviso(int $condominio, int $tipoId): void
     {
-        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, tipo, inicio_em, fim_em) VALUES ({$condominio}, 'x', '{$tipo}', now(), now() + interval '1 day')");
+        $this->pdo->exec("INSERT INTO avisos (condominio_id, titulo, tipo_id, inicio_em, fim_em) VALUES ({$condominio}, 'x', {$tipoId}, now(), now() + interval '1 day')");
     }
 
-    public function testListaOsCincoDoSistemaDepoisOsDoCondominioPorNome(): void
+    public function testGerenteNovoSemPadroesNaoTemTipoNenhum(): void
     {
-        $this->repo->criar([$this->a], $this->a, 'zeladoria', 'Zeladoria', '#112233', false);
-        $this->repo->criar([$this->a], $this->a, 'assuntos', 'Assuntos gerais', '#445566', true);
-
-        $nomes = array_column($this->repo->listar([$this->a], $this->a), 'nome');
-
-        $this->assertSame(['Comum', 'Fixo', 'Urgente', 'Manutenção', 'Assembleia', 'Assuntos gerais', 'Zeladoria'], $nomes);
+        $this->assertSame([], $this->repo->listar($this->ana));
     }
 
-    public function testTipoDeUmCondominioNaoApareceNemSeResolveNoOutro(): void
+    public function testPadroesSaoCopiadosUmaSoVezECadaGerenteRecebeOsSeus(): void
     {
-        $this->repo->criar([$this->a, $this->b], $this->a, 'exclusivo-alfa', 'Exclusivo Alfa', '#112233', false);
+        $padroes = new PadroesDoGerenteRepository($this->pdo);
 
-        $this->assertNotContains('Exclusivo Alfa', array_column($this->repo->listar([$this->a, $this->b], $this->b), 'nome'));
-        $this->assertNull($this->repo->porChave([$this->a, $this->b], $this->b, 'exclusivo-alfa'));
-        $this->assertNotNull($this->repo->porChave([$this->a, $this->b], $this->a, 'exclusivo-alfa'));
-        $this->assertNotNull($this->repo->porChave([$this->a, $this->b], $this->b, 'urgente'), 'Os do sistema valem para todos.');
+        $this->assertTrue($padroes->garantir($this->ana));
+        $this->assertFalse($padroes->garantir($this->ana), 'Segunda chamada não copia de novo.');
+
+        $nomes = array_column($this->repo->listar($this->ana), 'nome');
+        $this->assertSame(['Comum', 'Fixo', 'Urgente', 'Manutenção', 'Assembleia'], $nomes);
+        $this->assertSame([], $this->repo->listar($this->beto), 'O outro gerente ainda não recebeu.');
+        $this->assertSame(5, $this->contarMatrizes(), 'As matrizes continuam intactas.');
     }
 
-    public function testCondominioForaDosPermitidosNaoListaNemCriaNemResolve(): void
+    public function testApagarUmPadraoNaoFazEleVoltar(): void
     {
-        $this->assertSame([], $this->repo->listar([$this->a], $this->b));
-        $this->assertNull($this->repo->criar([$this->a], $this->b, 'invasor', 'Invasor', '#112233', false));
-        $this->assertNull($this->repo->porChave([$this->a], $this->b, 'comum'));
-        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM tipos_aviso WHERE chave = 'invasor'")->fetchColumn());
+        $this->padroesDoGerente($this->ana);
+        $manutencao = $this->repo->porChave($this->ana, 'manutencao');
+
+        $this->assertTrue($this->repo->excluir($this->ana, $manutencao['id']));
+        (new PadroesDoGerenteRepository($this->pdo))->garantir($this->ana);
+
+        $this->assertNull($this->repo->porChave($this->ana, 'manutencao'), 'Apagado de vez.');
+        $this->assertSame(4, $this->repo->contar($this->ana));
+    }
+
+    public function testPadroesNaoSaoCriadosParaQuemNaoEGerente(): void
+    {
+        $admin = $this->criarUsuario('admin@exemplo.com.br', 'superadmin');
+
+        $this->assertFalse((new PadroesDoGerenteRepository($this->pdo))->garantir($admin));
+        $this->assertSame([], $this->repo->listar($admin));
+    }
+
+    public function testTipoDeUmGerenteNaoApareceNemSeResolveParaOOutro(): void
+    {
+        $this->padroesDoGerente($this->ana);
+        $this->padroesDoGerente($this->beto);
+        $id = $this->repo->criar($this->ana, 'so-da-ana', 'Só da Ana', '#112233', false);
+
+        $this->assertNotContains('Só da Ana', array_column($this->repo->listar($this->beto), 'nome'));
+        $this->assertNull($this->repo->porChave($this->beto, 'so-da-ana'));
+        $this->assertNull($this->repo->porId($this->beto, $id));
+        $this->assertNotNull($this->repo->porId($this->ana, $id));
     }
 
     public function testEditarEApagarSoOsProprios(): void
     {
-        $id = (int) $this->repo->criar([$this->a, $this->b], $this->a, 'meu', 'Meu', '#112233', false);
-        $sistema = (int) $this->pdo->query("SELECT id FROM tipos_aviso WHERE chave = 'urgente'")->fetchColumn();
+        $id = $this->repo->criar($this->ana, 'meu', 'Meu', '#112233', false);
 
-        $this->assertFalse($this->repo->atualizar([$this->b], $this->b, $id, 'Roubado', '#000000', true), 'Tipo do A pelo B.');
-        $this->assertFalse($this->repo->atualizar([$this->a], $this->a, $sistema, 'Mudou', '#000000', false), 'Tipo do sistema não muda.');
-        $this->assertNull($this->repo->proprioPorId([$this->b], $this->b, $id));
-        $this->assertTrue($this->repo->atualizar([$this->a], $this->a, $id, 'Meu novo nome', '#AABBCC', true));
-        $dep = $this->repo->proprioPorId([$this->a], $this->a, $id);
-        $this->assertSame(['meu', 'Meu novo nome', '#AABBCC', true], [$dep['chave'], $dep['nome'], $dep['cor'], $dep['fixo']], 'A chave nunca muda.');
+        $this->assertFalse($this->repo->atualizar($this->beto, $id, 'Roubado', '#000000', true), 'Tipo da Ana pelo Beto.');
+        $this->assertFalse($this->repo->excluir($this->beto, $id));
+        $this->assertTrue($this->repo->atualizar($this->ana, $id, 'Meu novo nome', '#AABBCC', true));
+        $depois = $this->repo->porId($this->ana, $id);
+        $this->assertSame(['meu', 'Meu novo nome', '#AABBCC', true], [$depois['chave'], $depois['nome'], $depois['cor'], $depois['fixo']], 'A chave nunca muda.');
+        $this->assertTrue($this->repo->excluir($this->ana, $id));
+    }
 
-        $this->assertFalse($this->repo->excluir([$this->b], $this->b, $id));
-        $this->assertFalse($this->repo->excluir([$this->a], $this->a, $sistema));
-        $this->assertTrue($this->repo->excluir([$this->a], $this->a, $id));
+    public function testMatrizDeFabricaNaoEhAcessivelPorNenhumGerente(): void
+    {
+        $matriz = $this->tipoDeFabrica('urgente');
+
+        $this->assertNull($this->repo->porId($this->ana, $matriz));
+        $this->assertFalse($this->repo->atualizar($this->ana, $matriz, 'Mudou', '#000000', false));
+        $this->assertFalse($this->repo->excluir($this->ana, $matriz));
+        $this->assertSame('Urgente', $this->pdo->query("SELECT nome FROM tipos_aviso WHERE id = {$matriz}")->fetchColumn());
     }
 
     public function testTipoEmUsoNaoEhApagadoEContaOsAvisos(): void
     {
-        $id = (int) $this->repo->criar([$this->a], $this->a, 'meu', 'Meu', '#112233', false);
-        $this->aviso($this->a, 'meu');
-        $this->aviso($this->a, 'meu');
+        $id = $this->repo->criar($this->ana, 'meu', 'Meu', '#112233', false);
+        $this->aviso($this->cond, $id);
+        $this->aviso($this->cond, $id);
 
-        $this->assertSame(2, $this->repo->proprioPorId([$this->a], $this->a, $id)['em_uso']);
-        $this->assertFalse($this->repo->excluir([$this->a], $this->a, $id), 'Em uso: não apaga.');
-        $this->pdo->exec("DELETE FROM avisos WHERE tipo = 'meu'");
-        $this->assertTrue($this->repo->excluir([$this->a], $this->a, $id));
+        $this->assertSame(2, $this->repo->porId($this->ana, $id)['em_uso']);
+        $this->assertFalse($this->repo->excluir($this->ana, $id), 'Em uso: não apaga.');
+        $this->pdo->exec("DELETE FROM avisos WHERE tipo_id = {$id}");
+        $this->assertTrue($this->repo->excluir($this->ana, $id));
     }
 
-    public function testNomeOuChaveEmUsoConsideraSistemaECondominioSemMaiusculas(): void
+    public function testNomeOuChaveEmUsoSoConsideraOsDoMesmoGerente(): void
     {
-        $id = (int) $this->repo->criar([$this->a], $this->a, 'zeladoria', 'Zeladoria', '#112233', false);
+        $this->padroesDoGerente($this->ana);
+        $id = $this->repo->criar($this->ana, 'zeladoria', 'Zeladoria', '#112233', false);
 
-        $this->assertTrue($this->repo->nomeOuChaveEmUso($this->a, 'URGENTE', 'outra-chave'), 'Nome de tipo do sistema.');
-        $this->assertTrue($this->repo->nomeOuChaveEmUso($this->a, 'Outro nome', 'comum'), 'Chave de tipo do sistema.');
-        $this->assertTrue($this->repo->nomeOuChaveEmUso($this->a, 'zeladoria', 'x'));
-        $this->assertFalse($this->repo->nomeOuChaveEmUso($this->a, 'Zeladoria', 'zeladoria', $id), 'Ele mesmo não conta (edição).');
-        $this->assertFalse($this->repo->nomeOuChaveEmUso($this->b, 'Zeladoria', 'zeladoria'), 'Outro condomínio pode ter o mesmo nome.');
+        $this->assertTrue($this->repo->nomeOuChaveEmUso($this->ana, 'URGENTE', 'outra-chave'), 'Nome de um dos tipos dele.');
+        $this->assertTrue($this->repo->nomeOuChaveEmUso($this->ana, 'Outro nome', 'comum'));
+        $this->assertTrue($this->repo->nomeOuChaveEmUso($this->ana, 'zeladoria', 'x'));
+        $this->assertFalse($this->repo->nomeOuChaveEmUso($this->ana, 'Zeladoria', 'zeladoria', $id), 'Ele mesmo não conta (edição).');
+        $this->assertFalse($this->repo->nomeOuChaveEmUso($this->beto, 'Zeladoria', 'zeladoria'), 'Outro gerente pode ter o mesmo nome.');
     }
 
-    public function testBancoRejeitaCorInvalidaChaveInvalidaEChaveRepetida(): void
+    public function testBancoRejeitaCorInvalidaChaveInvalidaEChaveRepetidaDoMesmoGerente(): void
     {
         foreach ([
-            "INSERT INTO tipos_aviso (condominio_id, chave, nome, cor) VALUES ({$this->a}, 'ok', 'Ok', 'vermelho')",
-            "INSERT INTO tipos_aviso (condominio_id, chave, nome) VALUES ({$this->a}, 'Com Espaço', 'X')",
-            "INSERT INTO tipos_aviso (condominio_id, chave, nome, sistema) VALUES ({$this->a}, 'x', 'X', true)",
+            "INSERT INTO tipos_aviso (usuario_id, chave, nome, cor) VALUES ({$this->ana}, 'ok', 'Ok', 'vermelho')",
+            "INSERT INTO tipos_aviso (usuario_id, chave, nome) VALUES ({$this->ana}, 'Com Espaço', 'X')",
+            "INSERT INTO tipos_aviso (usuario_id, chave, nome, sistema) VALUES ({$this->ana}, 'x', 'X', true)",
         ] as $sql) {
             try {
                 $this->pdo->exec($sql);
@@ -110,36 +143,73 @@ final class TipoAvisoRepositoryTest extends AppHttpTestCase
             }
         }
 
-        $this->repo->criar([$this->a], $this->a, 'repetida', 'Repetida', '#112233', false);
-        $this->assertNull($this->tentarCriar($this->a, 'repetida'), 'Mesma chave no mesmo condomínio.');
-        $this->assertNotNull($this->tentarCriar($this->b, 'repetida'), 'Mesma chave em outro condomínio é permitida.');
+        $this->repo->criar($this->ana, 'repetida', 'Repetida', '#112233', false);
+        $this->assertNull($this->tentarCriar($this->ana, 'repetida'), 'Mesma chave para o mesmo gerente.');
+        $this->assertNotNull($this->tentarCriar($this->beto, 'repetida'), 'Mesma chave para outro gerente é permitida.');
     }
 
-    private function tentarCriar(int $condominio, string $chave): ?int
+    private function tentarCriar(int $usuario, string $chave): ?int
     {
         try {
-            return $this->repo->criar([$condominio], $condominio, $chave, 'Nome ' . $condominio, '#112233', false);
+            return $this->repo->criar($usuario, $chave, 'Nome ' . $usuario, '#112233', false);
         } catch (PDOException) {
             return null;
         }
     }
 
-    public function testGatilhoImpedeAvisoComTipoDeOutroCondominio(): void
+    public function testGatilhoImpedeAvisoComTipoDeGerenteNaoVinculadoAoCondominio(): void
     {
-        $this->repo->criar([$this->a], $this->a, 'so-do-alfa', 'Só do Alfa', '#112233', false);
+        $outraCondominio = $this->criarCondominio('Beta');
+        $this->vincular($this->beto, $outraCondominio);
+        $tipoDoBeto = $this->repo->criar($this->beto, 'do-beto', 'Do Beto', '#112233', false);
 
-        $this->aviso($this->a, 'so-do-alfa');
-        $this->aviso($this->b, 'urgente');
+        $this->aviso($outraCondominio, $tipoDoBeto);
+        $this->aviso($this->cond, $this->tipoDeFabrica('urgente'));
         $this->expectException(PDOException::class);
-        $this->aviso($this->b, 'so-do-alfa');
+        $this->pdo->exec("DELETE FROM usuario_condominio WHERE usuario_id = {$this->beto} AND condominio_id = {$this->cond}");
+        $this->aviso($this->cond, $tipoDoBeto);
     }
 
-    public function testGatilhoImpedeTrocarOAvisoDeCondominioLevandoTipoProprio(): void
+    public function testGatilhoImpedeTrocarOAvisoDeCondominioLevandoTipoDeGerenteDeLa(): void
     {
-        $this->repo->criar([$this->a], $this->a, 'so-do-alfa', 'Só do Alfa', '#112233', false);
-        $this->aviso($this->a, 'so-do-alfa');
+        $outra = $this->criarCondominio('Beta');
+        $caio = $this->criarUsuario('caio@exemplo.com.br');
+        $this->vincular($caio, $outra);
+        $tipoDoCaio = $this->repo->criar($caio, 'do-caio', 'Do Caio', '#112233', false);
+        $this->aviso($outra, $tipoDoCaio);
 
         $this->expectException(PDOException::class);
-        $this->pdo->exec("UPDATE avisos SET condominio_id = {$this->b} WHERE tipo = 'so-do-alfa'");
+        $this->pdo->exec("UPDATE avisos SET condominio_id = {$this->cond} WHERE tipo_id = {$tipoDoCaio}");
+    }
+
+    public function testApagarOGerenteDeixaOTipoSemDonoENaoApagaOsAvisos(): void
+    {
+        $id = $this->repo->criar($this->ana, 'meu', 'Meu', '#112233', false);
+        $this->aviso($this->cond, $id);
+
+        $this->pdo->exec("DELETE FROM usuarios WHERE id = {$this->ana}");
+
+        $this->assertSame(1, $this->contar('avisos'));
+        $this->assertNull($this->pdo->query("SELECT usuario_id FROM tipos_aviso WHERE id = {$id}")->fetchColumn() ?: null, 'Sem dono, mas o aviso continua com a cor e o nome do tipo.');
+    }
+
+    public function testParaCoresInclueOsDoGerenteEOsUsadosPelosAvisosDoCondominioMasNaoOsDeFora(): void
+    {
+        $meu = $this->repo->criar($this->ana, 'meu', 'Meu', '#112233', false);
+        $doBeto = $this->repo->criar($this->beto, 'do-beto', 'Do Beto', '#445566', false);
+        $naoUsadoDoBeto = $this->repo->criar($this->beto, 'nao-usado', 'Não usado', '#778899', false);
+        $this->aviso($this->cond, $doBeto);
+
+        $ids = array_column($this->repo->paraCores($this->ana, [$this->cond], $this->cond), 'id');
+
+        $this->assertContains($meu, $ids);
+        $this->assertContains($doBeto, $ids, 'Aviso compartilhado do condomínio: a etiqueta dele precisa de cor.');
+        $this->assertNotContains($naoUsadoDoBeto, $ids, 'Tipo do outro gerente que nenhum aviso usa não vaza.');
+        $this->assertNotContains($doBeto, array_column($this->repo->paraCores($this->ana, [], $this->cond), 'id'), 'Condomínio fora dos permitidos: só os dele.');
+    }
+
+    private function contarMatrizes(): int
+    {
+        return (int) $this->pdo->query('SELECT count(*) FROM tipos_aviso WHERE sistema')->fetchColumn();
     }
 }

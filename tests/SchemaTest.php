@@ -54,8 +54,8 @@ final class SchemaTest extends DatabaseTestCase
             'ini' => '2026-01-01 00:00:00+00', 'fim' => '2026-01-02 00:00:00+00',
         ], $extra);
         $stmt = $this->pdo->prepare(
-            'INSERT INTO avisos (condominio_id, titulo, tipo, midia, midia_tipo, inicio_em, fim_em)
-             VALUES (:c, :t, :tipo, :midia, :midia_tipo, :ini, :fim) RETURNING id'
+            'INSERT INTO avisos (condominio_id, titulo, tipo_id, midia, midia_tipo, inicio_em, fim_em)
+             VALUES (:c, :t, (SELECT id FROM tipos_aviso WHERE sistema AND chave = :tipo), :midia, :midia_tipo, :ini, :fim) RETURNING id'
         );
         $stmt->execute($dados);
 

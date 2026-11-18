@@ -8,7 +8,11 @@ use App\Repositories\ModeloAvisoRepository;
 use App\Support\NaoEncontradoException;
 use App\Support\Validator;
 
-/** Modelos de aviso do condomínio: os do sistema (falta de água, elevador, dedetização, assembleia) e os do gerente. */
+/**
+ * Modelos de aviso de cada gerente. Os quatro de fábrica (falta de água, elevador, dedetização, assembleia) são
+ * copiados para o gerente na primeira vez e depois são dele: ele edita e apaga. O modelo de um gerente nunca
+ * aparece para outro.
+ */
 final class ModeloAvisoService
 {
     public const NOME_MAX = 60;
@@ -19,112 +23,92 @@ final class ModeloAvisoService
     ) {
     }
 
-    /**
-     * @param list<int> $permitidos
-     * @return list<array<string, mixed>>
-     */
-    public function listar(array $permitidos, int $condominioId): array
+    /** @return list<array<string, mixed>> */
+    public function listar(int $usuarioId): array
     {
-        $this->exigirPermitido($permitidos, $condominioId);
-
-        return $this->modelos->listar($permitidos, $condominioId);
+        return $this->modelos->listar($usuarioId);
     }
 
     /**
-     * Modelo pronto para preencher o formulário de um aviso novo. Se o tipo sugerido não existe mais neste
-     * condomínio, o aviso começa como "comum".
+     * Modelo pronto para preencher o formulário de um aviso novo. Se o tipo sugerido não existe mais para este
+     * gerente (ele apagou), o aviso começa com o primeiro tipo que ele tiver.
      *
-     * @param list<int> $permitidos
      * @return array<string, mixed>
-     * @throws NaoEncontradoException modelo inexistente ou de outro condomínio
+     * @throws NaoEncontradoException modelo inexistente ou de outro gerente
      */
-    public function paraUsar(array $permitidos, int $condominioId, int $id): array
+    public function paraUsar(int $usuarioId, int $id): array
     {
-        $this->exigirPermitido($permitidos, $condominioId);
-        $modelo = $this->modelos->utilizavelPorId($permitidos, $condominioId, $id) ?? throw new NaoEncontradoException();
-        if ($this->tipos->resolver($permitidos, $condominioId, $modelo['tipo']) === null) {
-            $modelo['tipo'] = 'comum';
+        $modelo = $this->buscarProprio($usuarioId, $id);
+        if ($this->tipos->resolver($usuarioId, $modelo['tipo']) === null) {
+            $modelo['tipo'] = $this->tipos->listar($usuarioId)[0]['chave'] ?? 'comum';
         }
 
         return $modelo;
     }
 
     /**
-     * @param list<int> $permitidos
      * @return array<string, mixed>
-     * @throws NaoEncontradoException modelo do sistema, inexistente ou de outro condomínio
+     * @throws NaoEncontradoException modelo inexistente ou de outro gerente
      */
-    public function buscarProprio(array $permitidos, int $condominioId, int $id): array
+    public function buscarProprio(int $usuarioId, int $id): array
     {
-        $this->exigirPermitido($permitidos, $condominioId);
-
-        return $this->modelos->proprioPorId($permitidos, $condominioId, $id) ?? throw new NaoEncontradoException();
+        return $this->modelos->porId($usuarioId, $id) ?? throw new NaoEncontradoException();
     }
 
     /**
-     * @param list<int>            $permitidos
      * @param array<string, mixed> $dados nome, titulo, corpo, tipo
      * @throws ValidacaoException
      */
-    public function criar(array $permitidos, int $condominioId, array $dados): int
+    public function criar(int $usuarioId, array $dados): int
     {
-        $this->exigirPermitido($permitidos, $condominioId);
-        $v = $this->validar($permitidos, $condominioId, $dados);
+        $v = $this->validar($usuarioId, $dados);
 
-        return $this->modelos->criar($permitidos, $condominioId, $v['nome'], $v['titulo'], $v['corpo'], $v['tipo']) ?? throw new NaoEncontradoException();
+        return $this->modelos->criar($usuarioId, $v['nome'], $v['titulo'], $v['corpo'], $v['tipo']);
     }
 
     /**
      * Guarda um aviso já validado como modelo ("salvar como modelo" no formulário). O nome é o título; se já
-     * existir, vira "Título (2)", "(3)"... Nunca falha o aviso por causa disso: se não der, simplesmente não grava.
-     *
-     * @param list<int> $permitidos
+     * existir, vira "Título (2)", "(3)"...
      */
-    public function criarDoAviso(array $permitidos, int $condominioId, string $titulo, string $corpo, string $tipo): void
+    public function criarDoAviso(int $usuarioId, string $titulo, string $corpo, string $tipo): void
     {
-        $this->exigirPermitido($permitidos, $condominioId);
         $base = mb_substr($titulo, 0, self::NOME_MAX);
         $nome = $base;
-        for ($n = 2; $this->modelos->nomeEmUso($condominioId, $nome) && $n < 50; $n++) {
+        for ($n = 2; $this->modelos->nomeEmUso($usuarioId, $nome) && $n < 50; $n++) {
             $nome = mb_substr($base, 0, self::NOME_MAX - strlen(" ({$n})")) . " ({$n})";
         }
-        if (!$this->modelos->nomeEmUso($condominioId, $nome)) {
-            $this->modelos->criar($permitidos, $condominioId, $nome, $titulo, $corpo, $tipo);
+        if (!$this->modelos->nomeEmUso($usuarioId, $nome)) {
+            $this->modelos->criar($usuarioId, $nome, $titulo, $corpo, $tipo);
         }
     }
 
     /**
-     * @param list<int>            $permitidos
      * @param array<string, mixed> $dados
      * @throws ValidacaoException
      * @throws NaoEncontradoException
      */
-    public function atualizar(array $permitidos, int $condominioId, int $id, array $dados): void
+    public function atualizar(int $usuarioId, int $id, array $dados): void
     {
-        $this->buscarProprio($permitidos, $condominioId, $id);
-        $v = $this->validar($permitidos, $condominioId, $dados, $id);
+        $this->buscarProprio($usuarioId, $id);
+        $v = $this->validar($usuarioId, $dados, $id);
 
-        $this->modelos->atualizar($permitidos, $condominioId, $id, $v['nome'], $v['titulo'], $v['corpo'], $v['tipo']) || throw new NaoEncontradoException();
+        $this->modelos->atualizar($usuarioId, $id, $v['nome'], $v['titulo'], $v['corpo'], $v['tipo']) || throw new NaoEncontradoException();
+    }
+
+    /** @throws NaoEncontradoException */
+    public function excluir(int $usuarioId, int $id): void
+    {
+        $this->buscarProprio($usuarioId, $id);
+
+        $this->modelos->excluir($usuarioId, $id) || throw new NaoEncontradoException();
     }
 
     /**
-     * @param list<int> $permitidos
-     * @throws NaoEncontradoException
-     */
-    public function excluir(array $permitidos, int $condominioId, int $id): void
-    {
-        $this->buscarProprio($permitidos, $condominioId, $id);
-
-        $this->modelos->excluir($permitidos, $condominioId, $id) || throw new NaoEncontradoException();
-    }
-
-    /**
-     * @param list<int>            $permitidos
      * @param array<string, mixed> $dados
      * @return array{nome: string, titulo: string, corpo: string, tipo: string}
      * @throws ValidacaoException
      */
-    private function validar(array $permitidos, int $condominioId, array $dados, ?int $exceto = null): array
+    private function validar(int $usuarioId, array $dados, ?int $exceto = null): array
     {
         $validador = new Validator($dados, [
             'nome' => 'required|max:' . self::NOME_MAX,
@@ -135,10 +119,10 @@ final class ModeloAvisoService
         $v = $validador->valores();
 
         $chave = is_string($dados['tipo'] ?? null) ? $dados['tipo'] : '';
-        if ($this->tipos->resolver($permitidos, $condominioId, $chave) === null) {
+        if ($this->tipos->resolver($usuarioId, $chave) === null) {
             $erros['tipo'] = 'Escolha um tipo válido.';
         }
-        if (!isset($erros['nome']) && $this->modelos->nomeEmUso($condominioId, $v['nome'], $exceto)) {
+        if (!isset($erros['nome']) && $this->modelos->nomeEmUso($usuarioId, $v['nome'], $exceto)) {
             $erros['nome'] = 'Já existe um modelo com esse nome.';
         }
         if ($erros !== []) {
@@ -146,13 +130,5 @@ final class ModeloAvisoService
         }
 
         return ['nome' => $v['nome'], 'titulo' => $v['titulo'], 'corpo' => $v['corpo'], 'tipo' => $chave];
-    }
-
-    /** @param list<int> $permitidos */
-    private function exigirPermitido(array $permitidos, int $condominioId): void
-    {
-        if (!in_array($condominioId, $permitidos, true)) {
-            throw new NaoEncontradoException();
-        }
     }
 }
