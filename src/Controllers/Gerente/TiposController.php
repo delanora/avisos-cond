@@ -132,6 +132,16 @@ final class TiposController
         ]);
     }
 
+    /** Folha de estilo só com as cores dos tipos do gerente logado (telas sem condomínio, como /gerente/tipos). @param array<string, string> $vars */
+    public function cssProprio(Request $request, array $vars): Response
+    {
+        return new Response(200, TipoAvisoService::css($this->tipos->listar($this->usuarioId($request))), [
+            'Content-Type' => 'text/css; charset=utf-8',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-cache',
+        ]);
+    }
+
     /** @return array<string, mixed> */
     private function valoresEnviados(Request $request): array
     {

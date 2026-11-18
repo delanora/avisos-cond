@@ -709,6 +709,25 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString("href=\"{$this->base()}/tipos.css\"", $this->get($this->base() . '/avisos')->body);
     }
 
+    public function testPaginaDeTiposUsaACorDeCadaTipoNasEtiquetas(): void
+    {
+        $this->entrar();
+        $this->post('/gerente/tipos', ['nome' => 'Zeladoria', 'cor' => '#336699']);
+        $zel = (int) $this->tipoPorChave('zeladoria')['id'];
+        $urgente = (int) $this->tipoPorChave('urgente')['id'];
+
+        $pagina = $this->get('/gerente/tipos')->body;
+        $css = $this->get('/gerente/tipos.css');
+
+        $this->assertStringContainsString('<link rel="stylesheet" href="/gerente/tipos.css">', $pagina, 'A página de tipos carrega as cores.');
+        $this->assertStringContainsString("etiqueta-tipo-t{$zel}\">Zeladoria<", $pagina);
+        $this->assertSame(200, $css->status);
+        $this->assertStringStartsWith('text/css', $css->headers['Content-Type']);
+        $this->assertStringContainsString(".etiqueta-tipo-t{$zel} { color: #FFFFFF; background: #336699; }", $css->body);
+        $this->assertStringContainsString(".etiqueta-tipo-t{$urgente} { color: #FFFFFF; background: #B42318; }", $css->body);
+        $this->assertStringContainsString('<link rel="stylesheet" href="/gerente/tipos.css">', $this->get('/gerente/modelos')->body);
+    }
+
     public function testEtiquetaDoTipoPropioNaListaDeAvisosUsaONomeEACor(): void
     {
         $this->entrar();

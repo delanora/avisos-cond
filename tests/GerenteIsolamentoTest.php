@@ -212,6 +212,7 @@ final class GerenteIsolamentoTest extends AppHttpTestCase
             $this->assertSame(200, $r->status, $caminho);
             $this->assertSemVazamento($r->body, $caminho);
         }
+        $this->assertSemVazamento($this->get('/gerente/tipos.css')->body, '/gerente/tipos.css');
 
         // Não pode ser escolhido num aviso do A, nem pela chave nem pelo id.
         $r = $this->post("/gerente/condominios/{$this->condA}/avisos", ['tipo' => 'tipo-secreto-beta', 'titulo' => 'Tentativa', 'corpo' => 'x', 'inicio_em' => '2026-11-20T08:00', 'fim_em' => '2026-11-20T12:00', 'ativo' => '1']);

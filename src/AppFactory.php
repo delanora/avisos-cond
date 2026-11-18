@@ -229,6 +229,8 @@ final class AppFactory
                 $r->addRoute('POST', "/gerente/{$recurso}/{id:\d+}/excluir", $gEscrita([$controller, 'excluir']));
             }
 
+            $r->addRoute('GET', '/gerente/tipos.css', $gLeitura([$gerenteTipos, 'cssProprio']));
+
             $c = '/gerente/condominios/{cid:\d+}';
             $r->addRoute('GET', "{$c}/avisos", $gLeitura([$gerenteAvisos, 'lista']));
             $r->addRoute('GET', "{$c}/avisos/novo", $gLeitura([$gerenteAvisos, 'novo']));
