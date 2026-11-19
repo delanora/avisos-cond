@@ -72,4 +72,11 @@ final class EstilosTest extends TestCase
         $this->assertMatchesRegularExpression('/\.menu-toggle:checked ~ \.topo-painel\s*\{[^}]*grid-template-rows:\s*1fr/', $this->css);
         $this->assertMatchesRegularExpression('/\.seletor\s*\{[^}]*order:\s*2[^}]*flex:\s*1 1 0/', $this->css, 'O condomínio ocupa o espaço da barra, ao lado do ícone.');
     }
+
+    public function testBotoesDoTopoNoCelularNaoQuebramELinhaEncurtaRotulos(): void
+    {
+        $this->assertMatchesRegularExpression('/\.pagina-topo > \.acoes-linha\s*\{[^}]*flex-wrap:\s*nowrap/', $this->css);
+        $this->assertMatchesRegularExpression('/max-width:\s*460px\)\s*\{[^@]*\.acoes-linha \.rotulo-longo\s*\{\s*display:\s*none[^@]*\.rotulo-curto\s*\{\s*display:\s*inline/s', $this->css);
+        $this->assertMatchesRegularExpression('/^\.rotulo-curto\s*\{\s*display:\s*none/m', $this->css, 'Fora do celular só o rótulo longo aparece.');
+    }
 }

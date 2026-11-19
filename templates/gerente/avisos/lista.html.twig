@@ -9,9 +9,9 @@
             <h1>Avisos</h1>
             <p>O que aparece na TV do {{ condominio.nome }}.</p>
         </div>
-        <div class="acoes sem-margem">
+        <div class="acoes sem-margem acoes-linha">
             <a class="botao botao-secundario" href="/gerente/modelos">{{ ui.icone('aviso', 18) }}Modelos</a>
-            <a class="botao botao-secundario" href="/gerente/tipos">{{ ui.icone('paleta', 18) }}Tipos de aviso</a>
+            <a class="botao botao-secundario" href="/gerente/tipos">{{ ui.icone('tag', 18) }}<span class="rotulo-longo">Tipos de aviso</span><span class="rotulo-curto">Tipos</span></a>
             <a class="botao" href="/gerente/condominios/{{ condominio.id }}/avisos/novo">{{ ui.icone('plus', 18) }}Novo aviso</a>
         </div>
     </div>

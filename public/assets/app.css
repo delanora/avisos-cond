@@ -625,3 +625,16 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 @media (prefers-reduced-motion: reduce) {
     .tipo-bloco, .tipo-select, .tipo-botao, .tipo-novo, .tipo-ajuda { transition: none; }
 }
+
+/* Botões do topo de uma página: no celular ficam sempre numa linha só; se não couber, os rótulos longos encurtam ("Tipos de aviso" → "Tipos"). */
+.rotulo-curto { display: none; }
+@media (max-width: 768px) {
+    .pagina-topo > .acoes-linha { flex: 1 0 100%; flex-wrap: nowrap; gap: 0.5rem; }
+    .acoes-linha .botao { flex: 1 1 auto; justify-content: center; min-width: 0; padding-left: 0.7rem; padding-right: 0.7rem; white-space: nowrap; }
+}
+@media (max-width: 460px) {
+    .acoes-linha { gap: 0.4rem; }
+    .acoes-linha .botao { padding-left: 0.5rem; padding-right: 0.5rem; gap: 0.35rem; }
+    .acoes-linha .rotulo-longo { display: none; }
+    .acoes-linha .rotulo-curto { display: inline; }
+}

@@ -501,6 +501,18 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertSame(404, $this->get($this->base() . "/avisos/{$comMidia}/midia")->status);
     }
 
+    public function testBotoesDaListaDeAvisosFicamNumaLinhaEATagIdentificaOsTipos(): void
+    {
+        $this->entrar();
+
+        $corpo = $this->get($this->base() . '/avisos')->body;
+
+        $this->assertStringContainsString('acoes sem-margem acoes-linha', $corpo, 'Os botões do topo ficam numa linha só no celular.');
+        $this->assertStringContainsString('<span class="rotulo-longo">Tipos de aviso</span><span class="rotulo-curto">Tipos</span>', $corpo, 'Rótulo encurta quando não cabe.');
+        $this->assertMatchesRegularExpression('#href="/gerente/tipos">\s*<svg[^>]*>.*?M20\.59 13\.41l-7\.17 7\.17#s', $corpo, 'O ícone de Tipos de aviso é uma tag.');
+        $this->assertStringNotContainsString('M12 22a10 10 0 1 1 10-10c0 3-2 4-4 4h-2', substr($corpo, (int) strpos($corpo, 'href="/gerente/tipos"'), 400), 'Não é mais a paleta.');
+    }
+
     // ---------- Menu hambúrguer (celular) ----------
 
     public function testBarraTemHamburguerSemJavaScriptEOCondominioFicaForaDoMenu(): void
