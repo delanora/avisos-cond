@@ -16,6 +16,8 @@
     {% set menu = menu is defined ? menu : '' %}
     <header class="topo">
         <div class="topo-interno">
+            {# Celular: o menu e o perfil ficam atrás do hambúrguer (caixa escondida + CSS, sem JavaScript). #}
+            <input type="checkbox" id="menu-toggle" class="menu-toggle">
             <a class="topo-marca" href="/" aria-label="{{ app_nome }} - página inicial">{% include 'partials/logo.html.twig' %}</a>
             {% if usuario.papel == 'gerente' and condominio is defined and condominio %}
                 {# Condomínio atual; com mais de um, vira um menu para trocar (sem JavaScript). #}
@@ -30,6 +32,8 @@
                     {% endif %}
                 </details>
             {% endif %}
+            <label for="menu-toggle" class="menu-botao" aria-label="Abrir ou fechar o menu"><span class="abre">{{ ui.icone('hamburguer', 22) }}</span><span class="fecha">{{ ui.icone('fechar', 22) }}</span></label>
+            <div class="topo-painel"><div class="topo-painel-conteudo">
             <nav class="menu" aria-label="Menu principal">
                 {% if usuario.papel == 'gerente' %}
                     <a href="/gerente"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('painel', 18) }}Condomínios</a>
@@ -56,6 +60,7 @@
                     <button type="submit" class="botao-secundario botao-sutil">{{ ui.icone('sair', 16) }}Sair</button>
                 </form>
             </div>
+            </div></div>
         </div>
     </header>
     <main class="container">

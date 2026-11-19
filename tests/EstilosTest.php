@@ -63,4 +63,13 @@ final class EstilosTest extends TestCase
         $this->assertMatchesRegularExpression('/\.tipo-toggle:checked ~ \.tipo-botao\s*\{[^}]*justify-self:\s*stretch/', $this->css, 'Aberto, o botão ocupa a linha toda (cabeçalho do cartão); fechado, volta a ser pequeno.');
         $this->assertMatchesRegularExpression('/\.tipo-bloco \+ \.opcao-simples\s*\{[^}]*margin-top:\s*1\.5rem/', $this->css, 'Espaço entre o cartão e "Salvar como modelo".');
     }
+
+    public function testCelularUsaMenuHamburguerComCondominioSempreVisivel(): void
+    {
+        $this->assertMatchesRegularExpression('/\.menu-botao\s*\{[^}]*display:\s*none/', $this->css, 'No desktop o hambúrguer não aparece.');
+        $this->assertMatchesRegularExpression('/\.topo-painel,\s*\.topo-painel-conteudo\s*\{\s*display:\s*contents/', $this->css, 'No desktop menu e perfil ficam na barra.');
+        $this->assertMatchesRegularExpression('/max-width:\s*768px\)\s*\{[^@]*\.menu-botao\s*\{[^}]*display:\s*inline-flex/s', $this->css);
+        $this->assertMatchesRegularExpression('/\.menu-toggle:checked ~ \.topo-painel\s*\{[^}]*grid-template-rows:\s*1fr/', $this->css);
+        $this->assertMatchesRegularExpression('/\.seletor\s*\{[^}]*order:\s*2[^}]*flex:\s*1 1 0/', $this->css, 'O condomínio ocupa o espaço da barra, ao lado do ícone.');
+    }
 }

@@ -501,6 +501,40 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertSame(404, $this->get($this->base() . "/avisos/{$comMidia}/midia")->status);
     }
 
+    // ---------- Menu hambúrguer (celular) ----------
+
+    public function testBarraTemHamburguerSemJavaScriptEOCondominioFicaForaDoMenu(): void
+    {
+        $this->entrar('Residencial Sol');
+
+        $corpo = $this->get($this->base() . '/avisos')->body;
+
+        $this->assertStringContainsString('<input type="checkbox" id="menu-toggle" class="menu-toggle">', $corpo);
+        $this->assertStringContainsString('<label for="menu-toggle" class="menu-botao"', $corpo);
+        $posToggle = strpos($corpo, 'id="menu-toggle"');
+        $posCondominio = strpos($corpo, '<details class="seletor">');
+        $posPainel = strpos($corpo, '<div class="topo-painel">');
+        $this->assertLessThan($posPainel, $posCondominio, 'O condomínio selecionado fica na barra, antes (fora) do painel do menu.');
+        $this->assertLessThan($posCondominio, $posToggle);
+        $painel = substr($corpo, $posPainel, strpos($corpo, '</header>') - $posPainel);
+        foreach (['Condomínios', 'Avisos', 'Aparência', 'Sair', 'Gerente'] as $texto) {
+            $this->assertStringContainsString($texto, $painel, "{$texto} fica dentro do painel do hambúrguer.");
+        }
+        $this->assertStringNotContainsString('Residencial Sol', $painel, 'O nome do condomínio não depende de abrir o menu.');
+        $this->assertStringNotContainsString('<script', $corpo);
+    }
+
+    public function testHamburguerTambemExisteNaAreaDoAdministrador(): void
+    {
+        $this->logarComoAdmin();
+
+        $corpo = $this->get('/admin')->body;
+
+        $this->assertStringContainsString('class="menu-botao"', $corpo);
+        $this->assertStringContainsString('<div class="topo-painel">', $corpo);
+        $this->assertStringNotContainsString('<details class="seletor">', $corpo, 'Admin não tem condomínio selecionado.');
+    }
+
     // ---------- Tipos de aviso (do gerente: nome, cor, fixo) ----------
 
     private function tipoPorChave(string $chave): array|false

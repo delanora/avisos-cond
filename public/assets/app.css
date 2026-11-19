@@ -109,6 +109,21 @@ a:hover { color: var(--marca-800); }
 .perfil-papel { font-size: 0.75rem; color: var(--suave); }
 .perfil form { margin: 0; }
 
+/* Hambúrguer (só no celular) e painel do menu: no desktop o painel some da estrutura e menu/perfil ficam na barra. */
+.menu-toggle { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.menu-botao {
+    display: none; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0; padding: 0;
+    color: var(--tinta); cursor: pointer; background: var(--superficie); border: 1px solid var(--linha-forte); border-radius: 10px;
+}
+.menu-botao:hover { border-color: var(--marca); background: var(--marca-50); }
+.menu-toggle:focus-visible ~ .menu-botao { outline: 2px solid var(--marca); outline-offset: 2px; }
+.menu-botao .abre { display: inline-flex; }
+.menu-botao .fecha { display: none; }
+.menu-toggle:checked ~ .menu-botao .abre { display: none; }
+.menu-toggle:checked ~ .menu-botao .fecha { display: inline-flex; }
+.topo-painel, .topo-painel-conteudo { display: contents; }
+@media (prefers-reduced-motion: reduce) { .topo-painel { transition: none; } }
+
 /* ---------- Avatares ---------- */
 .avatar {
     display: inline-flex;
@@ -416,11 +431,21 @@ td.acoes-celula form { display: inline; margin: 0; }
     h1 { font-size: 1.5rem; }
     .boas-vindas h1 { font-size: 1.5rem; }
     .container { padding: 1.5rem 1rem 3rem; }
-    .topo-interno { flex-wrap: wrap; padding: 0.6rem 1rem 0; min-height: 0; }
-    .topo-marca { order: 1; }
-    .perfil { order: 2; }
-    .perfil-dados { display: none; }
-    .menu { order: 3; flex: 1 0 100%; margin: 0 -0.25rem; padding-bottom: 0.6rem; overflow-x: auto; }
+    /* Barra: logo, condomínio (sempre à mostra) e hambúrguer; o menu e o perfil descem num painel. */
+    .topo-interno { flex-wrap: wrap; gap: 0 0.75rem; padding: 0.6rem 1rem; min-height: 0; }
+    /* Só o ícone da marca: o espaço da barra é do nome do condomínio. */
+    .topo-marca { order: 1; width: 32px; overflow: hidden; }
+    .topo-marca .logo-marca { flex: none; width: 170px; max-width: none; }
+    .menu-botao { order: 3; display: inline-flex; margin-left: auto; }
+    .topo-painel { order: 4; flex: 0 0 100%; display: grid; grid-template-rows: 0fr; transition: grid-template-rows 280ms ease; }
+    .topo-painel-conteudo { display: block; min-height: 0; overflow: hidden; }
+    .menu-toggle:checked ~ .topo-painel { grid-template-rows: 1fr; }
+    .menu { flex-direction: column; gap: 0.2rem; margin: 0.6rem 0 0; padding: 0; }
+    .menu a { padding: 0.8rem 0.9rem; font-size: 1rem; }
+    .perfil { margin: 0.6rem 0 0; padding: 0.8rem 0 0.2rem; border-top: 1px solid var(--linha); }
+    .perfil-dados { display: flex; flex: 1; text-align: left; order: 2; }
+    .perfil .avatar { order: 1; }
+    .perfil form { order: 3; }
     .boas-vindas { padding: 1.5rem; }
     .boas-vindas-arte { display: none; }
     .numeros { grid-auto-flow: row; grid-template-columns: 1fr; }
@@ -521,8 +546,10 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 }
 
 @media (max-width: 768px) {
-    .seletor { order: 4; flex: 1 0 100%; }
-    .seletor summary { max-width: 100%; }
+    /* Condomínio selecionado sempre à mostra na barra, ao lado do logo (nome longo termina em reticências). */
+    .seletor { order: 2; flex: 1 1 0; min-width: 0; }
+    .seletor summary { display: flex; max-width: 100%; }
+    .seletor summary span { flex: 1; min-width: 0; }
     .grade-cartoes { grid-template-columns: 1fr; }
 }
 
