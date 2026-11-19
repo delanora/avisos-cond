@@ -60,6 +60,7 @@ final class EstilosTest extends TestCase
         $this->assertMatchesRegularExpression('/\.tipo-bloco\s*\{[^}]*transition:\s*grid-template-columns/', $this->css, 'O dropdown encolhe aos poucos.');
         $this->assertMatchesRegularExpression('/\.tipo-toggle:checked ~ \.tipo-novo\s*\{[^}]*grid-template-rows:\s*1fr/', $this->css);
         $this->assertMatchesRegularExpression('/prefers-reduced-motion:\s*reduce\)\s*\{[^}]*\.tipo-novo[^}]*transition:\s*none/s', $this->css);
+        $this->assertMatchesRegularExpression('/\.tipo-toggle:checked ~ \.tipo-botao\s*\{[^}]*justify-self:\s*stretch/', $this->css, 'Aberto, o botão ocupa a linha toda (cabeçalho do cartão); fechado, volta a ser pequeno.');
         $this->assertMatchesRegularExpression('/\.tipo-bloco \+ \.opcao-simples\s*\{[^}]*margin-top:\s*1\.5rem/', $this->css, 'Espaço entre o cartão e "Salvar como modelo".');
     }
 }
