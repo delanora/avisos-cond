@@ -62,7 +62,7 @@
                 <label for="criar-tipo" class="tipo-botao">
                     <span class="mais">{{ ui.icone('plus', 16) }}</span><span class="menos">{{ ui.icone('menos', 16) }}</span>Criar um tipo novo
                 </label>
-                <div class="tipo-novo">
+                <div class="tipo-novo"><div class="tipo-novo-caixa"><div class="tipo-novo-miolo">
                     <p class="secao-ajuda">O tipo é criado ao salvar o aviso e usado nele. Os tipos são só seus (outros gerentes não os veem). Para editar ou apagar, use <a href="/gerente/tipos">Tipos de aviso</a>.</p>
                     <div class="grade-2">
                         <div class="campo{% if erros.novo_tipo_nome is defined %} campo-erro{% endif %}">
@@ -78,7 +78,7 @@
                         </div>
                     </div>
                     <label class="opcao opcao-simples"><input type="checkbox" name="novo_tipo_fixo" value="1"{% if valores.novo_tipo_fixo %} checked{% endif %}> Aviso fixo (sempre à vista na faixa do topo da TV)</label>
-                </div>
+                </div></div></div>
                 <p class="campo-ajuda tipo-ajuda">Tipos <strong>fixos</strong> ficam sempre à vista numa faixa no topo da TV, mostrando só o texto; com vários, a faixa é dividida entre eles. Os demais passam em carrossel, com foto ou vídeo. Os tipos de fábrica já vêm prontos e são seus: você pode editar e apagar.</p>
                 {% if erros.tipo is defined %}<p class="erro-texto tipo-erro">{{ erros.tipo }}</p>{% endif %}
             </div>

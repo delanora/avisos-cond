@@ -53,4 +53,13 @@ final class EstilosTest extends TestCase
     {
         $this->assertStringNotContainsString('gradient(', $this->css, 'Visual plano, sem gradientes (DESIGN.md).');
     }
+
+    public function testCartaoDeCriarTipoAbreComTransicaoSuaveERespeitaMovimentoReduzido(): void
+    {
+        $this->assertMatchesRegularExpression('/\.tipo-novo\s*\{[^}]*grid-template-rows:\s*0fr[^}]*transition:[^}]*grid-template-rows/', $this->css, 'O cartão anima a altura (0fr → 1fr).');
+        $this->assertMatchesRegularExpression('/\.tipo-bloco\s*\{[^}]*transition:\s*grid-template-columns/', $this->css, 'O dropdown encolhe aos poucos.');
+        $this->assertMatchesRegularExpression('/\.tipo-toggle:checked ~ \.tipo-novo\s*\{[^}]*grid-template-rows:\s*1fr/', $this->css);
+        $this->assertMatchesRegularExpression('/prefers-reduced-motion:\s*reduce\)\s*\{[^}]*\.tipo-novo[^}]*transition:\s*none/s', $this->css);
+        $this->assertMatchesRegularExpression('/\.tipo-bloco \+ \.opcao-simples\s*\{[^}]*margin-top:\s*1\.5rem/', $this->css, 'Espaço entre o cartão e "Salvar como modelo".');
+    }
 }

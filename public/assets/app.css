@@ -564,24 +564,37 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 .repete { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.25rem; font-size: 0.8125rem; color: var(--suave); }
 .etiqueta-situacao-fora-do-horario { color: #7A4B06; background: #FDE9C8; }
 
-/* Tipo do aviso: dropdown + botão "Criar um tipo novo" lado a lado; aberto, o cartão toma o lugar do dropdown e o "+" vira "−". */
-.tipo-bloco { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.75rem; align-items: end; margin-top: 1.25rem; }
+/* Tipo do aviso: dropdown + botão "Criar um tipo novo" lado a lado. Aberto, o dropdown encolhe e some, o "+" vira "−" e o
+   cartão desce suavemente (altura 0fr → 1fr, largura da coluna e opacidade animadas; sem JavaScript). */
+.tipo-bloco {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; margin-top: 1.25rem;
+    transition: grid-template-columns 320ms ease;
+}
 .tipo-toggle { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.tipo-select { grid-column: 1; margin: 0; }
+.tipo-select { grid-column: 1; grid-row: 1; margin: 0; min-width: 0; overflow: hidden; white-space: nowrap; transition: opacity 220ms ease; }
 .tipo-botao {
-    grid-column: 2; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 46px; margin: 0; padding: 0 1rem;
+    grid-column: 2; grid-row: 1; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 46px; margin: 0 0 0 0.75rem; padding: 0 1rem;
     font-size: 0.9375rem; font-weight: 600; white-space: nowrap; color: var(--marca-700); cursor: pointer;
     background: var(--superficie); border: 1px solid var(--linha-forte); border-radius: 10px;
-    transition: border-color 160ms ease-out, background-color 160ms ease-out;
+    transition: border-color 160ms ease-out, background-color 160ms ease-out, margin 320ms ease;
 }
 .tipo-botao:hover { border-color: var(--marca); background: var(--marca-50); }
 .tipo-toggle:focus-visible ~ .tipo-botao { outline: 2px solid var(--marca); outline-offset: 2px; }
 .tipo-botao .menos, .tipo-toggle:checked ~ .tipo-botao .mais { display: none; }
 .tipo-toggle:checked ~ .tipo-botao .menos { display: inline-flex; }
-.tipo-novo { display: none; grid-column: 1 / -1; grid-row: 2; margin-top: 0.75rem; padding: 1rem; background: #FBFAF8; border: 1px solid var(--linha); border-radius: var(--raio); }
-.tipo-ajuda, .tipo-erro { grid-column: 1 / -1; }
-/* Aberto: o botão ("−") vai para a primeira linha, o cartão logo abaixo, e o dropdown some (as duas colunas viram uma). */
-.tipo-toggle:checked ~ .tipo-select, .tipo-toggle:checked ~ .tipo-ajuda { display: none; }
-.tipo-toggle:checked ~ .tipo-botao { grid-column: 1 / -1; grid-row: 1; justify-self: start; }
-.tipo-toggle:checked ~ .tipo-novo { display: block; }
+.tipo-novo { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 320ms ease, opacity 260ms ease; }
+.tipo-novo-caixa { min-height: 0; overflow: hidden; }
+.tipo-novo-miolo { margin-top: 0.75rem; padding: 1rem; background: #FBFAF8; border: 1px solid var(--linha); border-radius: var(--raio); }
+.tipo-ajuda, .tipo-erro { grid-column: 1 / -1; grid-row: 3; }
+.tipo-ajuda { max-height: 8rem; overflow: hidden; transition: max-height 320ms ease, opacity 220ms ease, margin 320ms ease; }
+.tipo-toggle:checked ~ .tipo-select { opacity: 0; pointer-events: none; }
+.tipo-bloco:has(.tipo-toggle:checked) { grid-template-columns: minmax(0, 0fr) auto; }
+.tipo-toggle:checked ~ .tipo-botao { margin-left: 0; justify-self: start; }
+.tipo-toggle:checked ~ .tipo-novo { grid-template-rows: 1fr; opacity: 1; }
+.tipo-toggle:checked ~ .tipo-ajuda { max-height: 0; margin: 0; opacity: 0; }
+/* O botão que segue o bloco do tipo ("Salvar como modelo") fica afastado do cartão. */
+.tipo-bloco + .opcao-simples { margin-top: 1.5rem; }
 @media (max-width: 480px) { .tipo-botao { padding: 0 0.75rem; } }
+@media (prefers-reduced-motion: reduce) {
+    .tipo-bloco, .tipo-select, .tipo-botao, .tipo-novo, .tipo-ajuda { transition: none; }
+}
