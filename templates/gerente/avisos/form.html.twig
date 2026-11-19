@@ -82,18 +82,17 @@
 
         <section class="formulario-secao">
             <h2>Repetição (opcional)</h2>
-            <p class="secao-ajuda">Dentro do período acima, o aviso aparece só nos dias e no horário que você escolher (horário de Brasília). Sem nada marcado, ele fica no ar o período todo.</p>
+            <p class="secao-ajuda">Dentro do período acima, o aviso aparece só nos dias e no horário que você escolher (horário de Brasília). Com todos os dias marcados e o dia inteiro (00:00 às 23:59), ele fica no ar o período todo.</p>
             <fieldset class="campo{% if erros.dias is defined %} campo-erro{% endif %}">
                 <legend>Dias da semana</legend>
-                <div class="opcoes opcoes-curtas">
+                <div class="dias-semana">
                     {% for numero, nome in dias_semana %}
                         <label class="opcao"><input type="checkbox" name="dias[]" value="{{ numero }}"{% if numero in valores.dias %} checked{% endif %}><span>{{ nome }}</span></label>
                     {% endfor %}
                 </div>
-                <p class="campo-ajuda">Nenhum dia marcado = todos os dias.</p>
                 {% if erros.dias is defined %}<p class="erro-texto">{{ erros.dias }}</p>{% endif %}
             </fieldset>
-            <div class="grade-2">
+            <div class="horario-linha">
                 <div class="campo">
                     <label for="campo-hora_inicio">Das</label>
                     <input id="campo-hora_inicio" type="time" name="hora_inicio" value="{{ valores.hora_inicio }}">

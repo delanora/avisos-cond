@@ -478,12 +478,19 @@ textarea {
 textarea:hover { border-color: #BDB9AE; }
 textarea:focus { outline: none; border-color: var(--marca); box-shadow: 0 0 0 4px var(--marca-foco); }
 .campo-erro textarea { border-color: var(--perigo); }
-input[type="datetime-local"] {
+input[type="datetime-local"], input[type="time"] {
     display: block; width: 100%; min-height: 46px; padding: 0.6rem 0.85rem; font: inherit; color: var(--tinta);
     background: var(--superficie); border: 1px solid var(--linha-forte); border-radius: 10px;
 }
-input[type="datetime-local"]:focus { outline: none; border-color: var(--marca); box-shadow: 0 0 0 4px var(--marca-foco); }
-.campo-erro input[type="datetime-local"] { border-color: var(--perigo); }
+input[type="datetime-local"]:focus, input[type="time"]:focus { outline: none; border-color: var(--marca); box-shadow: 0 0 0 4px var(--marca-foco); }
+.campo-erro input[type="datetime-local"], .campo-erro input[type="time"] { border-color: var(--perigo); }
+/* Dias da semana: sete botões numa linha só, também no celular. */
+.dias-semana { display: flex; gap: 0.4rem; }
+.dias-semana .opcao { flex: 1 1 0; min-width: 0; justify-content: center; gap: 0.4rem; padding: 0.7rem 0.25rem; }
+@media (max-width: 480px) { .dias-semana .opcao { flex-direction: column; gap: 0.3rem; font-size: 0.8125rem; } }
+/* Horário: duas colunas estreitas, no mesmo desenho dos demais campos. */
+.horario-linha { display: grid; grid-template-columns: repeat(2, minmax(0, 11rem)); gap: 1rem; }
+input[type="time"] { max-width: 11rem; font-variant-numeric: tabular-nums; }
 input[type="file"] {
     display: block; width: 100%; padding: 0.5rem; font: inherit; font-size: 0.9375rem; color: var(--suave);
     background: #FBFAF8; border: 1px dashed var(--linha-forte); border-radius: 10px;

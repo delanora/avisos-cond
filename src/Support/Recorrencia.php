@@ -16,6 +16,11 @@ final class Recorrencia
     public const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     private const FUSO = 'America/Sao_Paulo';
 
+    /** Como o formulário vem preenchido: todos os dias, o dia inteiro (equivale a não restringir nada). */
+    public const TODOS_OS_DIAS = [0, 1, 2, 3, 4, 5, 6];
+    public const DIA_TODO_INICIO = '00:00';
+    public const DIA_TODO_FIM = '23:59';
+
     /** O aviso aparece neste instante? Sem repetição (tudo nulo) = sempre que o período permitir. */
     public static function ativaEm(int $epoch, ?int $dias, ?string $horaInicio, ?string $horaFim): bool
     {

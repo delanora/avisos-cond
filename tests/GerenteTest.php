@@ -762,10 +762,13 @@ final class GerenteTest extends AppHttpTestCase
 
         $this->assertStringContainsString('Repetição (opcional)', $corpo);
         foreach (['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as $i => $dia) {
-            $this->assertStringContainsString("name=\"dias[]\" value=\"{$i}\"><span>{$dia}</span>", $corpo);
+            $this->assertStringContainsString("name=\"dias[]\" value=\"{$i}\" checked><span>{$dia}</span>", $corpo, "{$dia} já vem marcado.");
         }
-        $this->assertStringContainsString('type="time" name="hora_inicio"', $corpo);
-        $this->assertStringContainsString('type="time" name="hora_fim"', $corpo);
+        $this->assertSame(7, substr_count($corpo, 'name="dias[]"'));
+        $this->assertSame(1, substr_count($corpo, 'class="dias-semana"'), 'Os sete dias ficam num só bloco, em uma linha.');
+        $this->assertStringContainsString('type="time" name="hora_inicio" value="00:00"', $corpo);
+        $this->assertStringContainsString('type="time" name="hora_fim" value="23:59"', $corpo);
+        $this->assertStringNotContainsString('Nenhum dia marcado', $corpo);
     }
 
     public function testCriarAvisoComRepeticaoGuardaMostraNaListaEReabreNaEdicao(): void
@@ -808,7 +811,35 @@ final class GerenteTest extends AppHttpTestCase
         $this->criarAviso();
 
         $this->assertSame([null, null, null], array_values($this->pdo->query('SELECT dias_semana, hora_inicio, hora_fim FROM avisos')->fetch(\PDO::FETCH_NUM)));
+        $id = (int) $this->pdo->query('SELECT id FROM avisos')->fetchColumn();
+        $edicao = $this->get($this->base() . "/avisos/{$id}/editar")->body;
+        $this->assertSame(7, substr_count($edicao, ' checked><span>'), 'Sem repetição gravada, a edição mostra todos os dias marcados.');
+        $this->assertStringContainsString('name="hora_inicio" value="00:00"', $edicao);
+        $this->assertStringContainsString('name="hora_fim" value="23:59"', $edicao);
         $this->assertStringNotContainsString('class="repete"', $this->get($this->base() . '/avisos')->body);
+    }
+
+    public function testFormularioPadraoEnviadoComTodosOsDiasEODiaInteiroNaoGravaRepeticao(): void
+    {
+        $this->entrar();
+
+        $this->post($this->base() . '/avisos', $this->aviso(['dias' => ['0', '1', '2', '3', '4', '5', '6'], 'hora_inicio' => '00:00', 'hora_fim' => '23:59']));
+
+        $this->assertSame([null, null, null], array_values($this->pdo->query('SELECT dias_semana, hora_inicio, hora_fim FROM avisos')->fetch(\PDO::FETCH_NUM)));
+        $this->assertStringNotContainsString('class="repete"', $this->get($this->base() . '/avisos')->body);
+    }
+
+    public function testErroNoFormularioMantemOsDiasEOsHorariosDigitadosOuOPadrao(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['titulo' => '', 'dias' => ['2', '5'], 'hora_inicio' => '07:00', 'hora_fim' => '09:00']));
+        $this->assertSame(2, substr_count($r->body, ' checked><span>'), 'Só terça e sexta, como foi enviado.');
+        $this->assertStringContainsString('name="hora_inicio" value="07:00"', $r->body);
+
+        $vazio = $this->post($this->base() . '/avisos', $this->aviso(['titulo' => '', 'dias' => [], 'hora_inicio' => '', 'hora_fim' => '']));
+        $this->assertSame(7, substr_count($vazio->body, ' checked><span>'), 'Nada marcado volta como todos os dias.');
+        $this->assertStringContainsString('name="hora_fim" value="23:59"', $vazio->body);
     }
 
     public function testPreviaAvisaQueOAvisoSeRepete(): void

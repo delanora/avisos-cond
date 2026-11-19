@@ -365,6 +365,17 @@ final class AvisoServiceTest extends BancoMigradoTestCase
         $this->assertSame([null, null, null], [$limpo['dias_semana'], $limpo['hora_inicio'], $limpo['hora_fim']]);
     }
 
+    public function testDiaInteiroComTodosOsDiasEquivaleASemRepeticaoMasUmaJanelaMenorNao(): void
+    {
+        $inteiro = $this->servico()->criar([$this->a], $this->a, $this->dados(['dias' => ['0', '1', '2', '3', '4', '5', '6'], 'hora_inicio' => '00:00', 'hora_fim' => '23:59']), null, $this->usuario);
+        $menor = $this->servico()->criar([$this->a], $this->a, $this->dados(['hora_inicio' => '00:00', 'hora_fim' => '23:00']), null, $this->usuario);
+
+        $a = $this->servico()->buscar([$this->a], $this->a, $inteiro);
+        $b = $this->servico()->buscar([$this->a], $this->a, $menor);
+        $this->assertSame([null, null, null], [$a['dias_semana'], $a['hora_inicio'], $a['hora_fim']]);
+        $this->assertSame([null, '00:00', '23:00'], [$b['dias_semana'], $b['hora_inicio'], $b['hora_fim']]);
+    }
+
     public function testSituacaoForaDoHorarioDentroDoPeriodo(): void
     {
         // 2026-11-17 é terça; 12:00 UTC = 09:00 em Brasília.

@@ -266,6 +266,11 @@ final class AvisoService
             $erros['hora_fim'] = 'O horário final precisa ser depois do inicial (no mesmo dia).';
         }
 
+        // O dia inteiro (00:00 às 23:59, como o formulário vem) é o mesmo que não ter janela: grava nulo.
+        if ($inicio === Recorrencia::DIA_TODO_INICIO && $fim === Recorrencia::DIA_TODO_FIM) {
+            $inicio = $fim = '';
+        }
+
         return [Recorrencia::mascaraDeDias($lista), $inicio === '' ? null : $inicio, $fim === '' ? null : $fim];
     }
 
