@@ -655,13 +655,21 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('name="novo_tipo_nome"', $corpo);
         $this->assertStringContainsString('name="novo_tipo_cor"', $corpo);
         $this->assertStringContainsString('name="novo_tipo_fixo"', $corpo);
+        // Botão "Criar um tipo novo" ao lado do dropdown: caixa escondida + rótulo com + e − (sem JavaScript).
+        $this->assertMatchesRegularExpression('/id="criar-tipo" name="criar_tipo" value="1" class="tipo-toggle">/', $corpo, 'Fechado por padrão.');
+        $this->assertStringContainsString('<label for="criar-tipo" class="tipo-botao">', $corpo);
+        $this->assertStringContainsString('class="mais"', $corpo);
+        $this->assertStringContainsString('class="menos"', $corpo);
+        $this->assertStringContainsString('Criar um tipo novo', $corpo);
+        $this->assertLessThan(strpos($corpo, 'class="tipo-botao"'), strpos($corpo, 'id="campo-tipo"'), 'O dropdown vem antes do botão.');
+        $this->assertStringNotContainsString('<details class="novo-tipo"', $corpo);
     }
 
     public function testCriarAvisoJaCriandoUmTipoNovoNoMesmoFormulario(): void
     {
         $this->entrar();
 
-        $r = $this->post($this->base() . '/avisos', $this->aviso(['tipo' => 'comum', 'novo_tipo_nome' => 'Obra na fachada', 'novo_tipo_cor' => '#c2410c', 'novo_tipo_fixo' => '1']));
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['tipo' => 'comum', 'criar_tipo' => '1', 'novo_tipo_nome' => 'Obra na fachada', 'novo_tipo_cor' => '#c2410c', 'novo_tipo_fixo' => '1']));
 
         $this->assertSame(303, $r->status);
         $t = $this->tipoPorChave('obra-na-fachada');
@@ -670,16 +678,38 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringContainsString('<option value="obra-na-fachada">Obra na fachada (fixo)</option>', $this->get($this->base() . '/avisos/novo')->body);
     }
 
+    public function testCartaoFechadoIgnoraOsCamposDoTipoNovoEUsaODropdown(): void
+    {
+        $this->entrar();
+
+        $this->post($this->base() . '/avisos', $this->aviso(['tipo' => 'manutencao', 'novo_tipo_nome' => 'Digitei e fechei', 'novo_tipo_cor' => '#c2410c']));
+
+        $this->assertSame(5, $this->totalDeTipos(), 'Sem criar_tipo, nada é criado.');
+        $this->assertSame((int) $this->tipoPorChave('manutencao')['id'], (int) $this->pdo->query('SELECT tipo_id FROM avisos')->fetchColumn());
+    }
+
+    public function testCartaoAbertoSemNomeMostraErroENaoCriaNada(): void
+    {
+        $this->entrar();
+
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['criar_tipo' => '1', 'novo_tipo_nome' => '', 'novo_tipo_cor' => '#c2410c']));
+
+        $this->assertSame(422, $r->status);
+        $this->assertStringContainsString('Informe um nome de 2 a 30 caracteres.', $r->body);
+        $this->assertSame(0, $this->contar('avisos'));
+        $this->assertSame(5, $this->totalDeTipos());
+    }
+
     public function testTipoNovoInvalidoNoAvisoNaoCriaNemTipoNemAviso(): void
     {
         $this->entrar();
 
-        $r = $this->post($this->base() . '/avisos', $this->aviso(['novo_tipo_nome' => 'X', 'novo_tipo_cor' => 'azul']));
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['criar_tipo' => '1', 'novo_tipo_nome' => 'X', 'novo_tipo_cor' => 'azul']));
 
         $this->assertSame(422, $r->status);
         $this->assertStringContainsString('Informe um nome de 2 a 30 caracteres.', $r->body);
         $this->assertStringContainsString('Escolha uma cor válida.', $r->body);
-        $this->assertStringContainsString('<details class="novo-tipo" open>', $r->body, 'A seção do tipo novo reabre mostrando os erros.');
+        $this->assertStringContainsString('class="tipo-toggle" checked>', $r->body, 'O cartão do tipo novo reabre mostrando os erros.');
         $this->assertSame(0, $this->contar('avisos'));
         $this->assertSame(5, $this->totalDeTipos());
     }
@@ -688,7 +718,7 @@ final class GerenteTest extends AppHttpTestCase
     {
         $this->entrar();
 
-        $r = $this->post($this->base() . '/avisos', $this->aviso(['titulo' => '', 'novo_tipo_nome' => 'Obra na fachada', 'novo_tipo_cor' => '#c2410c']));
+        $r = $this->post($this->base() . '/avisos', $this->aviso(['titulo' => '', 'criar_tipo' => '1', 'novo_tipo_nome' => 'Obra na fachada', 'novo_tipo_cor' => '#c2410c']));
 
         $this->assertSame(422, $r->status);
         $this->assertSame(5, $this->totalDeTipos(), 'Só cria o tipo quando o aviso é válido.');

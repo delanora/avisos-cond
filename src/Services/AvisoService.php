@@ -163,7 +163,7 @@ final class AvisoService
     /**
      * Valida o formulário. O tipo é uma chave de tipo DO GERENTE (quem está salvando); ou "__atual", ao editar, para
      * manter o tipo que o aviso já tem (que pode ser de outro gerente do mesmo condomínio); ou, se "novo_tipo_nome"
-     * vier preenchido, um tipo novo do gerente (validado aqui e criado só depois de todo o resto estar certo).
+     * vier preenchido com o cartão aberto (criar_tipo), um tipo novo do gerente (validado aqui e criado só depois de todo o resto estar certo).
      *
      * @param array<string, mixed>      $dados
      * @param array<string, mixed>|null $avisoAtual aviso em edição
@@ -181,7 +181,8 @@ final class AvisoService
         $tipoId = null;
         $tipoNovo = null;
         $nomeNovo = is_string($dados['novo_tipo_nome'] ?? null) ? trim($dados['novo_tipo_nome']) : '';
-        if ($nomeNovo !== '') {
+        // O cartão "Criar um tipo novo" só vale se estiver aberto (criar_tipo = 1); fechado, o dropdown manda e o resto é ignorado.
+        if (($dados['criar_tipo'] ?? '') === '1') {
             $dadosNovo = ['nome' => $nomeNovo, 'cor' => $dados['novo_tipo_cor'] ?? '', 'fixo' => $dados['novo_tipo_fixo'] ?? ''];
             try {
                 $this->tipos->validar($usuarioId, $dadosNovo);

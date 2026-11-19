@@ -558,11 +558,30 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 
 /* Tipos de aviso: etiquetas coloridas vêm de /gerente/condominios/{id}/tipos.css; sem cor, o visual neutro. */
 .etiqueta-tipo-t0 { color: var(--tinta); background: #EFEDE8; }
-.novo-tipo { margin-top: 0.5rem; padding: 0.75rem 1rem; background: #FBFAF8; border: 1px solid var(--linha); border-radius: var(--raio); }
-.novo-tipo > summary { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; cursor: pointer; color: var(--marca-700); }
-.novo-tipo[open] > summary { margin-bottom: 0.6rem; }
 .modelo-escolha { margin-bottom: 1rem; }
 .modelo-linha { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .modelo-linha select { flex: 1 1 14rem; }
 .repete { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.25rem; font-size: 0.8125rem; color: var(--suave); }
 .etiqueta-situacao-fora-do-horario { color: #7A4B06; background: #FDE9C8; }
+
+/* Tipo do aviso: dropdown + botão "Criar um tipo novo" lado a lado; aberto, o cartão toma o lugar do dropdown e o "+" vira "−". */
+.tipo-bloco { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 0.75rem; align-items: end; margin-top: 1.25rem; }
+.tipo-toggle { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.tipo-select { grid-column: 1; margin: 0; }
+.tipo-botao {
+    grid-column: 2; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 46px; margin: 0; padding: 0 1rem;
+    font-size: 0.9375rem; font-weight: 600; white-space: nowrap; color: var(--marca-700); cursor: pointer;
+    background: var(--superficie); border: 1px solid var(--linha-forte); border-radius: 10px;
+    transition: border-color 160ms ease-out, background-color 160ms ease-out;
+}
+.tipo-botao:hover { border-color: var(--marca); background: var(--marca-50); }
+.tipo-toggle:focus-visible ~ .tipo-botao { outline: 2px solid var(--marca); outline-offset: 2px; }
+.tipo-botao .menos, .tipo-toggle:checked ~ .tipo-botao .mais { display: none; }
+.tipo-toggle:checked ~ .tipo-botao .menos { display: inline-flex; }
+.tipo-novo { display: none; grid-column: 1 / -1; grid-row: 2; margin-top: 0.75rem; padding: 1rem; background: #FBFAF8; border: 1px solid var(--linha); border-radius: var(--raio); }
+.tipo-ajuda, .tipo-erro { grid-column: 1 / -1; }
+/* Aberto: o botão ("−") vai para a primeira linha, o cartão logo abaixo, e o dropdown some (as duas colunas viram uma). */
+.tipo-toggle:checked ~ .tipo-select, .tipo-toggle:checked ~ .tipo-ajuda { display: none; }
+.tipo-toggle:checked ~ .tipo-botao { grid-column: 1 / -1; grid-row: 1; justify-self: start; }
+.tipo-toggle:checked ~ .tipo-novo { display: block; }
+@media (max-width: 480px) { .tipo-botao { padding: 0 0.75rem; } }

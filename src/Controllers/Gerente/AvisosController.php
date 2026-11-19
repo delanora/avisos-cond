@@ -61,7 +61,7 @@ final class AvisosController
         return $this->formulario($request, $condominio, null, [
             'titulo' => $modelo['titulo'] ?? '', 'corpo' => $modelo['corpo'] ?? '', 'tipo' => $modelo['tipo'] ?? 'comum', 'ativo' => true,
             'salvar_modelo' => false,
-            'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
+            'criar_tipo' => false, 'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
             'dias' => Recorrencia::TODOS_OS_DIAS, 'hora_inicio' => Recorrencia::DIA_TODO_INICIO, 'hora_fim' => Recorrencia::DIA_TODO_FIM,
             'inicio_em' => DataHora::paraFormulario($inicio),
             'fim_em' => DataHora::paraFormulario($inicio + 7 * 86400),
@@ -103,7 +103,7 @@ final class AvisosController
             'corpo' => $aviso['corpo'],
             'tipo' => $aviso['tipo_dono'] === $this->usuarioId($request) ? $aviso['tipo'] : '__atual', // tipo de outro gerente do condomínio: "manter o atual",
             'salvar_modelo' => false,
-            'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
+            'criar_tipo' => false, 'novo_tipo_nome' => '', 'novo_tipo_cor' => '#2F6FED', 'novo_tipo_fixo' => false,
             // Sem repetição gravada = todos os dias, o dia inteiro: é assim que o formulário mostra.
             'dias' => $aviso['dias_semana'] === null ? Recorrencia::TODOS_OS_DIAS : Recorrencia::listaDeDias($aviso['dias_semana']),
             'hora_inicio' => $aviso['hora_inicio'] ?? Recorrencia::DIA_TODO_INICIO,
@@ -199,6 +199,7 @@ final class AvisosController
             'dias' => $diasMarcados === [] ? Recorrencia::TODOS_OS_DIAS : $diasMarcados,
             'hora_inicio' => $texto('hora_inicio') === '' && $texto('hora_fim') === '' ? Recorrencia::DIA_TODO_INICIO : $texto('hora_inicio'),
             'hora_fim' => $texto('hora_inicio') === '' && $texto('hora_fim') === '' ? Recorrencia::DIA_TODO_FIM : $texto('hora_fim'),
+            'criar_tipo' => $texto('criar_tipo') === '1',
             'novo_tipo_nome' => trim($texto('novo_tipo_nome')),
             'novo_tipo_cor' => $texto('novo_tipo_cor') !== '' ? $texto('novo_tipo_cor') : '#2F6FED',
             'novo_tipo_fixo' => $texto('novo_tipo_fixo') === '1',

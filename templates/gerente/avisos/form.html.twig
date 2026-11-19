@@ -46,38 +46,44 @@
                 {% if erros.corpo is defined %}<p class="erro-texto">{{ erros.corpo }}</p>{% endif %}
             </div>
 
-            <div class="campo{% if erros.tipo is defined %} campo-erro{% endif %}">
-                <label for="campo-tipo">Tipo</label>
-                <select id="campo-tipo" name="tipo"{% if erros.tipo is defined %} aria-invalid="true"{% endif %}>
-                    {% if tipo_de_outro %}<option value="__atual"{% if valores.tipo == '__atual' %} selected{% endif %}>{{ tipo_de_outro.tipo_nome }}{% if tipo_de_outro.fixo %} (fixo){% endif %} (tipo atual do aviso, de outro gerente)</option>{% endif %}
-                    {% for t in tipos %}
-                        <option value="{{ t.chave }}"{% if valores.tipo == t.chave %} selected{% endif %}>{{ t.nome }}{% if t.fixo %} (fixo){% endif %}</option>
-                    {% endfor %}
-                </select>
-                <p class="campo-ajuda">Tipos <strong>fixos</strong> ficam sempre à vista numa faixa no topo da TV, mostrando só o texto; com vários, a faixa é dividida entre eles. Os demais passam em carrossel, com foto ou vídeo. Os tipos de fábrica já vêm prontos e são seus: você pode editar e apagar.</p>
-                {% if erros.tipo is defined %}<p class="erro-texto">{{ erros.tipo }}</p>{% endif %}
+            {# Tipo: dropdown e, ao lado, o botão "+ Criar um tipo novo". Aberto, o cartão toma o lugar do dropdown e o "+" vira "−"
+               (volta o dropdown). Sem JavaScript: uma caixa de marcar escondida liga e desliga tudo por CSS. #}
+            <div class="tipo-bloco{% if erros.tipo is defined %} campo-erro{% endif %}">
+                <input type="checkbox" id="criar-tipo" name="criar_tipo" value="1" class="tipo-toggle"{% if valores.criar_tipo %} checked{% endif %}>
+                <div class="campo tipo-select">
+                    <label for="campo-tipo">Tipo</label>
+                    <select id="campo-tipo" name="tipo"{% if erros.tipo is defined %} aria-invalid="true"{% endif %}>
+                        {% if tipo_de_outro %}<option value="__atual"{% if valores.tipo == '__atual' %} selected{% endif %}>{{ tipo_de_outro.tipo_nome }}{% if tipo_de_outro.fixo %} (fixo){% endif %} (tipo atual do aviso, de outro gerente)</option>{% endif %}
+                        {% for t in tipos %}
+                            <option value="{{ t.chave }}"{% if valores.tipo == t.chave %} selected{% endif %}>{{ t.nome }}{% if t.fixo %} (fixo){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <label for="criar-tipo" class="tipo-botao">
+                    <span class="mais">{{ ui.icone('plus', 16) }}</span><span class="menos">{{ ui.icone('menos', 16) }}</span>Criar um tipo novo
+                </label>
+                <div class="tipo-novo">
+                    <p class="secao-ajuda">O tipo é criado ao salvar o aviso e usado nele. Os tipos são só seus (outros gerentes não os veem). Para editar ou apagar, use <a href="/gerente/tipos">Tipos de aviso</a>.</p>
+                    <div class="grade-2">
+                        <div class="campo{% if erros.novo_tipo_nome is defined %} campo-erro{% endif %}">
+                            <label for="campo-novo_tipo_nome">Nome do tipo</label>
+                            <input id="campo-novo_tipo_nome" type="text" name="novo_tipo_nome" maxlength="30" value="{{ valores.novo_tipo_nome }}"{% if erros.novo_tipo_nome is defined %} aria-invalid="true"{% endif %}>
+                            {% if erros.novo_tipo_nome is defined %}<p class="erro-texto">{{ erros.novo_tipo_nome }}</p>{% endif %}
+                        </div>
+                        <div class="campo{% if erros.novo_tipo_cor is defined %} campo-erro{% endif %}">
+                            <label for="campo-novo_tipo_cor">Cor principal</label>
+                            <input id="campo-novo_tipo_cor" type="color" name="novo_tipo_cor" value="{{ valores.novo_tipo_cor }}">
+                            <p class="campo-ajuda">O fundo do cartão na TV é um tom mais claro desta cor, calculado sozinho.</p>
+                            {% if erros.novo_tipo_cor is defined %}<p class="erro-texto">{{ erros.novo_tipo_cor }}</p>{% endif %}
+                        </div>
+                    </div>
+                    <label class="opcao opcao-simples"><input type="checkbox" name="novo_tipo_fixo" value="1"{% if valores.novo_tipo_fixo %} checked{% endif %}> Aviso fixo (sempre à vista na faixa do topo da TV)</label>
+                </div>
+                <p class="campo-ajuda tipo-ajuda">Tipos <strong>fixos</strong> ficam sempre à vista numa faixa no topo da TV, mostrando só o texto; com vários, a faixa é dividida entre eles. Os demais passam em carrossel, com foto ou vídeo. Os tipos de fábrica já vêm prontos e são seus: você pode editar e apagar.</p>
+                {% if erros.tipo is defined %}<p class="erro-texto tipo-erro">{{ erros.tipo }}</p>{% endif %}
             </div>
 
             <label class="opcao opcao-simples"><input type="checkbox" name="salvar_modelo" value="1"{% if valores.salvar_modelo %} checked{% endif %}> Salvar título, texto e tipo como um modelo, para usar em outros avisos</label>
-
-            <details class="novo-tipo"{% if valores.novo_tipo_nome != '' or erros.novo_tipo_nome is defined or erros.novo_tipo_cor is defined %} open{% endif %}>
-                <summary>{{ ui.icone('plus', 16) }}Criar um tipo novo</summary>
-                <p class="secao-ajuda">Se preencher o nome, o tipo é criado ao salvar o aviso e usado nele (o seletor acima é ignorado). Depois ele aparece na lista para os próximos avisos deste condomínio. Os tipos são só seus (outros gerentes não os veem). Para editar ou apagar, use <a href="/gerente/tipos">Tipos de aviso</a>.</p>
-                <div class="grade-2">
-                    <div class="campo{% if erros.novo_tipo_nome is defined %} campo-erro{% endif %}">
-                        <label for="campo-novo_tipo_nome">Nome do tipo</label>
-                        <input id="campo-novo_tipo_nome" type="text" name="novo_tipo_nome" maxlength="30" value="{{ valores.novo_tipo_nome }}"{% if erros.novo_tipo_nome is defined %} aria-invalid="true"{% endif %}>
-                        {% if erros.novo_tipo_nome is defined %}<p class="erro-texto">{{ erros.novo_tipo_nome }}</p>{% endif %}
-                    </div>
-                    <div class="campo{% if erros.novo_tipo_cor is defined %} campo-erro{% endif %}">
-                        <label for="campo-novo_tipo_cor">Cor principal</label>
-                        <input id="campo-novo_tipo_cor" type="color" name="novo_tipo_cor" value="{{ valores.novo_tipo_cor }}">
-                        <p class="campo-ajuda">O fundo do cartão na TV é um tom mais claro desta cor, calculado sozinho.</p>
-                        {% if erros.novo_tipo_cor is defined %}<p class="erro-texto">{{ erros.novo_tipo_cor }}</p>{% endif %}
-                    </div>
-                </div>
-                <label class="opcao opcao-simples"><input type="checkbox" name="novo_tipo_fixo" value="1"{% if valores.novo_tipo_fixo %} checked{% endif %}> Aviso fixo (sempre à vista na faixa do topo da TV)</label>
-            </details>
         </section>
 
         <section class="formulario-secao">
