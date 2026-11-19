@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block titulo %}{{ app_nome }}{% endblock %}</title>
+    {% include 'partials/favicon.html.twig' %}
     <link rel="stylesheet" href="/assets/app.css">
     {# Cor de destaque escolhida pelo gerente (o CSP não permite estilo inline, então vem de uma folha própria). #}
     {% if usuario.papel == 'gerente' and usuario.cor_primaria %}<link rel="stylesheet" href="/gerente/tema.css?v={{ usuario.cor_primaria|slice(1) }}">{% endif %}
