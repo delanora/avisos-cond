@@ -5,8 +5,10 @@
         <h2>Endereço da TV</h2>
         <p class="secao-ajuda">Digite este endereço no navegador da TV. O token tem só 12 caracteres para facilitar a digitação com o controle remoto; maiúsculas e minúsculas tanto faz.</p>
         <p class="endereco-tv" id="endereco-tv"><code>{{ url }}</code></p>
-        <p class="campo-ajuda">Token: <strong class="token-destaque">{{ dispositivo.token }}</strong></p>
-        <a class="botao botao-secundario" href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ ui.icone('tv', 18) }}Abrir a tela da TV</a>
+        <div class="token-linha">
+            <span class="campo-ajuda">Token: <strong class="token-destaque">{{ dispositivo.token }}</strong></span>
+            <a class="botao botao-secundario botao-sutil" href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ ui.icone('tv', 16) }}Abrir a tela da TV</a>
+        </div>
     </div>
 
     <div class="formulario-secao">
@@ -53,13 +55,9 @@
         <p class="secao-ajuda"><strong>Pelo código de pareamento:</strong> endereço mais curto, sem digitar o token.</p>
         <ol class="passos">
             <li>No navegador da TV, digite só <code>{{ url_pareamento }}</code>. A TV mostra um código de 6 caracteres.</li>
-            {% if pode_parear %}
-                <li>Aqui em cima, clique em <strong>Parear TV</strong> e digite o código. A TV abre sozinha.</li>
-            {% else %}
-                <li>Passe o código para a equipe da Embracore, que faz o pareamento. A TV abre sozinha.</li>
-            {% endif %}
+            <li>Aqui em cima, clique em <strong>Parear TV</strong> e digite o código. A TV abre sozinha.</li>
             <li>Depois disso, o endereço curto serve também como página inicial.</li>
         </ol>
-        {% if pode_parear %}<p class="campo-ajuda">Parear troca o token: o endereço acima deixa de funcionar na hora.</p>{% endif %}
+        <p class="campo-ajuda">Parear troca o token: o endereço acima deixa de funcionar na hora.</p>
     </div>
 </section>

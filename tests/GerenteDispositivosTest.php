@@ -89,10 +89,17 @@ final class GerenteDispositivosTest extends AppHttpTestCase
         $this->assertStringContainsString('<strong class="token-destaque">' . self::TOKEN_A . '</strong>', $corpo);
         $this->assertStringContainsString('Como configurar a TV', $corpo);
         $this->assertStringContainsString('https://avisos.exemplo.com.br/tv</code>', $corpo);
-        foreach ([self::TOKEN_A2, self::TOKEN_B, '/editar', '/excluir', "/dispositivos/{$this->tvA}/token", "/dispositivos/{$this->tvA}/parear", 'Trocar token', 'Parear TV', 'Novo dispositivo'] as $proibido) {
+        foreach ([self::TOKEN_A2, self::TOKEN_B, '/editar', '/excluir', "/dispositivos/{$this->tvA}/token", 'Trocar token', 'Novo dispositivo'] as $proibido) {
             $this->assertStringNotContainsString($proibido, $corpo, "O gerente não vê '{$proibido}'.");
         }
-        $this->assertStringContainsString('equipe da Embracore', $corpo);
+        $this->assertStringContainsString("href=\"/gerente/dispositivos/{$this->tvA}/parear\"", $corpo, 'O gerente pareia as TVs dele.');
+    }
+
+    public function testBotaoAbrirATelaFicaNaMesmaLinhaDoToken(): void
+    {
+        $corpo = $this->get("/gerente/dispositivos/{$this->tvA}")->body;
+
+        $this->assertMatchesRegularExpression('#<div class="token-linha">\s*<span class="campo-ajuda">Token: <strong[^>]*>' . self::TOKEN_A . '</strong></span>\s*<a [^>]*>[^<]*<svg.*?Abrir a tela da TV</a>#s', $corpo);
     }
 
     public function testDetalheDeOutroCondominioContinua404SemVazarOToken(): void
@@ -275,5 +282,139 @@ final class GerenteDispositivosTest extends AppHttpTestCase
 
         $this->assertStringContainsString('<a href="/gerente/dispositivos" class="ativo" aria-current="page">', $corpo);
         $this->assertStringNotContainsString('href="/gerente/dispositivos" class="ativo"', $this->get('/gerente/tipos')->body);
+    }
+
+    // ---------- Pareamento pelo gerente ----------
+
+    /** @return array{codigo: string, segredo: string} */
+    private function codigoDaTv(string $ip = '198.51.100.20'): array
+    {
+        $r = $this->post('/tv/parear', comCsrf: false, ip: $ip);
+        $this->assertSame(200, $r->status);
+
+        return json_decode($r->body, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    private function tokenDe(int $id): string
+    {
+        return (string) $this->pdo->query("SELECT token FROM dispositivos WHERE id = {$id}")->fetchColumn();
+    }
+
+    public function testGerentePareiaTvDoProprioCondominioETvRecebeOTokenNovo(): void
+    {
+        $tv = $this->codigoDaTv();
+
+        $form = $this->get("/gerente/dispositivos/{$this->tvA}/parear");
+        $this->assertSame(200, $form->status);
+        $this->assertStringContainsString('name="codigo"', $form->body);
+        $this->assertStringNotContainsString(self::TOKEN_A, $form->body);
+
+        $r = $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => $tv['codigo']]);
+
+        $this->assertSame(303, $r->status);
+        $this->assertSame("/gerente/dispositivos/{$this->tvA}", $r->headers['Location']);
+        $novo = $this->tokenDe($this->tvA);
+        $this->assertNotSame(self::TOKEN_A, $novo);
+        $entrega = json_decode($this->post('/tv/parear/consulta', ['segredo' => $tv['segredo']], false, '198.51.100.20')->body, true);
+        $this->assertSame(['estado' => 'pareado', 'token' => $novo], $entrega);
+        $this->assertSame(200, $this->get("/tv/{$novo}/state", '198.51.100.20')->status);
+        $this->assertSame(404, $this->get('/tv/' . self::TOKEN_A . '/state', '198.51.100.21')->status);
+    }
+
+    public function testGerenteNaoPareiaDispositivoDeOutroCondominio(): void
+    {
+        $tv = $this->codigoDaTv();
+
+        $this->assertSame(404, $this->get("/gerente/dispositivos/{$this->tvB}/parear")->status);
+        $r = $this->post("/gerente/dispositivos/{$this->tvB}/parear", ['codigo' => $tv['codigo']]);
+
+        $this->assertSame(404, $r->status);
+        $this->assertStringNotContainsString(self::TOKEN_B, $r->body);
+        $this->assertSame(self::TOKEN_B, $this->tokenDe($this->tvB));
+        $this->assertSame(0, (int) $this->pdo->query('SELECT count(*) FROM pareamentos WHERE pareado_em IS NOT NULL')->fetchColumn(), 'O código continua livre.');
+        $this->assertSame(404, $this->get('/gerente/dispositivos/999999/parear')->status);
+        $this->assertSame(404, $this->post('/gerente/dispositivos/999999/parear', ['codigo' => $tv['codigo']])->status);
+    }
+
+    public function testGerenteDeOutroCondominioTambemNaoPareiaOsDoA(): void
+    {
+        $tv = $this->codigoDaTv();
+        $_SESSION = [];
+        $this->criarUsuario('gerente.b@exemplo.com.br');
+        (new VinculoRepository($this->pdo))->sincronizarDoUsuario((int) $this->pdo->query("SELECT id FROM usuarios WHERE email = 'gerente.b@exemplo.com.br'")->fetchColumn(), [$this->condB]);
+        $this->logar('gerente.b@exemplo.com.br');
+
+        $this->assertSame(404, $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => $tv['codigo']])->status);
+        $this->assertSame(self::TOKEN_A, $this->tokenDe($this->tvA));
+    }
+
+    public function testPareamentoDoGerenteExigeCsrfELogin(): void
+    {
+        $tv = $this->codigoDaTv();
+
+        $this->assertSame(403, $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => $tv['codigo']], comCsrf: false)->status);
+        $this->assertSame(self::TOKEN_A, $this->tokenDe($this->tvA));
+
+        $_SESSION = [];
+        $this->assertSame(302, $this->get("/gerente/dispositivos/{$this->tvA}/parear")->status);
+        $this->assertSame(302, $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => $tv['codigo']], false)->status);
+        $this->logarComoAdmin();
+        $this->assertSame(403, $this->get("/gerente/dispositivos/{$this->tvA}/parear")->status, 'Administrador usa o painel dele.');
+    }
+
+    public function testCodigoInvalidoOuVencidoENaoAlteraNada(): void
+    {
+        $tv = $this->codigoDaTv();
+        $this->pdo->exec("UPDATE pareamentos SET expira_em = now() - interval '1 second'");
+
+        foreach ([$tv['codigo'], 'AAAAAA', 'abc', ''] as $codigo) {
+            $r = $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => $codigo]);
+            $this->assertSame(422, $r->status, $codigo);
+        }
+        $this->assertSame(self::TOKEN_A, $this->tokenDe($this->tvA));
+    }
+
+    public function testDispositivoRevogadoNaoPareiaEBotaoSome(): void
+    {
+        $tv = $this->codigoDaTv();
+        $this->pdo->exec("UPDATE dispositivos SET ativo = false WHERE id = {$this->tvA}");
+
+        $this->assertStringNotContainsString("/gerente/dispositivos/{$this->tvA}/parear\"", $this->get("/gerente/dispositivos/{$this->tvA}")->body . '');
+        $r = $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => $tv['codigo']]);
+
+        $this->assertSame(422, $r->status);
+        $this->assertSame(self::TOKEN_A, $this->tokenDe($this->tvA));
+    }
+
+    public function testGerenteNaoAdivinhaCodigos(): void
+    {
+        $tv = $this->codigoDaTv();
+        for ($i = 0; $i < 10; $i++) {
+            $this->assertSame(422, $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => 'AAAAA' . ['2', '3', '4', '5', '6', '7', '8', '9', 'B', 'C'][$i]])->status);
+        }
+
+        // Bloqueado: nem o código certo vale mais.
+        $bloqueado = $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => $tv['codigo']]);
+
+        $this->assertSame(422, $bloqueado->status);
+        $this->assertStringContainsString('Muitas tentativas', $bloqueado->body);
+        $this->assertSame(self::TOKEN_A, $this->tokenDe($this->tvA));
+    }
+
+    public function testPareamentoDoGerenteVaiParaAAuditoriaComOCondominioESemSegredos(): void
+    {
+        $tv = $this->codigoDaTv('198.51.100.77');
+        $this->post("/gerente/dispositivos/{$this->tvA}/parear", ['codigo' => $tv['codigo']]);
+        $novo = $this->tokenDe($this->tvA);
+
+        $l = $this->pdo->query("SELECT usuario_id, condominio_id, entidade_id, detalhes::text AS d FROM auditoria WHERE acao = 'dispositivo.pareado'")->fetch();
+
+        $this->assertSame($this->gerenteA, (int) $l['usuario_id']);
+        $this->assertSame($this->condA, (int) $l['condominio_id']);
+        $this->assertSame($this->tvA, (int) $l['entidade_id']);
+        $this->assertStringContainsString('198.51.100.77', $l['d']);
+        foreach ([$tv['codigo'], $tv['segredo'], $novo, self::TOKEN_A] as $segredo) {
+            $this->assertStringNotContainsString($segredo, $l['d']);
+        }
     }
 }

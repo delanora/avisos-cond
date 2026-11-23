@@ -698,3 +698,7 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 /* Página de detalhe centralizada: cabeçalho e cartão na mesma coluna, no meio da tela. */
 .coluna-central { max-width: 760px; margin: 0 auto; }
 .coluna-central .formulario { margin-left: auto; margin-right: auto; }
+
+/* Token e botão "Abrir a tela da TV" na mesma linha, alinhados à esquerda. */
+.token-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0.5rem 1rem; margin-top: 0.4rem; }
+.token-linha .campo-ajuda { margin: 0; }

@@ -11,6 +11,7 @@ use App\Controllers\Admin\UsuariosController;
 use App\Controllers\Gerente\AparenciaController;
 use App\Controllers\Gerente\AvisosController;
 use App\Controllers\Gerente\DispositivosController as GerenteDispositivosController;
+use App\Controllers\Gerente\PareamentoController as GerentePareamentoController;
 use App\Controllers\Gerente\MidiaController;
 use App\Controllers\Gerente\ModelosController;
 use App\Controllers\Gerente\TiposController;
@@ -167,12 +168,13 @@ final class AppFactory
         $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'), $auditoria, $pareamento);
         $tv = new TvController($view, $tvAcesso, $tvService, $aceleracao);
         $tvPareamento = new PareamentoController($view, $pareamento);
+        $gerentePareamento = new GerentePareamentoController($view, $sessao, $gestaoDispositivos, $pareamento, $auditoria, $config->obrigatorio('APP_URL'));
         $suporte = new SuporteController($sessao, $gestaoUsuarios, $auditoria);
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv, $tvPareamento, $suporte, $mwSemSuporte,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv, $tvPareamento, $suporte, $mwSemSuporte, $gerentePareamento,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -253,6 +255,9 @@ final class AppFactory
             // Dispositivos dos condomínios do gerente (só consulta; sem token): o escopo vem do banco a cada requisição.
             $r->addRoute('GET', '/gerente/dispositivos', $gLeitura([$gerenteDispositivos, 'lista']));
             $r->addRoute('GET', '/gerente/dispositivos/{id:\d+}', $gLeitura([$gerenteDispositivos, 'detalhe']));
+            // Pareamento de TV pelo gerente: só dos dispositivos dos condomínios dele (404 fora do escopo).
+            $r->addRoute('GET', '/gerente/dispositivos/{id:\d+}/parear', $gLeitura([$gerentePareamento, 'formulario']));
+            $r->addRoute('POST', '/gerente/dispositivos/{id:\d+}/parear', $gEscrita([$gerentePareamento, 'parear']));
 
             // Aparência é do próprio gerente (sem condomínio na URL): só login, papel e, na escrita, CSRF.
             $r->addRoute('GET', '/gerente/aparencia', Pipeline::envolver([$gerenteAparencia, 'formulario'], $mwAuth, $mwGerente, $mwEscopo, $mwSemSuporte));

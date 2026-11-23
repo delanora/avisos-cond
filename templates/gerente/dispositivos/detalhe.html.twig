@@ -1,8 +1,7 @@
 {% extends 'layouts/base.html.twig' %}
 {% import 'macros/ui.html.twig' as ui %}
 
-{% block titulo %}{{ dispositivo.nome }} - {{ app_nome }}    </div>
-{% endblock %}
+{% block titulo %}{{ dispositivo.nome }} - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
     <div class="coluna-central">
@@ -12,6 +11,11 @@
             <h1>{{ dispositivo.nome }}</h1>
             <p>{{ dispositivo.condominio_nome }}</p>
         </div>
+        {% if dispositivo.ativo %}
+            <div class="acoes sem-margem">
+                <a class="botao botao-secundario" href="/gerente/dispositivos/{{ dispositivo.id }}/parear">{{ ui.icone('tv', 18) }}Parear TV</a>
+            </div>
+        {% endif %}
     </div>
 
     {% if not dispositivo.ativo %}

@@ -70,7 +70,6 @@ final class DispositivosController
                 'desde' => $e['ultimo_ping_epoch'] === null ? null : DataHora::exibir($e['ultimo_ping_epoch']),
             ], $historico['eventos']),
             'base_historico' => "/gerente/dispositivos/{$dispositivo['id']}",
-            'pode_parear' => false,
             'menu' => 'dispositivos',
         ]));
     }

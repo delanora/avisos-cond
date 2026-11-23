@@ -1,0 +1,13 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% block titulo %}Parear TV - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <div class="coluna-central">
+    <p class="migalha"><a href="/gerente/dispositivos">Dispositivos</a> {{ ui.icone('seta', 14) }} <a href="/gerente/dispositivos/{{ dispositivo.id }}">{{ dispositivo.nome }}</a> {{ ui.icone('seta', 14) }} <span>Parear TV</span></p>
+    <div class="pagina-topo"><h1>Parear TV</h1></div>
+
+    {% include 'partials/dispositivo_parear.html.twig' %}
+    </div>
+{% endblock %}

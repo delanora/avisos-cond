@@ -90,7 +90,6 @@ final class DispositivosController
             'url_pareamento' => rtrim($this->urlBase, '/') . '/tv',
             'historico' => $historico,
             'base_historico' => "/admin/dispositivos/{$dispositivo['id']}",
-            'pode_parear' => true,
             'ultimo_contato' => DataHora::relativo($dispositivo['ultimo_ping_epoch'], $agora),
             'situacao' => SituacaoDispositivo::de($dispositivo['ultimo_ping_epoch'], $dispositivo['ativo'], $agora),
             'rotulos' => SituacaoDispositivo::ROTULOS,

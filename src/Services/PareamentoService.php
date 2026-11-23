@@ -34,6 +34,10 @@ final class PareamentoService
     private const JANELA_FALHAS = 600;
     private const BLOQUEIO_FALHAS = 900;
     private const TENTATIVAS_DE_CODIGO = 10;
+    // Códigos errados digitados por UM usuário: 10 em 15 min (o 10º já bloqueia) bloqueiam por 15 min (o gerente não pode adivinhar o código de uma TV de outro condomínio).
+    private const MAX_ERROS_DO_USUARIO = 9; // o 10º erro liga o bloqueio
+    private const JANELA_ERROS = 900;
+    private const BLOQUEIO_ERROS = 900;
 
     public function __construct(
         private readonly PareamentoRepository $pareamentos,
@@ -122,6 +126,11 @@ final class PareamentoService
      */
     public function parear(int $dispositivoId, string $codigoDigitado, int $usuarioId): string
     {
+        $chave = 'pareamento:erro:usuario:' . $usuarioId;
+        if ($this->limitador->segundosBloqueado($chave) > 0) {
+            throw new ValidacaoException(['geral' => 'Muitas tentativas com código incorreto. Aguarde alguns minutos e tente de novo.']);
+        }
+
         $dispositivo = $this->dispositivos->porId($dispositivoId) ?? throw new NaoEncontradoException();
         if (!$dispositivo['ativo']) {
             throw new ValidacaoException(['geral' => 'Este dispositivo está revogado. Reative-o antes de parear uma TV.']);
@@ -129,16 +138,24 @@ final class PareamentoService
 
         $codigo = self::normalizarCodigo($codigoDigitado);
         if ($codigo === null) {
+            $this->limitador->registrar($chave, self::MAX_ERROS_DO_USUARIO, self::JANELA_ERROS, self::BLOQUEIO_ERROS);
+
             throw new ValidacaoException(['codigo' => 'Digite o código de ' . self::CODIGO_TAMANHO . ' caracteres que aparece na TV.']);
         }
 
-        return $this->transacao->executar(function () use ($dispositivoId, $codigo, $usuarioId): string {
-            $ip = $this->pareamentos->parear($codigo, $dispositivoId, $usuarioId)
-                ?? throw new ValidacaoException(['codigo' => 'Código não encontrado ou expirado. Confira na TV ou espere surgir um código novo.']);
-            $this->servicoDispositivos->trocarToken($dispositivoId);
+        try {
+            return $this->transacao->executar(function () use ($dispositivoId, $codigo, $usuarioId): string {
+                $ip = $this->pareamentos->parear($codigo, $dispositivoId, $usuarioId)
+                    ?? throw new ValidacaoException(['codigo' => 'Código não encontrado ou expirado. Confira na TV ou espere surgir um código novo.']);
+                $this->servicoDispositivos->trocarToken($dispositivoId);
 
-            return $ip;
-        });
+                return $ip;
+            });
+        } catch (ValidacaoException $e) {
+            $this->limitador->registrar($chave, self::MAX_ERROS_DO_USUARIO, self::JANELA_ERROS, self::BLOQUEIO_ERROS);
+
+            throw $e;
+        }
     }
 
     /** Aceita minúsculas, espaços e hífens ("abc 234", "ABC-234"); devolve a forma guardada ou null. */

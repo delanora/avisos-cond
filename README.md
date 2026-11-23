@@ -31,7 +31,7 @@ Existem três "superfícies" no sistema:
 - Agendamento: data/hora de início e fim de exibição, com opção de recorrência.
 - Pré-visualização de como o aviso aparece na TV, (aviso urgente em destaque).
 - Modelos prontos de aviso (falta de água, manutenção de elevador, dedetização, assembleia).
-- Configurações (engrenagem na barra): aba **Segurança** (o próprio usuário troca a senha; gerente e administrador) e aba **Aparência** (só o gerente). O gerente também tem a página **Dispositivos**, só de consulta, com as TVs dos condomínios dele e se estão online ou offline; o detalhe mostra o endereço e o token da TV, a situação, o histórico de quedas (5 por página) e como configurar, igual ao do administrador. A lista não mostra o token.
+- Configurações (engrenagem na barra): aba **Segurança** (o próprio usuário troca a senha; gerente e administrador) e aba **Aparência** (só o gerente). O gerente também tem a página **Dispositivos**, só de consulta, com as TVs dos condomínios dele e se estão online ou offline; o detalhe mostra o endereço e o token da TV, a situação, o histórico de quedas (5 por página) e como configurar, igual ao do administrador. A lista não mostra o token. O gerente também **pareia** as TVs dos condomínios dele (botão Parear TV).
 - Aparência do painel do gerente: ele escolhe uma cor de destaque (o tom claro é calculado sozinho) que troca tudo o que é verde no painel dele. A TV e os condomínios não têm cores nem logo próprios.
 - Recuperação de senha por e-mail.
 
