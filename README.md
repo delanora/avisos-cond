@@ -152,7 +152,8 @@ MAIL_HOST=                    # SMTP para recuperação de senha
 MAIL_PORT=587
 MAIL_USER=
 MAIL_PASS=
-MAIL_FROM=
+MAIL_FROM=                    # vazio = usa MAIL_USER (o Google só aceita o endereço da conta ou um apelido dela)
+MAIL_FROM_NAME=               # nome do remetente (padrão: Avisos-Cond)
 
 # Opcional: usuário com permissão de DDL só para as migrations (em produção,
 # o usuário da aplicação não deve ter DDL).

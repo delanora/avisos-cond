@@ -52,7 +52,9 @@ try {
             $config->int('MAIL_PORT', 587),
             $config->string('MAIL_USER'),
             $config->string('MAIL_PASS'),
-            $config->string('MAIL_FROM'),
+            // Remetente: MAIL_FROM, ou o próprio usuário SMTP (o Google só aceita o endereço da conta ou um apelido dela).
+            $config->string('MAIL_FROM') !== '' ? $config->string('MAIL_FROM') : $config->string('MAIL_USER'),
+            $config->string('MAIL_FROM_NAME', 'Avisos-Cond'),
         );
 
     $app = AppFactory::criar(
