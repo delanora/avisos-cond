@@ -684,3 +684,9 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 .faixa-suporte-interno span { display: flex; align-items: center; gap: 0.5rem; }
 .faixa-suporte-interno form { margin: 0; }
 .faixa-suporte + .topo { top: 0; position: static; }
+
+/* Desktop, tela de gerente: o condomínio fica no mesmo grupo dos botões de navegação, centralizados juntos. */
+@media (min-width: 769px) {
+    .topo-interno .seletor { margin-left: auto; margin-right: 0.5rem; }
+    .topo-interno:has(.seletor) .menu { margin: 0 auto 0 0; }
+}
