@@ -117,6 +117,16 @@
     for (var n = 1; n <= 20; n++) { var d = L.disposicao(n); if (d.colunas * d.linhas < Math.min(n, 10)) { cabem = false; } if (d.linhas > 2) { cabem = false; } }
     teste('a disposição nunca passa de 2 linhas e comporta até 10 avisos', cabem);
 
+    // ----- disposição em pé (monitor vertical) -----
+    igual('em pé: 1 aviso, uma coluna e uma linha', L.disposicao(1, true), { colunas: 1, linhas: 1 });
+    igual('em pé: 3 avisos empilhados', L.disposicao(3, true), { colunas: 1, linhas: 3 });
+    igual('em pé: 4 avisos empilhados', L.disposicao(4, true), { colunas: 1, linhas: 4 });
+    igual('em pé: 5 avisos, duas colunas', L.disposicao(5, true), { colunas: 2, linhas: 3 });
+    igual('em pé: 12 avisos, 2 x 6 (o máximo)', L.disposicao(12, true), { colunas: 2, linhas: 6 });
+    igual('em pé: 30 avisos continuam 2 x 6', L.disposicao(30, true), { colunas: 2, linhas: 6 });
+    igual('em pé: 0 avisos', L.disposicao(0, true), { colunas: 0, linhas: 0 });
+    igual('deitado continua igual quando vertical é falso', L.disposicao(4, false), { colunas: 2, linhas: 2 });
+
     // Relógio do aparelho errado, corrigido pelo deslocamento: a decisão usa o horário do servidor.
     var deslocamento = T('2026-11-16T11:10:00Z') - T('2024-01-01T00:00:00Z'); // aparelho "em 2024"
     var agoraAparelho = T('2024-01-01T00:00:00Z');

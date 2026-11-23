@@ -160,7 +160,7 @@ final class AppFactory
         $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $tipoAvisoService, $modeloAvisoService, $auditoria);
         $gerenteAparencia = new AparenciaController($view, $sessao, $aparenciaService);
         $conta = new ContaController($view, $sessao, new SenhaService($usuarios, $hasher, $limitador), $auditoria);
-        $gerenteDispositivos = new GerenteDispositivosController($view, $gestaoDispositivos, $config->obrigatorio('APP_URL'));
+        $gerenteDispositivos = new GerenteDispositivosController($view, $gestaoDispositivos, $config->obrigatorio('APP_URL'), $sessao, $auditoria);
         $gerenteTipos = new TiposController($view, $sessao, $tipoAvisoService, new TipoAvisoRepository($pdo));
         $gerenteModelos = new ModelosController($view, $sessao, $modeloAvisoService, $tipoAvisoService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
@@ -225,6 +225,7 @@ final class AppFactory
             $r->addRoute('POST', '/admin/dispositivos/{id:\d+}', $escrita([$adminDispositivos, 'atualizar']));
             $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/token', $leitura([$adminDispositivos, 'confirmarToken']));
             $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/token', $escrita([$adminDispositivos, 'trocarToken']));
+            $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/orientacao', $escrita([$adminDispositivos, 'orientacao']));
             $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/parear', $leitura([$adminDispositivos, 'formularioParear']));
             $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/parear', $escrita([$adminDispositivos, 'parear']));
             $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/excluir', $leitura([$adminDispositivos, 'confirmarExclusao']));
@@ -255,6 +256,8 @@ final class AppFactory
             // Dispositivos dos condomínios do gerente (só consulta; sem token): o escopo vem do banco a cada requisição.
             $r->addRoute('GET', '/gerente/dispositivos', $gLeitura([$gerenteDispositivos, 'lista']));
             $r->addRoute('GET', '/gerente/dispositivos/{id:\d+}', $gLeitura([$gerenteDispositivos, 'detalhe']));
+            // Orientação da tela (horizontal/vertical) de cada dispositivo dos condomínios dele.
+            $r->addRoute('POST', '/gerente/dispositivos/{id:\d+}/orientacao', $gEscrita([$gerenteDispositivos, 'orientacao']));
             // Pareamento de TV pelo gerente: só dos dispositivos dos condomínios dele (404 fora do escopo).
             $r->addRoute('GET', '/gerente/dispositivos/{id:\d+}/parear', $gLeitura([$gerentePareamento, 'formulario']));
             $r->addRoute('POST', '/gerente/dispositivos/{id:\d+}/parear', $gEscrita([$gerentePareamento, 'parear']));

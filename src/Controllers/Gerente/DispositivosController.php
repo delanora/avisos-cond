@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controllers\Gerente;
 
+use App\Services\AuditoriaService;
 use App\Services\DispositivoService;
+use App\Services\ValidacaoException;
 use App\Support\DataHora;
 use App\Support\EscopoGerente;
 use App\Support\Request;
 use App\Support\Response;
+use App\Support\Session;
 use App\Support\SituacaoDispositivo;
 use App\Support\View;
 
@@ -23,6 +26,8 @@ final class DispositivosController
         private readonly View $view,
         private readonly DispositivoService $dispositivos,
         private readonly string $urlBase,
+        private readonly Session $sessao,
+        private readonly AuditoriaService $auditoria,
     ) {
     }
 
@@ -65,6 +70,7 @@ final class DispositivosController
             'situacao' => $dispositivo['situacao'],
             'rotulos' => SituacaoDispositivo::ROTULOS,
             'historico' => $historico,
+            'orientacoes' => DispositivoService::ORIENTACOES,
             'eventos' => array_map(static fn (array $e): array => $e + [
                 'quando' => DataHora::exibir($e['registrado_epoch']),
                 'desde' => $e['ultimo_ping_epoch'] === null ? null : DataHora::exibir($e['ultimo_ping_epoch']),
@@ -72,5 +78,38 @@ final class DispositivosController
             'base_historico' => "/gerente/dispositivos/{$dispositivo['id']}",
             'menu' => 'dispositivos',
         ]));
+    }
+
+    /**
+     * Orientação da tela de UM dispositivo dos condomínios dele (fora do escopo: 404, nada muda).
+     *
+     * @param array<string, string> $vars
+     */
+    public function orientacao(Request $request, array $vars): Response
+    {
+        $permitidos = EscopoGerente::permitidos($request);
+        $id = (int) $vars['id'];
+        $dispositivo = $this->dispositivos->buscarDoGerente($permitidos, $id, time());
+        $valor = is_string($request->body['orientacao'] ?? null) ? $request->body['orientacao'] : '';
+
+        try {
+            $this->dispositivos->definirOrientacaoDoGerente($permitidos, $id, $valor);
+        } catch (ValidacaoException $e) {
+            $this->sessao->flash($e->erros['orientacao']);
+
+            return Response::redirect("/gerente/dispositivos/{$id}", 303);
+        }
+
+        $this->auditoria->registrarDaRequisicao(
+            $request,
+            'dispositivo.orientacao_alterada',
+            'dispositivo',
+            $id,
+            ['id' => (int) $dispositivo['condominio_id'], 'nome' => (string) $dispositivo['condominio_nome']],
+            ['nome' => $dispositivo['nome'], 'orientacao' => $valor],
+        );
+        $this->sessao->flash('Orientação da tela alterada para ' . mb_strtolower(DispositivoService::ORIENTACOES[$valor]) . '. A TV se ajusta em até 1 minuto.');
+
+        return Response::redirect("/gerente/dispositivos/{$id}", 303);
     }
 }

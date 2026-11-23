@@ -40,6 +40,88 @@ final class DispositivoServiceTest extends BancoMigradoTestCase
         $this->assertMatchesRegularExpression('/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{12}$/', $d['token']);
     }
 
+    public function testNovoDispositivoNasceHorizontal(): void
+    {
+        $id = $this->servico()->criar(['nome' => 'TV', 'condominio_id' => (string) $this->a]);
+
+        $this->assertSame('horizontal', $this->servico()->buscar($id)['orientacao']);
+    }
+
+    public function testDefineOrientacaoDeUmDispositivoSemMexerNosOutros(): void
+    {
+        $um = $this->servico()->criar(['nome' => 'Um', 'condominio_id' => (string) $this->a]);
+        $dois = $this->servico()->criar(['nome' => 'Dois', 'condominio_id' => (string) $this->a]);
+
+        $this->servico()->definirOrientacao($um, 'vertical');
+
+        $this->assertSame('vertical', $this->servico()->buscar($um)['orientacao']);
+        $this->assertSame('horizontal', $this->servico()->buscar($dois)['orientacao']);
+        $this->servico()->definirOrientacao($um, 'horizontal');
+        $this->assertSame('horizontal', $this->servico()->buscar($um)['orientacao']);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function orientacoesInvalidas(): array
+    {
+        return ['vazio' => [''], 'outra' => ['diagonal'], 'maiúscula' => ['Vertical'], 'sql' => ["vertical'; DROP TABLE dispositivos;--"]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('orientacoesInvalidas')]
+    public function testOrientacaoInvalidaNaoAlteraNada(string $valor): void
+    {
+        $id = $this->servico()->criar(['nome' => 'TV', 'condominio_id' => (string) $this->a]);
+
+        try {
+            $this->servico()->definirOrientacao($id, $valor);
+            $this->fail('Era esperada uma ValidacaoException.');
+        } catch (\App\Services\ValidacaoException $e) {
+            $this->assertArrayHasKey('orientacao', $e->erros);
+        }
+        $this->assertSame('horizontal', $this->servico()->buscar($id)['orientacao']);
+    }
+
+    public function testOrientacaoDeDispositivoInexistenteDa404(): void
+    {
+        $this->expectException(\App\Support\NaoEncontradoException::class);
+        $this->servico()->definirOrientacao(987654, 'vertical');
+    }
+
+    public function testGerenteSoMudaOrientacaoDeDispositivoDoProprioCondominio(): void
+    {
+        $meu = $this->servico()->criar(['nome' => 'Meu', 'condominio_id' => (string) $this->a]);
+        $alheio = $this->servico()->criar(['nome' => 'Alheio', 'condominio_id' => (string) $this->b]);
+
+        $this->servico()->definirOrientacaoDoGerente([$this->a], $meu, 'vertical');
+        $this->assertSame('vertical', $this->servico()->buscar($meu)['orientacao']);
+
+        foreach ([[[$this->a], $alheio], [[], $meu], [[$this->a], 987654]] as [$permitidos, $id]) {
+            try {
+                $this->servico()->definirOrientacaoDoGerente($permitidos, $id, 'vertical');
+                $this->fail('Era esperada NaoEncontradoException.');
+            } catch (\App\Support\NaoEncontradoException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $this->assertSame('horizontal', $this->servico()->buscar($alheio)['orientacao']);
+    }
+
+    public function testGerenteRepetirAMesmaOrientacaoNaoDa404(): void
+    {
+        $meu = $this->servico()->criar(['nome' => 'Meu', 'condominio_id' => (string) $this->a]);
+
+        $this->servico()->definirOrientacaoDoGerente([$this->a], $meu, 'horizontal');
+
+        $this->assertSame('horizontal', $this->servico()->buscar($meu)['orientacao']);
+    }
+
+    public function testBancoRecusaOrientacaoInvalida(): void
+    {
+        $id = $this->servico()->criar(['nome' => 'TV', 'condominio_id' => (string) $this->a]);
+
+        $this->expectException(\PDOException::class);
+        $this->pdo->exec("UPDATE dispositivos SET orientacao = 'diagonal' WHERE id = {$id}");
+    }
+
     /** @return array<string, array{array<string, mixed>, string}> */
     public static function invalidos(): array
     {

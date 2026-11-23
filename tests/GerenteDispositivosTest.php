@@ -114,7 +114,7 @@ final class GerenteDispositivosTest extends AppHttpTestCase
     {
         $corpo = $this->get("/gerente/dispositivos/{$this->tvA}")->body;
 
-        $posicoes = array_map(static fn (string $t): int => (int) strpos($corpo, $t), ['Endereço da TV', '<h2>Situação</h2>', 'Histórico de conexão', 'Como configurar a TV']);
+        $posicoes = array_map(static fn (string $t): int => (int) strpos($corpo, $t), ['Endereço da TV', '<h2>Orientação da tela</h2>', '<h2>Situação</h2>', 'Histórico de conexão', 'Como configurar a TV']);
         $ordenadas = $posicoes;
         sort($ordenadas);
         $this->assertSame($ordenadas, $posicoes);
@@ -282,6 +282,91 @@ final class GerenteDispositivosTest extends AppHttpTestCase
 
         $this->assertStringContainsString('<a href="/gerente/dispositivos" class="ativo" aria-current="page">', $corpo);
         $this->assertStringNotContainsString('href="/gerente/dispositivos" class="ativo"', $this->get('/gerente/tipos')->body);
+    }
+
+    // ---------- Orientação da tela pelo gerente ----------
+
+    private function orientacaoDe(int $id): string
+    {
+        return (string) $this->pdo->query("SELECT orientacao FROM dispositivos WHERE id = {$id}")->fetchColumn();
+    }
+
+    public function testGerenteAlternaAOrientacaoDeCadaTvIndependentemente(): void
+    {
+        $form = $this->get("/gerente/dispositivos/{$this->tvA}")->body;
+        $this->assertStringContainsString('action="/gerente/dispositivos/' . $this->tvA . '/orientacao"', $form);
+        $this->assertStringContainsString('<input type="radio" name="orientacao" value="horizontal" checked>', $form);
+
+        $r = $this->post("/gerente/dispositivos/{$this->tvA}/orientacao", ['orientacao' => 'vertical']);
+
+        $this->assertSame(303, $r->status);
+        $this->assertSame("/gerente/dispositivos/{$this->tvA}", $r->headers['Location']);
+        $this->assertSame('vertical', $this->orientacaoDe($this->tvA));
+        $this->assertSame('horizontal', $this->orientacaoDe($this->tvA2), 'A outra TV do mesmo gerente não muda.');
+        $this->assertSame('horizontal', $this->orientacaoDe($this->tvB));
+        $this->assertStringContainsString('<input type="radio" name="orientacao" value="vertical" checked>', $this->get("/gerente/dispositivos/{$this->tvA}")->body);
+        $this->assertSame('vertical', json_decode($this->get('/tv/' . self::TOKEN_A . '/state', '198.51.100.30')->body, true)['orientacao']);
+        $this->assertSame('horizontal', json_decode($this->get('/tv/' . self::TOKEN_A2 . '/state', '198.51.100.30')->body, true)['orientacao']);
+
+        $this->post("/gerente/dispositivos/{$this->tvA}/orientacao", ['orientacao' => 'horizontal']);
+        $this->assertSame('horizontal', $this->orientacaoDe($this->tvA));
+    }
+
+    public function testGerenteNaoMudaOrientacaoDeTvDeOutroCondominio(): void
+    {
+        $r = $this->post("/gerente/dispositivos/{$this->tvB}/orientacao", ['orientacao' => 'vertical']);
+
+        $this->assertSame(404, $r->status);
+        $this->assertSame('horizontal', $this->orientacaoDe($this->tvB));
+        $this->assertSame(404, $this->post('/gerente/dispositivos/999999/orientacao', ['orientacao' => 'vertical'])->status);
+        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM auditoria WHERE acao = 'dispositivo.orientacao_alterada'")->fetchColumn());
+    }
+
+    public function testVinculoRemovidoCortaAOrientacaoNaHora(): void
+    {
+        (new VinculoRepository($this->pdo))->sincronizarDoUsuario($this->gerenteA, [$this->condA2]);
+
+        $this->assertSame(404, $this->post("/gerente/dispositivos/{$this->tvA}/orientacao", ['orientacao' => 'vertical'])->status);
+        $this->assertSame('horizontal', $this->orientacaoDe($this->tvA));
+    }
+
+    public function testOrientacaoDoGerenteExigeCsrfLoginEPapel(): void
+    {
+        $this->assertSame(403, $this->post("/gerente/dispositivos/{$this->tvA}/orientacao", ['orientacao' => 'vertical'], comCsrf: false)->status);
+        $this->assertSame('horizontal', $this->orientacaoDe($this->tvA));
+
+        $_SESSION = [];
+        $this->assertSame(302, $this->post("/gerente/dispositivos/{$this->tvA}/orientacao", ['orientacao' => 'vertical'], false)->status);
+        $this->logarComoAdmin();
+        $this->assertSame(403, $this->post("/gerente/dispositivos/{$this->tvA}/orientacao", ['orientacao' => 'vertical'])->status);
+        $this->assertSame('horizontal', $this->orientacaoDe($this->tvA));
+    }
+
+    public function testOrientacaoInvalidaDoGerenteNaoAlteraNada(): void
+    {
+        foreach (['diagonal', '', 'VERTICAL'] as $valor) {
+            $this->assertSame(303, $this->post("/gerente/dispositivos/{$this->tvA}/orientacao", ['orientacao' => $valor])->status, $valor);
+        }
+
+        $this->assertSame('horizontal', $this->orientacaoDe($this->tvA));
+        $this->assertSame(0, (int) $this->pdo->query("SELECT count(*) FROM auditoria WHERE acao = 'dispositivo.orientacao_alterada'")->fetchColumn());
+    }
+
+    public function testOrientacaoDoGerenteVaiParaAAuditoriaComOCondominio(): void
+    {
+        $this->post("/gerente/dispositivos/{$this->tvA}/orientacao", ['orientacao' => 'vertical']);
+
+        $l = $this->pdo->query("SELECT usuario_id, condominio_id, entidade_id, detalhes::text AS d FROM auditoria WHERE acao = 'dispositivo.orientacao_alterada'")->fetch();
+
+        $this->assertSame($this->gerenteA, (int) $l['usuario_id']);
+        $this->assertSame($this->condA, (int) $l['condominio_id']);
+        $this->assertSame($this->tvA, (int) $l['entidade_id']);
+        $this->assertStringNotContainsString(self::TOKEN_A, $l['d']);
+    }
+
+    public function testListaNaoTemFormularioDeOrientacao(): void
+    {
+        $this->assertStringNotContainsString('name="orientacao"', $this->get('/gerente/dispositivos')->body);
     }
 
     // ---------- Pareamento pelo gerente ----------

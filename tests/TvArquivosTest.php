@@ -145,6 +145,35 @@ final class TvArquivosTest extends TestCase
         $this->assertStringContainsString('(min-aspect-ratio: 16/9)', $css, 'TVs mais largas que 16:9 limitam pela altura.');
     }
 
+    public function testTelaEmPeGiraSoQuandoOViewportEstaDeitadoEMantemOsLimitesDeCss(): void
+    {
+        $css = $this->ler('assets/tv.css');
+
+        $this->assertStringContainsString('.tv-pagina.tv-vertical .tv', $css);
+        $this->assertStringContainsString('font-size: 1.85185vw', $css, 'Em pé: 1em = 1/54 da largura (20px em 1080x1920).');
+        $this->assertMatchesRegularExpression('/@media \(min-aspect-ratio: 1\/1\)\s*\{[^}]*\.tv-pagina\.tv-vertical \.tv\s*\{[^}]*translateX\(100vw\) rotate\(90deg\)/s', $css, 'Só gira quando o navegador entrega a tela deitada.');
+        $this->assertMatchesRegularExpression('/width:\s*100vh;\s*height:\s*100vw/', $css);
+        $this->assertStringContainsString('-webkit-transform:', $css);
+        foreach ([1, 2, 3, 4] as $linhas) {
+            $this->assertStringContainsString(".tv-vertical .tv-fixos-cols-1.tv-fixos-rows-{$linhas} .tv-fixo-conteudo", $css);
+        }
+        foreach ([3, 4, 5, 6] as $linhas) {
+            $this->assertStringContainsString(".tv-fixos-rows-{$linhas} .tv-fixo", $css);
+            $this->assertStringContainsString(".tv-vertical .tv-fixos-cols-2.tv-fixos-rows-{$linhas} .tv-fixo-conteudo", $css);
+            $this->assertStringContainsString(".tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-2.tv-fixos-rows-{$linhas} .tv-fixo-conteudo", $css);
+        }
+    }
+
+    public function testTvJsAplicaAOrientacaoDoServidorSoComClasseNoBody(): void
+    {
+        $js = $this->ler('assets/tv.js');
+
+        $this->assertStringContainsString("valor === 'vertical'", $js);
+        $this->assertStringContainsString('tv-vertical', $js);
+        $this->assertStringContainsString('disposicao(lista.length, vertical)', $js);
+        $this->assertStringContainsString('aplicarOrientacao(novo.orientacao)', $js);
+    }
+
     public function testFaixaDeFixosOcupa40PorCentoDaAlturaEDivideEntreOsAvisos(): void
     {
         $css = $this->ler('assets/tv.css');

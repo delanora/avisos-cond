@@ -40,6 +40,7 @@ final class TvController
                 'token' => $acesso['dispositivo']['token'],
                 'estado_json' => json_encode($estado, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'intervalo' => $estado['intervalo'],
+                'orientacao' => $estado['orientacao'],
             ]));
         });
     }

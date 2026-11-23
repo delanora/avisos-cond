@@ -89,6 +89,7 @@ final class DispositivosController
             'url' => $this->urlDaTv($dispositivo['token']),
             'url_pareamento' => rtrim($this->urlBase, '/') . '/tv',
             'historico' => $historico,
+            'orientacoes' => DispositivoService::ORIENTACOES,
             'base_historico' => "/admin/dispositivos/{$dispositivo['id']}",
             'ultimo_contato' => DataHora::relativo($dispositivo['ultimo_ping_epoch'], $agora),
             'situacao' => SituacaoDispositivo::de($dispositivo['ultimo_ping_epoch'], $dispositivo['ativo'], $agora),
@@ -143,6 +144,26 @@ final class DispositivosController
         $this->dispositivos->trocarToken($id);
         $this->auditoriaDoDispositivo($request, 'dispositivo.token_trocado', $this->dispositivos->buscar($id));
         $this->sessao->flash('Token trocado. O endereço antigo deixou de funcionar: configure a TV com o novo.');
+
+        return Response::redirect("/admin/dispositivos/{$id}", 303);
+    }
+
+    /** @param array<string, string> $vars */
+    public function orientacao(Request $request, array $vars): Response
+    {
+        $id = (int) $vars['id'];
+        $valor = is_string($request->body['orientacao'] ?? null) ? $request->body['orientacao'] : '';
+
+        try {
+            $this->dispositivos->definirOrientacao($id, $valor);
+        } catch (ValidacaoException $e) {
+            $this->sessao->flash($e->erros['orientacao']);
+
+            return Response::redirect("/admin/dispositivos/{$id}", 303);
+        }
+
+        $this->auditoriaDoDispositivo($request, 'dispositivo.orientacao_alterada', $this->dispositivos->buscar($id), ['orientacao' => $valor]);
+        $this->sessao->flash('Orientação da tela alterada para ' . mb_strtolower(DispositivoService::ORIENTACOES[$valor]) . '. A TV se ajusta em até 1 minuto.');
 
         return Response::redirect("/admin/dispositivos/{$id}", 303);
     }

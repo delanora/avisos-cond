@@ -16,6 +16,8 @@ final class DispositivoService
 {
     private const TENTATIVAS_DE_TOKEN = 8;
     public const EVENTOS_POR_PAGINA = 5;
+    /** Orientação da tela de cada dispositivo: valor guardado => rótulo. */
+    public const ORIENTACOES = ['horizontal' => 'Horizontal', 'vertical' => 'Vertical'];
 
     public function __construct(
         private readonly DispositivoRepository $dispositivos,
@@ -183,6 +185,42 @@ final class DispositivoService
         }
 
         throw new RuntimeException('Não foi possível gerar um token único para o dispositivo.');
+    }
+
+    /**
+     * Define a orientação (horizontal ou vertical) de UM dispositivo. Uso do superadmin.
+     *
+     * @throws ValidacaoException valor desconhecido
+     * @throws NaoEncontradoException
+     */
+    public function definirOrientacao(int $id, string $orientacao): void
+    {
+        $this->orientacaoValida($orientacao);
+        $this->buscar($id);
+        $this->dispositivos->atualizarOrientacao($id, $orientacao);
+    }
+
+    /**
+     * Define a orientação de UM dispositivo dos condomínios do gerente; fora do escopo é 404 e nada muda.
+     *
+     * @param list<int> $permitidos
+     * @throws ValidacaoException
+     * @throws NaoEncontradoException
+     */
+    public function definirOrientacaoDoGerente(array $permitidos, int $id, string $orientacao): void
+    {
+        $this->orientacaoValida($orientacao);
+        if (!$this->dispositivos->atualizarOrientacaoDosCondominios($permitidos, $id, $orientacao)) {
+            throw new NaoEncontradoException();
+        }
+    }
+
+    /** @throws ValidacaoException */
+    private function orientacaoValida(string $orientacao): void
+    {
+        if (!isset(self::ORIENTACOES[$orientacao])) {
+            throw new ValidacaoException(['orientacao' => 'Escolha Horizontal ou Vertical.']);
+        }
     }
 
     /** @throws NaoEncontradoException */

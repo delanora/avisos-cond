@@ -113,8 +113,12 @@
      * Como dividir a faixa entre n avisos: até 3 numa linha; de 4 a 6 em duas linhas (2 ou 3 colunas);
      * acima disso, duas linhas com mais colunas (a letra encolhe, a faixa continua do mesmo tamanho).
      */
-    function disposicao(n) {
+    function disposicao(n, vertical) {
         if (n <= 0) { return { colunas: 0, linhas: 0 }; }
+        // Tela em pé: poucos avisos empilhados em uma coluna (largura curta, altura sobrando); muitos, em duas colunas.
+        if (vertical) {
+            return n <= 4 ? { colunas: 1, linhas: n } : { colunas: 2, linhas: Math.min(Math.ceil(n / 2), 6) };
+        }
         if (n <= 3) { return { colunas: n, linhas: 1 }; }
         if (n === 4) { return { colunas: 2, linhas: 2 }; }
         return { colunas: Math.min(Math.ceil(n / 2), 5), linhas: 2 };
@@ -175,6 +179,7 @@
     var atual = null;           // aviso do carrossel em tela
     var assinaturaFixos = '';   // identifica o que a faixa do topo mostra (para só redesenhar quando muda)
     var temFixos = false;
+    var vertical = false;       // monitor em pé (orientacao 'vertical' vinda do servidor)
     var inicioDoAvisoMs = 0;
     var videoTerminou = false;
     var trocando = false;
@@ -258,7 +263,7 @@
         while (el.fixos.firstChild) { el.fixos.removeChild(el.fixos.firstChild); }
         if (!temFixos) { el.fixos.className = 'tv-fixos'; return; }
 
-        var d = disposicao(lista.length);
+        var d = disposicao(lista.length, vertical);
         el.fixos.className = 'tv-fixos tv-fixos-cols-' + d.colunas + ' tv-fixos-rows-' + d.linhas;
         for (var j = 0; j < lista.length; j++) {
             var dados = lista[j].dados;
@@ -396,11 +401,20 @@
 
     /* ---------- Sincronização ---------- */
 
+    /** Liga/desliga a classe do monitor em pé no <body>; o CSS faz o resto (girar a tela, empilhar o conteúdo). */
+    function aplicarOrientacao(valor) {
+        vertical = valor === 'vertical';
+        var base = corpoPagina.className.replace(/\s*tv-vertical/g, '');
+        var nova = base + (vertical ? ' tv-vertical' : '');
+        if (corpoPagina.className !== nova) { corpoPagina.className = nova; }
+    }
+
     function aplicarEstado(novo) {
         var mudou = !estado || estado.version !== novo.version;
         estado = novo;
         if (!mudou) { return; }
 
+        aplicarOrientacao(novo.orientacao);
         interpretados = interpretar(novo.avisos || []);
         preCarregarEMLimpar(novo);
         atual = null;          // força reavaliar o que mostrar

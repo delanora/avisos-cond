@@ -69,6 +69,8 @@ final class TvService
 
         // Tudo que muda a exibição entra na versão; a TV só redesenha quando ela muda.
         $conteudo = [
+            // Como a tela está montada: vertical = monitor em pé (a TV gira o layout). Muda a versão, então a TV redesenha.
+            'orientacao' => (string) ($acesso['dispositivo']['orientacao'] ?? 'horizontal'),
             'bloqueado' => $bloqueado,
             'avisos' => $avisos,
         ];

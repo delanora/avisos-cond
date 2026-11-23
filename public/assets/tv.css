@@ -198,3 +198,65 @@ html.tv-html, body.tv-pagina { margin: 0; height: 100%; overflow: hidden; backgr
 .parear-codigo { margin: 0.3em 0; font-size: 11em; font-weight: 800; letter-spacing: 0.08em; line-height: 1.1; color: #1D2125; }
 .parear-passos { margin: 0 auto; max-width: 30em; font-size: 2em; line-height: 1.4; color: #1D2125; }
 .parear-status { margin: 1.4em 0 0; font-size: 1.6em; color: #5B6472; }
+
+/*
+ * TELA EM PÉ (dispositivo com orientação "vertical"; classe tv-vertical no <body>). A tela lógica é 9:16.
+ *  - Se o navegador já entrega a tela em pé (viewport mais alto que largo), só se usa a largura como base (1em = 1/54 da largura).
+ *  - Se entrega deitada (o normal num Fire Stick ligado a um monitor virado), a tela lógica (100vh de largura por 100vw de altura)
+ *    é girada 90 graus; o topo do conteúdo fica na borda direita da imagem, para o monitor virado para a esquerda.
+ * O conteúdo é empilhado (texto em cima, foto embaixo) e a faixa de fixos usa uma ou duas colunas.
+ */
+.tv-pagina.tv-vertical .tv { width: 100%; height: 100%; font-size: 1.85185vw; }
+@media (min-aspect-ratio: 1/1) {
+    .tv-pagina.tv-vertical .tv {
+        position: absolute; top: 0; left: 0;
+        width: 100vh; height: 100vw;
+        font-size: 1.85185vh;
+        -webkit-transform-origin: 0 0; transform-origin: 0 0;
+        -webkit-transform: translateX(100vw) rotate(90deg); transform: translateX(100vw) rotate(90deg);
+    }
+}
+
+/* Carrossel: texto em cima, foto/vídeo embaixo. Títulos podem ocupar até duas linhas (a largura é curta). */
+.tv-vertical .tv-corpo { -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: center; justify-content: center; -webkit-align-items: stretch; align-items: stretch; padding: 2.6em 2.4em; }
+.tv-vertical .tv-texto-bloco { -webkit-flex: 0 1 auto; flex: 0 1 auto; }
+.tv-vertical .tv-com-midia .tv-texto-bloco { margin: 0 0 2em; }
+.tv-vertical .tv-midia { -webkit-flex: 0 1 auto; flex: 0 1 auto; }
+.tv-vertical .tv-midia img, .tv-vertical .tv-midia video { max-height: 38em; }
+.tv-vertical .tv-titulo, .tv-vertical .tv-fixo-titulo { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow: hidden; word-wrap: break-word; overflow-wrap: anywhere; }
+.tv-vertical .tv-titulo { font-size: 3.4em; }
+.tv-vertical .tv-corpo-medio .tv-titulo { font-size: 3.7em; }
+.tv-vertical .tv-corpo-curto .tv-titulo { font-size: 4em; }
+.tv-vertical .tv-corpo-medio .tv-texto { font-size: 2.3em; }
+.tv-vertical .tv-corpo-curto .tv-texto { font-size: 2.6em; }
+.tv-vertical .tv-com-fixos .tv-corpo { padding: 1.6em 2.2em; }
+.tv-vertical .tv-com-fixos .tv-titulo { font-size: 2.8em; }
+.tv-vertical .tv-com-fixos .tv-texto { font-size: 1.7em; }
+.tv-vertical .tv-com-fixos .tv-corpo-medio .tv-titulo { font-size: 3em; }
+.tv-vertical .tv-com-fixos .tv-corpo-medio .tv-texto { font-size: 1.9em; }
+.tv-vertical .tv-com-fixos .tv-corpo-curto .tv-titulo { font-size: 3.2em; }
+.tv-vertical .tv-com-fixos .tv-corpo-curto .tv-texto { font-size: 2.1em; }
+.tv-vertical .tv-com-fixos .tv-midia img, .tv-vertical .tv-com-fixos .tv-midia video { max-height: 20em; }
+
+/* Faixa de fixos em pé: uma coluna (até 4 avisos) ou duas; mais linhas que na tela deitada. */
+.tv-fixos-rows-3 .tv-fixo { height: calc(33.333% - 1.2em); }
+.tv-fixos-rows-4 .tv-fixo { height: calc(25% - 1.2em); }
+.tv-fixos-rows-5 .tv-fixo { height: calc(20% - 1.2em); }
+.tv-fixos-rows-6 .tv-fixo { height: calc(16.666% - 1.2em); }
+.tv-vertical .tv-fixo-titulo { font-size: 2.6em; }
+.tv-vertical .tv-fixos-cols-1.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 1.15em; }
+.tv-vertical .tv-fixos-cols-1.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 0.8em; }
+.tv-vertical .tv-fixos-cols-1.tv-fixos-rows-3 .tv-fixo-conteudo { font-size: 0.6em; }
+.tv-vertical .tv-fixos-cols-1.tv-fixos-rows-4 .tv-fixo-conteudo { font-size: 0.48em; }
+.tv-vertical .tv-fixos-cols-2.tv-fixos-rows-3 .tv-fixo-conteudo { font-size: 0.5em; }
+.tv-vertical .tv-fixos-cols-2.tv-fixos-rows-4 .tv-fixo-conteudo { font-size: 0.44em; }
+.tv-vertical .tv-fixos-cols-2.tv-fixos-rows-5 .tv-fixo-conteudo { font-size: 0.38em; }
+.tv-vertical .tv-fixos-cols-2.tv-fixos-rows-6 .tv-fixo-conteudo { font-size: 0.34em; }
+.tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-1.tv-fixos-rows-1 .tv-fixo-conteudo { font-size: 2.2em; }
+.tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-1.tv-fixos-rows-2 .tv-fixo-conteudo { font-size: 1.6em; }
+.tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-1.tv-fixos-rows-3 .tv-fixo-conteudo { font-size: 1.25em; }
+.tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-1.tv-fixos-rows-4 .tv-fixo-conteudo { font-size: 1em; }
+.tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-2.tv-fixos-rows-3 .tv-fixo-conteudo { font-size: 0.85em; }
+.tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-2.tv-fixos-rows-4 .tv-fixo-conteudo { font-size: 0.75em; }
+.tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-2.tv-fixos-rows-5 .tv-fixo-conteudo { font-size: 0.65em; }
+.tv-vertical .tv-sem-carrossel.tv .tv-fixos-cols-2.tv-fixos-rows-6 .tv-fixo-conteudo { font-size: 0.58em; }

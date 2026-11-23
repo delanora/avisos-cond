@@ -12,6 +12,20 @@
     </div>
 
     <div class="formulario-secao">
+        <h2>Orientação da tela</h2>
+        <p class="secao-ajuda">Escolha <strong>Vertical</strong> quando o monitor estiver virado em pé. Vale só para este dispositivo e a TV se ajusta sozinha em até 1 minuto.</p>
+        <form method="post" action="{{ base_historico }}/orientacao" class="orientacao-form">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <div class="orientacao-opcoes">
+                {% for valor, rotulo in orientacoes %}
+                    <label class="opcao"><input type="radio" name="orientacao" value="{{ valor }}"{% if dispositivo.orientacao == valor %} checked{% endif %}><span>{{ rotulo }}</span></label>
+                {% endfor %}
+            </div>
+            <button type="submit" class="botao-sutil">Salvar orientação</button>
+        </form>
+    </div>
+
+    <div class="formulario-secao">
         <h2>Situação</h2>
         <p>
             <span class="etiqueta etiqueta-disp-{{ situacao }}">{{ rotulos[situacao] }}</span>

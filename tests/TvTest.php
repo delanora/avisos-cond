@@ -64,6 +64,41 @@ final class TvTest extends AppHttpTestCase
 
     // ---------- Página ----------
 
+    public function testEstadoTrazAOrientacaoDeCadaDispositivoEMudarTrocaAVersao(): void
+    {
+        $this->assertSame('horizontal', $this->estado()['orientacao']);
+        $versaoHorizontal = $this->estado()['version'];
+
+        $this->pdo->exec("UPDATE dispositivos SET orientacao = 'vertical' WHERE token = '" . self::TOKEN . "'");
+        $vertical = $this->estado();
+
+        $this->assertSame('vertical', $vertical['orientacao']);
+        $this->assertNotSame($versaoHorizontal, $vertical['version'], 'A TV só redesenha quando a versão muda.');
+        $this->assertSame('horizontal', $this->estado(self::TOKEN_B)['orientacao'], 'Cada dispositivo é independente.');
+    }
+
+    public function testPaginaJaNasceEmPeQuandoODispositivoEVertical(): void
+    {
+        $this->assertStringContainsString('<body class="tv-pagina" ', $this->get('/tv/' . self::TOKEN)->body);
+
+        $this->pdo->exec("UPDATE dispositivos SET orientacao = 'vertical' WHERE token = '" . self::TOKEN . "'");
+        $corpo = $this->get('/tv/' . self::TOKEN)->body;
+
+        $this->assertStringContainsString('<body class="tv-pagina tv-vertical" ', $corpo);
+        $this->assertStringContainsString('&quot;orientacao&quot;:&quot;vertical&quot;', $corpo, 'O estado inicial também leva a orientação (vale offline).');
+    }
+
+    public function testCondominioBloqueadoMantemAOrientacao(): void
+    {
+        $this->pdo->exec("UPDATE dispositivos SET orientacao = 'vertical' WHERE token = '" . self::TOKEN . "'");
+        $this->pdo->exec("UPDATE condominios SET ativo = false WHERE id = {$this->a}");
+
+        $e = $this->estado();
+
+        $this->assertTrue($e['bloqueado']);
+        $this->assertSame('vertical', $e['orientacao']);
+    }
+
     public function testPaginaDaTvEPublicaSemSessaoNemCookies(): void
     {
         $r = $this->get('/tv/' . self::TOKEN);

@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/assets/tv.css">
 </head>
 {# O estado inicial vai num atributo (escapado pelo Twig): a TV já nasce com os avisos, mesmo offline. #}
-<body class="tv-pagina" data-estado="{{ estado_json }}" data-estado-url="/tv/{{ token }}/state" data-intervalo="{{ intervalo }}">
+<body class="tv-pagina{{ orientacao == 'vertical' ? ' tv-vertical' : '' }}" data-estado="{{ estado_json }}" data-estado-url="/tv/{{ token }}/state" data-intervalo="{{ intervalo }}">
     <div class="tv" id="tv">
         <div class="tv-fixos" id="tv-fixos"></div>
         <div class="tv-corpo" id="tv-corpo"></div>

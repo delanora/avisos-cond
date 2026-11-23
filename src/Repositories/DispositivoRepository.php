@@ -8,7 +8,7 @@ use PDO;
 
 final class DispositivoRepository
 {
-    private const COLUNAS = 'd.id, d.condominio_id, d.nome, d.token, d.ativo,
+    private const COLUNAS = 'd.id, d.condominio_id, d.nome, d.token, d.ativo, d.orientacao,
         extract(epoch FROM d.ultimo_ping)::bigint AS ultimo_ping_epoch,
         extract(epoch FROM d.criado_em)::bigint AS criado_epoch,
         c.nome AS condominio_nome';
@@ -84,7 +84,7 @@ final class DispositivoRepository
     public function porToken(string $token): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT d.id, d.condominio_id, d.nome, d.token, d.ativo,
+            'SELECT d.id, d.condominio_id, d.nome, d.token, d.ativo, d.orientacao,
                     c.nome AS condominio_nome, c.ativo AS condominio_ativo
              FROM dispositivos d JOIN condominios c ON c.id = d.condominio_id
              WHERE d.token = :token'
@@ -96,7 +96,7 @@ final class DispositivoRepository
         }
 
         return [
-            'dispositivo' => ['id' => (int) $l['id'], 'condominio_id' => (int) $l['condominio_id'], 'nome' => (string) $l['nome'], 'token' => (string) $l['token'], 'ativo' => (bool) $l['ativo']],
+            'dispositivo' => ['id' => (int) $l['id'], 'condominio_id' => (int) $l['condominio_id'], 'nome' => (string) $l['nome'], 'token' => (string) $l['token'], 'ativo' => (bool) $l['ativo'], 'orientacao' => (string) $l['orientacao']],
             'condominio' => [
                 'id' => (int) $l['condominio_id'],
                 'nome' => (string) $l['condominio_nome'],
@@ -140,6 +140,24 @@ final class DispositivoRepository
              WHERE id = :id AND NOT EXISTS (SELECT 1 FROM dispositivos WHERE token = :token)'
         );
         $stmt->execute(['token' => $novoToken, 'id' => $id]);
+
+        return $stmt->rowCount() === 1;
+    }
+
+    /** Define a orientação (o valor já foi validado pelo serviço; o banco também confere). Retorna false se o dispositivo não existe. */
+    public function atualizarOrientacao(int $id, string $orientacao): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE dispositivos SET orientacao = :orientacao WHERE id = :id');
+        $stmt->execute(['orientacao' => $orientacao, 'id' => $id]);
+
+        return $stmt->rowCount() === 1;
+    }
+
+    /** Igual a atualizarOrientacao, mas só vale para dispositivo de condomínio permitido (isolamento do gerente). */
+    public function atualizarOrientacaoDosCondominios(array $permitidos, int $id, string $orientacao): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE dispositivos SET orientacao = :orientacao WHERE id = :id AND condominio_id = ANY(:permitidos::bigint[])');
+        $stmt->execute(['orientacao' => $orientacao, 'id' => $id, 'permitidos' => Pg::arrayDeInteiros($permitidos)]);
 
         return $stmt->rowCount() === 1;
     }
@@ -238,6 +256,7 @@ final class DispositivoRepository
             'nome' => (string) $l['nome'],
             'token' => (string) $l['token'],
             'ativo' => (bool) $l['ativo'],
+            'orientacao' => (string) $l['orientacao'],
             'ultimo_ping_epoch' => $l['ultimo_ping_epoch'] === null ? null : (int) $l['ultimo_ping_epoch'],
             'criado_epoch' => (int) $l['criado_epoch'],
         ];

@@ -23,6 +23,7 @@ final class AcoesDeAuditoria
         'dispositivo.token_trocado' => 'Trocou o token de um dispositivo',
         'dispositivo.excluido' => 'Excluiu um dispositivo',
         'dispositivo.pareado' => 'Pareou uma TV por código',
+        'dispositivo.orientacao_alterada' => 'Mudou a orientação da tela de um dispositivo',
         'aviso.criado' => 'Criou um aviso',
         'aviso.atualizado' => 'Alterou um aviso',
         'aviso.excluido' => 'Excluiu um aviso',

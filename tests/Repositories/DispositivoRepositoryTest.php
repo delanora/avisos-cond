@@ -142,6 +142,32 @@ final class DispositivoRepositoryTest extends AppHttpTestCase
         $this->assertNotNull($eventos[0]['ultimo_ping_epoch']);
     }
 
+    public function testOrientacaoPadraoHorizontalEAtualizaSoUmDispositivo(): void
+    {
+        $um = (int) $this->repo->criar($this->a, 'Um', 'ABCDEFGH2345');
+        $dois = (int) $this->repo->criar($this->a, 'Dois', 'ZZZZ2222XXXX');
+        $this->assertSame('horizontal', $this->repo->porId($um)['orientacao']);
+
+        $this->assertTrue($this->repo->atualizarOrientacao($um, 'vertical'));
+
+        $this->assertSame('vertical', $this->repo->porId($um)['orientacao']);
+        $this->assertSame('horizontal', $this->repo->porId($dois)['orientacao']);
+        $this->assertSame('vertical', $this->repo->porToken('ABCDEFGH2345')['dispositivo']['orientacao']);
+        $this->assertFalse($this->repo->atualizarOrientacao(999999, 'vertical'));
+    }
+
+    public function testOrientacaoDoGerenteFiltraPorCondominioPermitido(): void
+    {
+        $meu = (int) $this->repo->criar($this->a, 'Meu', 'ABCDEFGH2345');
+        $alheio = (int) $this->repo->criar($this->b, 'Alheio', 'ZZZZ2222XXXX');
+
+        $this->assertFalse($this->repo->atualizarOrientacaoDosCondominios([$this->a], $alheio, 'vertical'));
+        $this->assertFalse($this->repo->atualizarOrientacaoDosCondominios([], $meu, 'vertical'));
+        $this->assertSame('horizontal', $this->repo->porId($alheio)['orientacao']);
+        $this->assertTrue($this->repo->atualizarOrientacaoDosCondominios([$this->a], $meu, 'vertical'));
+        $this->assertSame('vertical', $this->repo->porId($meu)['orientacao']);
+    }
+
     public function testEventosPaginamEContam(): void
     {
         $id = (int) $this->repo->criar($this->a, 'Elevador', 'ABCDEFGH2345');
