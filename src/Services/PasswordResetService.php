@@ -22,6 +22,7 @@ final class PasswordResetService
         private readonly Logger $logger,
         private readonly string $urlBase,
         private readonly View $view,
+        private readonly ?AuditoriaService $auditoria = null,
     ) {
     }
 
@@ -48,6 +49,7 @@ final class PasswordResetService
         // O token só existe no e-mail; no banco fica apenas o hash (SHA-256).
         $token = bin2hex(random_bytes(32));
         $this->resets->criar($usuario['id'], self::hashDoToken($token), self::VALIDADE_SEGUNDOS);
+        $this->auditoria?->registrar('senha.recuperacao_pedida', $usuario, $ip, 'usuario', (int) $usuario['id']);
 
         $link = rtrim($this->urlBase, '/') . '/redefinir-senha/' . $token;
         $texto = "Olá, {$usuario['nome']}.\n\n"
@@ -101,6 +103,8 @@ final class PasswordResetService
 
         $this->usuarios->atualizarSenha($reset['usuario_id'], $this->hasher->hash($senha));
         $this->resets->invalidarDoUsuario($reset['usuario_id']);
+        $dono = $this->usuarios->porId($reset['usuario_id']);
+        $this->auditoria?->registrar('senha.redefinida', $dono, $ip, 'usuario', (int) $reset['usuario_id']);
 
         return true;
     }

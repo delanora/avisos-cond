@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\AuditoriaService;
 use App\Services\AuthService;
 use App\Services\PasswordResetService;
 use App\Services\RateLimitExcedidoException;
@@ -26,6 +27,7 @@ final class AuthController
         private readonly Session $sessao,
         private readonly AuthService $auth,
         private readonly PasswordResetService $recuperacao,
+        private readonly AuditoriaService $auditoria,
     ) {
     }
 
@@ -67,6 +69,7 @@ final class AuthController
         $this->sessao->forget('csrf_token');
         $this->sessao->set('usuario_id', $usuario['id']);
         $this->sessao->set('autenticado_em', time());
+        $this->auditoria->registrar('login.entrou', $usuario, $request->ip(), 'usuario', (int) $usuario['id'], null, ['papel' => $usuario['papel']]);
 
         return Response::redirect($usuario['papel'] === 'superadmin' ? '/admin' : '/gerente', 303);
     }

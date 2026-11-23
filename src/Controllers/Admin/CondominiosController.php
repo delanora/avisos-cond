@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Admin;
 
+use App\Services\AuditoriaService;
 use App\Services\GestaoCondominiosService;
 use App\Services\ListaDeIds;
 use App\Services\ValidacaoException;
@@ -19,6 +20,7 @@ final class CondominiosController
         private readonly View $view,
         private readonly Session $sessao,
         private readonly GestaoCondominiosService $condominios,
+        private readonly AuditoriaService $auditoria,
     ) {
     }
 
@@ -43,11 +45,13 @@ final class CondominiosController
     public function criar(Request $request, array $vars): Response
     {
         try {
-            $this->condominios->criar($request->body);
+            $novoId = $this->condominios->criar($request->body);
         } catch (ValidacaoException $e) {
             return $this->formulario($request, false, '/admin/condominios', $this->valoresEnviados($request), $e->erros, 422);
         }
 
+        $novo = $this->condominios->buscar($novoId);
+        $this->auditoria->registrarDaRequisicao($request, 'condominio.criado', 'condominio', $novoId, ['id' => $novoId, 'nome' => $novo['nome']], $this->resumo($novo));
         $this->sessao->flash('Condomínio criado com sucesso.');
 
         return Response::redirect('/admin/condominios', 303);
@@ -77,6 +81,8 @@ final class CondominiosController
             return $this->formulario($request, true, "/admin/condominios/{$id}", $this->valoresEnviados($request), $e->erros, 422, $this->condominios->buscar($id));
         }
 
+        $atual = $this->condominios->buscar($id);
+        $this->auditoria->registrarDaRequisicao($request, 'condominio.atualizado', 'condominio', $id, ['id' => $id, 'nome' => $atual['nome']], $this->resumo($atual));
         $this->sessao->flash('Condomínio atualizado com sucesso.');
 
         return Response::redirect('/admin/condominios', 303);
@@ -97,10 +103,22 @@ final class CondominiosController
     /** @param array<string, string> $vars */
     public function excluir(Request $request, array $vars): Response
     {
-        $this->condominios->excluir((int) $vars['id']);
+        $id = (int) $vars['id'];
+        $antes = $this->condominios->buscar($id);
+        $this->condominios->excluir($id);
+        $this->auditoria->registrarDaRequisicao($request, 'condominio.excluido', 'condominio', $id, ['id' => $id, 'nome' => $antes['nome']], $this->resumo($antes));
         $this->sessao->flash('Condomínio excluído.');
 
         return Response::redirect('/admin/condominios', 303);
+    }
+
+    /**
+     * @param array<string, mixed> $c
+     * @return array<string, mixed>
+     */
+    private function resumo(array $c): array
+    {
+        return ['nome' => $c['nome'], 'endereco' => $c['endereco'] ?? '', 'ativo' => $c['ativo'] ? 'sim' : 'não', 'gerentes' => count($c['gerentes'] ?? [])];
     }
 
     /** @return array<string, mixed> */

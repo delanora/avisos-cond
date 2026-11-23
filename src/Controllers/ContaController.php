@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\AuditoriaService;
 use App\Services\RateLimitExcedidoException;
 use App\Services\SenhaService;
 use App\Services\ValidacaoException;
@@ -19,6 +20,7 @@ final class ContaController
         private readonly View $view,
         private readonly Session $sessao,
         private readonly SenhaService $senhas,
+        private readonly AuditoriaService $auditoria,
     ) {
     }
 
@@ -46,6 +48,7 @@ final class ContaController
         $this->sessao->regenerate();
         $this->sessao->forget('csrf_token');
         $this->sessao->set('autenticado_em', $autenticadoEm);
+        $this->auditoria->registrarDaRequisicao($request, 'senha.alterada', 'usuario', (int) $request->attribute('usuario')['id']);
         $this->sessao->flash('Senha alterada com sucesso. Os outros aparelhos conectados com esta conta foram desconectados.');
 
         return Response::redirect('/conta/seguranca', 303);

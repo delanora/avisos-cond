@@ -96,6 +96,11 @@ Regras de camada:
 - Middleware `Role` protege rotas por papel (`superadmin`, `gerente`). `/admin/*` só `superadmin`; `/gerente/*` só `gerente` (ou superadmin em modo suporte, com registro em auditoria).
 - Negar por padrão: rota sem regra explícita não é pública.
 
+### 6.3.1 Auditoria
+- Toda ação relevante (login, troca/recuperação de senha, criar/editar/excluir usuário, condomínio, dispositivo e aviso) passa por `AuditoriaService`, que grava em `auditoria` com **nomes copiados** (o registro sobrevive à exclusão da pessoa ou do condomínio). A tabela é **imutável** (gatilho barra UPDATE); só a tarefa `limpar_auditoria` apaga, após `AUDITORIA_RETENCAO_DIAS`.
+- `detalhes` nunca leva senha, token, segredo, chave ou hash (`AuditoriaService::limpar` remove por nome de campo): ao auditar uma ação nova, monte o resumo à mão, só com o necessário. Falha ao auditar vai para o log e **não** derruba a ação.
+- Só o superadmin consulta (`/admin/auditoria`, somente leitura). Rota de auditoria nova entra na lista do `AdminTest`.
+
 ### 6.4 CSRF e XSS
 - Token CSRF em **todo** POST/PUT/PATCH/DELETE (middleware). HTMX deve enviar o token por header.
 - Twig com auto-escape sempre ligado. Proibido usar `|raw` em conteúdo vindo de usuário. Se precisar de formatação rica nos avisos, use um subconjunto seguro (ex.: texto puro com quebras de linha; ou Markdown limitado com sanitização).

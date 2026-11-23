@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Controllers\Admin\AuditoriaController;
 use App\Controllers\Admin\CondominiosController;
 use App\Controllers\Admin\DispositivosController;
 use App\Controllers\Admin\UsuariosController;
@@ -26,6 +27,7 @@ use App\Middleware\Negado;
 use App\Middleware\RateLimitMiddleware;
 use App\Middleware\RoleMiddleware;
 use App\Middleware\TamanhoMiddleware;
+use App\Repositories\AuditoriaRepository;
 use App\Repositories\AvisoRepository;
 use App\Repositories\CondominioRepository;
 use App\Repositories\DispositivoRepository;
@@ -37,6 +39,7 @@ use App\Repositories\TipoAvisoRepository;
 use App\Repositories\UsuarioRepository;
 use App\Repositories\VinculoRepository;
 use App\Services\AparenciaService;
+use App\Services\AuditoriaService;
 use App\Services\AuthService;
 use App\Services\AvisoService;
 use App\Services\DispositivoService;
@@ -114,6 +117,7 @@ final class AppFactory
         $tvAcesso = new TvAcesso($dispositivos, $limitador);
         $gestaoDispositivos = new DispositivoService($dispositivos, $condominios);
 
+        $auditoria = new AuditoriaService(new AuditoriaRepository($pdo), $logger);
         $auth = new AuthService($usuarios, $hasher, $limitador);
         $recuperacao = new PasswordResetService(
             $usuarios,
@@ -124,6 +128,7 @@ final class AppFactory
             $logger,
             $config->obrigatorio('APP_URL'),
             $view,
+            $auditoria,
         );
 
         $negado = new Negado($view);
@@ -138,26 +143,27 @@ final class AppFactory
         $mwLimiteLogin = new RateLimitMiddleware($limitador, $negado, 'login', 30, 900, 900);
         $mwLimiteRecuperacao = new RateLimitMiddleware($limitador, $negado, 'recuperacao', 20, 3600, 3600);
 
-        $authController = new AuthController($view, $sessao, $auth, $recuperacao);
+        $authController = new AuthController($view, $sessao, $auth, $recuperacao, $auditoria);
         $home = new HomeController();
         $gerente = new GerenteController($view);
         $admin = new AdminController($view, $gestaoUsuarios, $gestaoCondominios, $gestaoDispositivos);
-        $adminUsuarios = new UsuariosController($view, $sessao, $gestaoUsuarios, $gestaoCondominios);
-        $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios);
-        $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $tipoAvisoService, $modeloAvisoService);
+        $adminUsuarios = new UsuariosController($view, $sessao, $gestaoUsuarios, $gestaoCondominios, $auditoria);
+        $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios, $auditoria);
+        $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $tipoAvisoService, $modeloAvisoService, $auditoria);
         $gerenteAparencia = new AparenciaController($view, $sessao, $aparenciaService);
-        $conta = new ContaController($view, $sessao, new SenhaService($usuarios, $hasher, $limitador));
+        $conta = new ContaController($view, $sessao, new SenhaService($usuarios, $hasher, $limitador), $auditoria);
         $gerenteDispositivos = new GerenteDispositivosController($view, $gestaoDispositivos);
         $gerenteTipos = new TiposController($view, $sessao, $tipoAvisoService, new TipoAvisoRepository($pdo));
         $gerenteModelos = new ModelosController($view, $sessao, $modeloAvisoService, $tipoAvisoService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
-        $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'));
+        $adminAuditoria = new AuditoriaController($view, new AuditoriaRepository($pdo), $gestaoCondominios);
+        $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'), $auditoria);
         $tv = new TvController($view, $tvAcesso, $tvService, $aceleracao);
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -207,6 +213,8 @@ final class AppFactory
             $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/token', $escrita([$adminDispositivos, 'trocarToken']));
             $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/excluir', $leitura([$adminDispositivos, 'confirmarExclusao']));
             $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/excluir', $escrita([$adminDispositivos, 'excluir']));
+
+            $r->addRoute('GET', '/admin/auditoria', $leitura([$adminAuditoria, 'lista']));
 
             // Tela da TV: pública, identificada só pelo token da URL (sem login, sem sessão, sem CSRF: só leitura).
             // O token aceita qualquer caixa; a validação e o rate limit de tokens inválidos ficam no TvAcesso.

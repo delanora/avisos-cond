@@ -294,6 +294,7 @@ O agendador executa tarefas de **manutenção**, cada uma com seu intervalo:
 | `limpar_rate_limits` | 1 h | apaga contadores de tentativas (login, recuperação de senha, token de TV) com mais de 1 dia e sem bloqueio ativo |
 | `limpar_resets_de_senha` | 1 dia | apaga tokens de recuperação já usados ou expirados há mais de 7 dias (nunca os ainda válidos) |
 | `detectar_dispositivos_offline` | 1 min | registra no histórico (`dispositivo_eventos`) quando uma TV fica offline (sem contato há mais de 3 min) e quando volta; só grava mudanças |
+| `limpar_auditoria` | 1 dia | apaga registros de auditoria mais antigos que `AUDITORIA_RETENCAO_DIAS` (padrão 365, mínimo 30) |
 | `limpar_arquivos_orfaos` | 1 dia | apaga de `storage/uploads` arquivos que nenhum aviso usa, com mais de 24 h (tem travas de segurança) |
 
 Não existe tarefa de "publicar" ou "expirar" avisos: o que está no ar é calculado na hora pelo início e fim de cada aviso (na TV e no painel), então nada precisa ser mudado no banco quando o horário chega.

@@ -667,3 +667,11 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
     .acoes-linha .rotulo-longo { display: none; }
     .acoes-linha .rotulo-curto { display: inline; }
 }
+
+/* Auditoria (admin): filtros em linha, detalhes em pílulas e paginação. */
+.filtros-auditoria { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem 1rem; align-items: end; margin-bottom: 1.25rem; }
+.filtros-auditoria .campo { margin: 0; }
+.filtros-acoes { grid-column: 1 / -1; margin-top: 0; }
+.nowrap { white-space: nowrap; }
+.detalhe-auditoria { display: inline-block; margin: 0 0.75rem 0.15rem 0; font-size: 0.8125rem; }
+.paginacao { display: flex; gap: 0.75rem; margin-top: 1rem; }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Gerente;
 
+use App\Services\AuditoriaService;
 use App\Services\AvisoService;
 use App\Services\ModeloAvisoService;
 use App\Services\TipoAvisoService;
@@ -25,6 +26,7 @@ final class AvisosController
         private readonly AvisoService $avisos,
         private readonly TipoAvisoService $tipos,
         private readonly ModeloAvisoService $modelos,
+        private readonly AuditoriaService $auditoria,
     ) {
     }
 
@@ -86,6 +88,7 @@ final class AvisosController
             return $this->formulario($request, $condominio, null, $this->valoresEnviados($request), $e->erros, 422);
         }
         $this->guardarComoModeloSePedido($request, $condominio['id'], $id);
+        $this->auditarAviso($request, 'aviso.criado', $condominio, $this->avisos->buscar(EscopoGerente::permitidos($request), $condominio['id'], $id));
 
         $this->sessao->flash('Aviso criado com sucesso.');
 
@@ -129,6 +132,7 @@ final class AvisosController
             return $this->formulario($request, $condominio, $aviso, $this->valoresEnviados($request), $e->erros, 422);
         }
         $this->guardarComoModeloSePedido($request, $condominio['id'], $id);
+        $this->auditarAviso($request, 'aviso.atualizado', $condominio, $this->avisos->buscar($permitidos, $condominio['id'], $id));
 
         $this->sessao->flash('Aviso atualizado com sucesso.');
 
@@ -151,7 +155,9 @@ final class AvisosController
     public function excluir(Request $request, array $vars): Response
     {
         $condominio = EscopoGerente::exigir($request, (int) $vars['cid']);
+        $antes = $this->avisos->buscar(EscopoGerente::permitidos($request), $condominio['id'], (int) $vars['id']);
         $this->avisos->excluir(EscopoGerente::permitidos($request), $condominio['id'], (int) $vars['id']);
+        $this->auditarAviso($request, 'aviso.excluido', $condominio, $antes);
 
         $this->sessao->flash('Aviso excluído.');
 
@@ -170,6 +176,23 @@ final class AvisosController
             'hora' => DataHora::paraFormulario(time()),
             'menu' => 'avisos',
         ]));
+    }
+
+    /**
+     * Registra a ação com um resumo do aviso (título, tipo e período; o texto fica de fora).
+     *
+     * @param array<string, mixed> $condominio
+     * @param array<string, mixed> $aviso
+     */
+    private function auditarAviso(Request $request, string $acao, array $condominio, array $aviso): void
+    {
+        $this->auditoria->registrarDaRequisicao($request, $acao, 'aviso', (int) $aviso['id'], ['id' => (int) $condominio['id'], 'nome' => (string) $condominio['nome']], [
+            'titulo' => $aviso['titulo'],
+            'tipo' => $aviso['tipo_nome'],
+            'de' => DataHora::exibir($aviso['inicio_epoch']),
+            'ate' => DataHora::exibir($aviso['fim_epoch']),
+            'ativo' => $aviso['ativo'] ? 'sim' : 'não',
+        ]);
     }
 
     /** "Salvar este aviso como modelo": guarda título, texto e tipo do aviso que acabou de ser salvo. */

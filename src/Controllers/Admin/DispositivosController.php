@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Admin;
 
+use App\Services\AuditoriaService;
 use App\Services\DispositivoService;
 use App\Services\GestaoCondominiosService;
 use App\Services\ValidacaoException;
@@ -23,6 +24,7 @@ final class DispositivosController
         private readonly DispositivoService $dispositivos,
         private readonly GestaoCondominiosService $condominios,
         private readonly string $urlBase,
+        private readonly AuditoriaService $auditoria,
     ) {
     }
 
@@ -65,6 +67,7 @@ final class DispositivosController
             return $this->formulario($request, false, '/admin/dispositivos', $this->valoresEnviados($request), $e->erros, 422);
         }
 
+        $this->auditoriaDoDispositivo($request, 'dispositivo.criado', $this->dispositivos->buscar($id));
         $this->sessao->flash('Dispositivo criado. Use o endereço abaixo para configurar a TV.');
 
         return Response::redirect("/admin/dispositivos/{$id}", 303);
@@ -111,6 +114,7 @@ final class DispositivosController
             return $this->formulario($request, true, "/admin/dispositivos/{$id}", $this->valoresEnviados($request), $e->erros, 422, $this->dispositivos->buscar($id));
         }
 
+        $this->auditoriaDoDispositivo($request, 'dispositivo.atualizado', $this->dispositivos->buscar($id));
         $this->sessao->flash('Dispositivo atualizado com sucesso.');
 
         return Response::redirect('/admin/dispositivos', 303);
@@ -130,6 +134,7 @@ final class DispositivosController
     {
         $id = (int) $vars['id'];
         $this->dispositivos->trocarToken($id);
+        $this->auditoriaDoDispositivo($request, 'dispositivo.token_trocado', $this->dispositivos->buscar($id));
         $this->sessao->flash('Token trocado. O endereço antigo deixou de funcionar: configure a TV com o novo.');
 
         return Response::redirect("/admin/dispositivos/{$id}", 303);
@@ -147,10 +152,23 @@ final class DispositivosController
     /** @param array<string, string> $vars */
     public function excluir(Request $request, array $vars): Response
     {
-        $this->dispositivos->excluir((int) $vars['id']);
+        $id = (int) $vars['id'];
+        $antes = $this->dispositivos->buscar($id);
+        $this->dispositivos->excluir($id);
+        $this->auditoriaDoDispositivo($request, 'dispositivo.excluido', $antes);
         $this->sessao->flash('Dispositivo excluído.');
 
         return Response::redirect('/admin/dispositivos', 303);
+    }
+
+    /**
+     * Registra a ação sem o token (que é uma credencial): só nome, condomínio e situação.
+     *
+     * @param array<string, mixed> $d
+     */
+    private function auditoriaDoDispositivo(Request $request, string $acao, array $d): void
+    {
+        $this->auditoria->registrarDaRequisicao($request, $acao, 'dispositivo', (int) $d['id'], ['id' => (int) $d['condominio_id'], 'nome' => (string) $d['condominio_nome']], ['nome' => $d['nome'], 'ativo' => $d['ativo'] ? 'sim' : 'não']);
     }
 
     private function urlDaTv(string $token): string

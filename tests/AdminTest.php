@@ -18,6 +18,7 @@ final class AdminTest extends AppHttpTestCase
                 '/admin',
                 '/admin/usuarios', '/admin/usuarios/novo',
                 "/admin/usuarios/{$usuarioId}/editar", "/admin/usuarios/{$usuarioId}/excluir",
+                '/admin/auditoria',
                 '/admin/condominios', '/admin/condominios/novo',
                 "/admin/condominios/{$condominioId}/editar", "/admin/condominios/{$condominioId}/excluir",
             ],

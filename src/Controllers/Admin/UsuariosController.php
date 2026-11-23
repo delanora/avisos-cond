@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Admin;
 
+use App\Services\AuditoriaService;
 use App\Services\GestaoCondominiosService;
 use App\Services\GestaoUsuariosService;
 use App\Services\ListaDeIds;
@@ -21,6 +22,7 @@ final class UsuariosController
         private readonly Session $sessao,
         private readonly GestaoUsuariosService $usuarios,
         private readonly GestaoCondominiosService $condominios,
+        private readonly AuditoriaService $auditoria,
     ) {
     }
 
@@ -45,10 +47,11 @@ final class UsuariosController
     public function criar(Request $request, array $vars): Response
     {
         try {
-            $this->usuarios->criar($request->body);
+            $novoId = $this->usuarios->criar($request->body);
         } catch (ValidacaoException $e) {
             return $this->formulario($request, false, '/admin/usuarios', $this->valoresEnviados($request), $e->erros, 422);
         }
+        $this->auditoria->registrarDaRequisicao($request, 'usuario.criado', 'usuario', $novoId, null, $this->resumoDoUsuario($this->usuarios->buscar($novoId)));
 
         $this->sessao->flash('Usuário criado com sucesso.');
 
@@ -80,6 +83,7 @@ final class UsuariosController
             return $this->formulario($request, true, "/admin/usuarios/{$id}", $this->valoresEnviados($request), $e->erros, 422, $id);
         }
 
+        $this->auditoria->registrarDaRequisicao($request, 'usuario.atualizado', 'usuario', $id, null, $this->resumoDoUsuario($this->usuarios->buscar($id)));
         $this->sessao->flash('Usuário atualizado com sucesso.');
 
         return Response::redirect('/admin/usuarios', 303);
@@ -95,6 +99,7 @@ final class UsuariosController
     public function excluir(Request $request, array $vars): Response
     {
         $id = (int) $vars['id'];
+        $antes = $this->resumoDoUsuario($this->usuarios->buscar($id));
 
         try {
             $this->usuarios->excluir($id, $this->atorId($request));
@@ -102,9 +107,21 @@ final class UsuariosController
             return $this->paginaExclusao($request, $this->usuarios->buscar($id), $e->erros['geral'] ?? 'Não foi possível excluir.', 422);
         }
 
+        $this->auditoria->registrarDaRequisicao($request, 'usuario.excluido', 'usuario', $id, null, $antes);
         $this->sessao->flash('Usuário excluído.');
 
         return Response::redirect('/admin/usuarios', 303);
+    }
+
+    /**
+     * Resumo seguro de um usuário para a auditoria (nunca a senha).
+     *
+     * @param array<string, mixed> $u
+     * @return array<string, mixed>
+     */
+    private function resumoDoUsuario(array $u): array
+    {
+        return ['nome' => $u['nome'], 'email' => $u['email'], 'papel' => $u['papel'], 'ativo' => $u['ativo'] ? 'sim' : 'não', 'condominios' => count($u['condominios'] ?? [])];
     }
 
     private function atorId(Request $request): int

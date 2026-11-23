@@ -246,6 +246,21 @@ final class AdminDispositivosTest extends AppHttpTestCase
         $this->assertSame(200, $this->get('/tv/' . self::TOKEN . '/state', '198.51.100.7')->status);
     }
 
+    public function testTrocaEExclusaoDeDispositivoVaoParaAAuditoriaSemOToken(): void
+    {
+        $this->logarComoAdmin();
+        $this->post("/admin/dispositivos/{$this->dispositivo}/token");
+        $novoToken = $this->tokenAtual();
+        $this->post("/admin/dispositivos/{$this->dispositivo}/excluir");
+
+        $linhas = $this->pdo->query("SELECT acao, detalhes::text AS d, condominio_nome FROM auditoria WHERE acao LIKE 'dispositivo.%' ORDER BY id")->fetchAll();
+        $this->assertSame(['dispositivo.token_trocado', 'dispositivo.excluido'], array_column($linhas, 'acao'));
+        $this->assertSame('Residencial Sol', $linhas[0]['condominio_nome']);
+        $tudo = json_encode($linhas, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString(self::TOKEN, $tudo);
+        $this->assertStringNotContainsString($novoToken, $tudo);
+    }
+
     public function testTrocarOTokenPedeConfirmacaoEInvalidaOEnderecoAntigo(): void
     {
         $this->logarComoAdmin();

@@ -50,6 +50,22 @@ final class GerenteTest extends AppHttpTestCase
         return array_map('basename', glob($this->uploads . '/*') ?: []);
     }
 
+    public function testCriarEditarEExcluirAvisoVaoParaAAuditoriaComOCondominio(): void
+    {
+        $this->entrar();
+        $id = $this->criarAviso();
+        $this->post($this->base() . "/avisos/{$id}", $this->aviso(['titulo' => 'Título novo']));
+        $this->post($this->base() . "/avisos/{$id}/excluir");
+
+        $linhas = $this->pdo->query("SELECT acao, usuario_id, condominio_id, entidade_id FROM auditoria WHERE acao LIKE 'aviso.%' ORDER BY id")->fetchAll();
+        $this->assertSame(['aviso.criado', 'aviso.atualizado', 'aviso.excluido'], array_column($linhas, 'acao'));
+        foreach ($linhas as $l) {
+            $this->assertSame($this->gerente, (int) $l['usuario_id']);
+            $this->assertSame($this->condominio, (int) $l['condominio_id']);
+            $this->assertSame($id, (int) $l['entidade_id']);
+        }
+    }
+
     // ---------- Condomínios do gerente ----------
 
     public function testComUmCondominioVaiDiretoParaOsAvisos(): void
