@@ -7,7 +7,7 @@ namespace Tests;
 use App\Repositories\VinculoRepository;
 use Tests\Support\AvisosDeTeste;
 
-/** Dispositivos (TVs) vistos pelo gerente: só os dos condomínios dele, só consulta e nunca com o token. */
+/** Dispositivos (TVs) vistos pelo gerente: só os dos condomínios dele e só consulta. A lista não mostra o token; o detalhe mostra (para configurar a TV). */
 final class GerenteDispositivosTest extends AppHttpTestCase
 {
     use AvisosDeTeste;
@@ -74,11 +74,97 @@ final class GerenteDispositivosTest extends AppHttpTestCase
 
     public function testListaNuncaTemTokenEnderecoNemAcoesDeAdministracao(): void
     {
-        $corpo = $this->get('/gerente/dispositivos')->body . $this->get("/gerente/dispositivos/{$this->tvA}")->body;
+        $corpo = $this->get('/gerente/dispositivos')->body;
 
         foreach ([self::TOKEN_A, self::TOKEN_A2, self::TOKEN_B, strtolower(self::TOKEN_A), '/tv/', '/editar', '/excluir', '/token', 'Novo dispositivo', 'Trocar token'] as $proibido) {
+            $this->assertStringNotContainsString($proibido, $corpo, "A lista do gerente não tem '{$proibido}'.");
+        }
+    }
+
+    public function testDetalheMostraEnderecoETokenSoDoProprioDispositivoESemAcoesDeAdministracao(): void
+    {
+        $corpo = $this->get("/gerente/dispositivos/{$this->tvA}")->body;
+
+        $this->assertStringContainsString('https://avisos.exemplo.com.br/tv/' . self::TOKEN_A, $corpo);
+        $this->assertStringContainsString('<strong class="token-destaque">' . self::TOKEN_A . '</strong>', $corpo);
+        $this->assertStringContainsString('Como configurar a TV', $corpo);
+        $this->assertStringContainsString('https://avisos.exemplo.com.br/tv</code>', $corpo);
+        foreach ([self::TOKEN_A2, self::TOKEN_B, '/editar', '/excluir', "/dispositivos/{$this->tvA}/token", "/dispositivos/{$this->tvA}/parear", 'Trocar token', 'Parear TV', 'Novo dispositivo'] as $proibido) {
             $this->assertStringNotContainsString($proibido, $corpo, "O gerente não vê '{$proibido}'.");
         }
+        $this->assertStringContainsString('equipe da Embracore', $corpo);
+    }
+
+    public function testDetalheDeOutroCondominioContinua404SemVazarOToken(): void
+    {
+        $r = $this->get("/gerente/dispositivos/{$this->tvB}");
+
+        $this->assertSame(404, $r->status);
+        $this->assertStringNotContainsString(self::TOKEN_B, $r->body);
+    }
+
+    public function testSecoesNaOrdemEnderecoSituacaoHistoricoConfiguracao(): void
+    {
+        $corpo = $this->get("/gerente/dispositivos/{$this->tvA}")->body;
+
+        $posicoes = array_map(static fn (string $t): int => (int) strpos($corpo, $t), ['Endereço da TV', '<h2>Situação</h2>', 'Histórico de conexão', 'Como configurar a TV']);
+        $ordenadas = $posicoes;
+        sort($ordenadas);
+        $this->assertSame($ordenadas, $posicoes);
+        $this->assertNotContains(0, $posicoes);
+    }
+
+    private function eventos(int $dispositivo, int $quantidade): void
+    {
+        for ($i = 1; $i <= $quantidade; $i++) {
+            $tipo = $i % 2 === 1 ? 'offline' : 'online';
+            $this->pdo->exec("INSERT INTO dispositivo_eventos (dispositivo_id, tipo, registrado_em) VALUES ({$dispositivo}, '{$tipo}', now() - interval '{$i} hours')");
+        }
+    }
+
+    public function testHistoricoMostraCincoPorPaginaEPaginaOResto(): void
+    {
+        $this->eventos($this->tvA, 7);
+
+        $um = $this->get("/gerente/dispositivos/{$this->tvA}")->body;
+        $dois = $this->get("/gerente/dispositivos/{$this->tvA}?pagina=2")->body;
+
+        $this->assertSame(5, substr_count($um, 'class="etiqueta etiqueta-disp-offline">Ficou') + substr_count($um, 'class="etiqueta etiqueta-disp-online">Voltou'));
+        $this->assertSame(2, substr_count($dois, 'class="etiqueta etiqueta-disp-offline">Ficou') + substr_count($dois, 'class="etiqueta etiqueta-disp-online">Voltou'));
+        $this->assertStringContainsString('Página 1 de 2', $um);
+        $this->assertStringContainsString('?pagina=2', $um);
+        $this->assertStringNotContainsString('Mais recentes', $um);
+        $this->assertStringContainsString('Página 2 de 2', $dois);
+        $this->assertStringContainsString('Mais recentes', $dois);
+        $this->assertStringNotContainsString('Mais antigos', $dois);
+    }
+
+    public function testHistoricoComCincoOuMenosNaoTemPaginacao(): void
+    {
+        $this->eventos($this->tvA, 5);
+
+        $this->assertStringNotContainsString('class="paginacao"', $this->get("/gerente/dispositivos/{$this->tvA}")->body);
+    }
+
+    public function testPaginaInvalidaOuForaDoLimiteNaoQuebra(): void
+    {
+        $this->eventos($this->tvA, 7);
+
+        $alta = $this->get("/gerente/dispositivos/{$this->tvA}?pagina=999");
+        $this->assertSame(200, $alta->status);
+        $this->assertStringContainsString('Página 2 de 2', $alta->body);
+        foreach (['0', '-3', 'abc', "1'; DROP TABLE dispositivos;--"] as $lixo) {
+            $r = $this->get("/gerente/dispositivos/{$this->tvA}?pagina=" . urlencode($lixo));
+            $this->assertSame(200, $r->status, $lixo);
+            $this->assertStringContainsString('Página 1 de 2', $r->body, $lixo);
+        }
+    }
+
+    public function testHistoricoNaoMisturaEventosDeOutroDispositivo(): void
+    {
+        $this->eventos($this->tvA2, 3);
+
+        $this->assertStringContainsString('Nenhuma queda registrada.', $this->get("/gerente/dispositivos/{$this->tvA}")->body);
     }
 
     public function testFiltroPorSituacaoEIgnoraValorDesconhecido(): void

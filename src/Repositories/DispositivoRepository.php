@@ -190,15 +190,16 @@ final class DispositivoRepository
      *
      * @return list<array{tipo: string, registrado_epoch: int, ultimo_ping_epoch: ?int}>
      */
-    public function eventos(int $dispositivoId, int $limite = 20): array
+    public function eventos(int $dispositivoId, int $limite = 20, int $deslocamento = 0): array
     {
         $stmt = $this->pdo->prepare(
             'SELECT tipo, extract(epoch FROM registrado_em)::bigint AS registrado_epoch,
                     extract(epoch FROM ultimo_ping_em)::bigint AS ultimo_ping_epoch
-             FROM dispositivo_eventos WHERE dispositivo_id = :id ORDER BY id DESC LIMIT :limite'
+             FROM dispositivo_eventos WHERE dispositivo_id = :id ORDER BY id DESC LIMIT :limite OFFSET :deslocamento'
         );
         $stmt->bindValue('id', $dispositivoId, PDO::PARAM_INT);
         $stmt->bindValue('limite', $limite, PDO::PARAM_INT);
+        $stmt->bindValue('deslocamento', $deslocamento, PDO::PARAM_INT);
         $stmt->execute();
 
         return array_map(static fn (array $l): array => [
@@ -206,6 +207,14 @@ final class DispositivoRepository
             'registrado_epoch' => (int) $l['registrado_epoch'],
             'ultimo_ping_epoch' => $l['ultimo_ping_epoch'] === null ? null : (int) $l['ultimo_ping_epoch'],
         ], $stmt->fetchAll());
+    }
+
+    public function contarEventos(int $dispositivoId): int
+    {
+        $stmt = $this->pdo->prepare('SELECT count(*) FROM dispositivo_eventos WHERE dispositivo_id = :id');
+        $stmt->execute(['id' => $dispositivoId]);
+
+        return (int) $stmt->fetchColumn();
     }
 
     public function excluir(int $id): bool

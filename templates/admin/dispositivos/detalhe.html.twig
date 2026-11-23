@@ -23,50 +23,6 @@
         <p class="alerta alerta-erro" role="status">{{ ui.icone('alerta', 20) }}<span>Este dispositivo está revogado: o endereço abaixo não funciona mais.</span></p>
     {% endif %}
 
-    <section class="cartao formulario">
-        <div class="formulario-secao">
-            <h2>Endereço da TV</h2>
-            <p class="secao-ajuda">Digite este endereço no navegador da TV. O token tem só 12 caracteres para facilitar a digitação com o controle remoto; maiúsculas e minúsculas tanto faz.</p>
-            <p class="endereco-tv" id="endereco-tv"><code>{{ url }}</code></p>
-            <p class="campo-ajuda">Token: <strong class="token-destaque">{{ dispositivo.token }}</strong></p>
-        </div>
-
-        <div class="formulario-secao">
-            <h2>Como configurar no Fire Stick</h2>
-            <p class="secao-ajuda">Caminho mais curto: digite só <code>/tv</code> no navegador da TV e use <strong>Parear TV</strong> aqui em cima com o código que aparecer. Ou, se preferir, use o endereço completo abaixo.</p>
-            <ol class="passos">
-                <li>Abra o navegador (Fully Kiosk Browser ou Silk) no Fire Stick.</li>
-                <li>Digite o endereço acima com o controle remoto e abra a página.</li>
-                <li>Salve como página inicial (no Fully Kiosk: "Start URL") e desative a proteção de tela do aparelho.</li>
-                <li>Pronto: a tela mostra os avisos do condomínio e se atualiza sozinha.</li>
-            </ol>
-        </div>
-
-        <div class="formulario-secao">
-            <h2>Situação</h2>
-            <p>
-                <span class="etiqueta etiqueta-disp-{{ situacao }}">{{ rotulos[situacao] }}</span>
-                <span class="celula-suave">Último contato: {{ ultimo_contato }}</span>
-            </p>
-            <a class="botao botao-secundario" href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ ui.icone('tv', 18) }}Abrir a tela da TV</a>
-        </div>
-
-        <div class="formulario-secao">
-            <h2>Histórico de conexão</h2>
-            <p class="secao-ajuda">Considera-se offline a TV sem contato há mais de 3 minutos (ela consulta o servidor a cada 30 a 60 segundos).</p>
-            {% if eventos|length == 0 %}
-                <p class="campo-ajuda">Nenhuma queda registrada.</p>
-            {% else %}
-                <ul class="historico">
-                    {% for e in eventos %}
-                        <li>
-                            <span class="etiqueta etiqueta-disp-{{ e.tipo }}">{{ e.tipo == 'offline' ? 'Ficou offline' : 'Voltou' }}</span>
-                            <span class="celula-suave">{{ e.quando }}{% if e.tipo == 'offline' and e.desde %} (último contato às {{ e.desde }}){% endif %}</span>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        </div>
-    </section>
+    {% include 'partials/dispositivo_detalhe.html.twig' %}
     </div>
 {% endblock %}

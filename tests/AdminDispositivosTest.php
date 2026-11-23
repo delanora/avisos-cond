@@ -179,7 +179,7 @@ final class AdminDispositivosTest extends AppHttpTestCase
         $this->assertStringContainsString('Dispositivo criado.', $detalhe->body);
         $this->assertStringContainsString("https://avisos.exemplo.com.br/tv/{$token}", $detalhe->body);
         $this->assertStringContainsString($token, $detalhe->body);
-        $this->assertStringContainsString('Como configurar no Fire Stick', $detalhe->body);
+        $this->assertStringContainsString('Como configurar a TV', $detalhe->body);
         $this->assertSame(200, $this->get("/tv/{$token}/state", '198.51.100.7')->status, 'O endereço gerado já funciona.');
     }
 
@@ -432,6 +432,28 @@ final class AdminDispositivosTest extends AppHttpTestCase
         $this->assertStringContainsString('Ficou offline', $corpo);
         $this->assertStringContainsString('Voltou', $corpo);
         $this->assertStringContainsString('último contato às', $corpo);
+    }
+
+    public function testHistoricoDoAdminTemCincoPorPaginaEAsMesmasSecoesDoGerente(): void
+    {
+        for ($i = 1; $i <= 7; $i++) {
+            $this->pdo->exec("INSERT INTO dispositivo_eventos (dispositivo_id, tipo, registrado_em) VALUES ({$this->dispositivo}, 'offline', now() - interval '{$i} hours')");
+        }
+        $this->logarComoAdmin();
+
+        $um = $this->get("/admin/dispositivos/{$this->dispositivo}")->body;
+        $dois = $this->get("/admin/dispositivos/{$this->dispositivo}?pagina=2")->body;
+
+        $this->assertSame(5, substr_count($um, 'Ficou offline'));
+        $this->assertSame(2, substr_count($dois, 'Ficou offline'));
+        $this->assertStringContainsString('Página 2 de 2', $dois);
+        $this->assertStringContainsString("/admin/dispositivos/{$this->dispositivo}?pagina=2", $um);
+        $posicoes = array_map(static fn (string $t): int => (int) strpos($um, $t), ['Endereço da TV', '<h2>Situação</h2>', 'Histórico de conexão', 'Como configurar a TV']);
+        $ordenadas = $posicoes;
+        sort($ordenadas);
+        $this->assertSame($ordenadas, $posicoes);
+        $this->assertStringContainsString('Parear TV', $um, 'O admin tem o botão de parear.');
+        $this->assertSame(200, $this->get("/admin/dispositivos/{$this->dispositivo}?pagina=abc")->status);
     }
 
     public function testDetalheSemQuedasDizNenhumaQueda(): void

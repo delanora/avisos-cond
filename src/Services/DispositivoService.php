@@ -15,6 +15,7 @@ use RuntimeException;
 final class DispositivoService
 {
     private const TENTATIVAS_DE_TOKEN = 8;
+    public const EVENTOS_POR_PAGINA = 5;
 
     public function __construct(
         private readonly DispositivoRepository $dispositivos,
@@ -59,19 +60,39 @@ final class DispositivoService
     }
 
     /**
-     * Um dispositivo de um condomínio do gerente (sem token) e o histórico de quedas e retornos dele.
+     * Um dispositivo de um condomínio do gerente, com situação e token (para ele configurar a TV; na LISTA o token
+     * continua sem aparecer). Só consulta: o gerente não troca token nem revoga.
      *
      * @param list<int> $permitidos
-     * @return array{dispositivo: array<string, mixed>, eventos: list<array{tipo: string, registrado_epoch: int, ultimo_ping_epoch: ?int}>}
+     * @return array<string, mixed>
      * @throws NaoEncontradoException fora dos condomínios do gerente
      */
     public function buscarDoGerente(array $permitidos, int $id, int $agora): array
     {
         $d = $this->dispositivos->porIdDosCondominios($permitidos, $id) ?? throw new NaoEncontradoException();
-        unset($d['token']);
         $d['situacao'] = SituacaoDispositivo::de($d['ultimo_ping_epoch'], $d['ativo'], $agora);
 
-        return ['dispositivo' => $d, 'eventos' => $this->dispositivos->eventos($id)];
+        return $d;
+    }
+
+    /**
+     * Uma página do histórico de quedas e retornos (mais recentes primeiro), EVENTOS_POR_PAGINA por página.
+     * A página é limitada ao que existe. O chamador já garantiu que pode ver o dispositivo.
+     *
+     * @return array{eventos: list<array{tipo: string, registrado_epoch: int, ultimo_ping_epoch: ?int}>, pagina: int, total_paginas: int, total: int}
+     */
+    public function historico(int $id, int $pagina): array
+    {
+        $total = $this->dispositivos->contarEventos($id);
+        $totalPaginas = max(1, (int) ceil($total / self::EVENTOS_POR_PAGINA));
+        $pagina = min(max(1, $pagina), $totalPaginas);
+
+        return [
+            'eventos' => $this->dispositivos->eventos($id, self::EVENTOS_POR_PAGINA, ($pagina - 1) * self::EVENTOS_POR_PAGINA),
+            'pagina' => $pagina,
+            'total_paginas' => $totalPaginas,
+            'total' => $total,
+        ];
     }
 
     /**

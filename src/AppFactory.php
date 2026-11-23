@@ -159,7 +159,7 @@ final class AppFactory
         $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $tipoAvisoService, $modeloAvisoService, $auditoria);
         $gerenteAparencia = new AparenciaController($view, $sessao, $aparenciaService);
         $conta = new ContaController($view, $sessao, new SenhaService($usuarios, $hasher, $limitador), $auditoria);
-        $gerenteDispositivos = new GerenteDispositivosController($view, $gestaoDispositivos);
+        $gerenteDispositivos = new GerenteDispositivosController($view, $gestaoDispositivos, $config->obrigatorio('APP_URL'));
         $gerenteTipos = new TiposController($view, $sessao, $tipoAvisoService, new TipoAvisoRepository($pdo));
         $gerenteModelos = new ModelosController($view, $sessao, $modeloAvisoService, $tipoAvisoService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);

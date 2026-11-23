@@ -142,6 +142,26 @@ final class DispositivoRepositoryTest extends AppHttpTestCase
         $this->assertNotNull($eventos[0]['ultimo_ping_epoch']);
     }
 
+    public function testEventosPaginamEContam(): void
+    {
+        $id = (int) $this->repo->criar($this->a, 'Elevador', 'ABCDEFGH2345');
+        $outro = (int) $this->repo->criar($this->a, 'Portaria', 'ZZZZ2222XXXX');
+        for ($i = 1; $i <= 7; $i++) {
+            $this->pdo->exec("INSERT INTO dispositivo_eventos (dispositivo_id, tipo, registrado_em) VALUES ({$id}, 'offline', now() - interval '{$i} hours')");
+        }
+        $this->pdo->exec("INSERT INTO dispositivo_eventos (dispositivo_id, tipo) VALUES ({$outro}, 'offline')");
+
+        $this->assertSame(7, $this->repo->contarEventos($id));
+        $this->assertSame(1, $this->repo->contarEventos($outro));
+        $this->assertSame(0, $this->repo->contarEventos(999999));
+        $primeira = $this->repo->eventos($id, 5, 0);
+        $segunda = $this->repo->eventos($id, 5, 5);
+        $this->assertCount(5, $primeira);
+        $this->assertCount(2, $segunda);
+        $this->assertSame([], $this->repo->eventos($id, 5, 10));
+        $this->assertCount(7, array_unique(array_merge(array_column($primeira, 'registrado_epoch'), array_column($segunda, 'registrado_epoch'))));
+    }
+
     public function testVoltarOnlineGeraEventoOnlineUmaSoVezECicloPodeRepetir(): void
     {
         $id = (int) $this->repo->criar($this->a, 'Elevador', 'ABCDEFGH2345');

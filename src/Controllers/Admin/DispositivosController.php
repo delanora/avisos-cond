@@ -80,18 +80,24 @@ final class DispositivosController
     {
         $dispositivo = $this->dispositivos->buscar((int) $vars['id']);
         $agora = time();
+        $pagina = ctype_digit((string) ($request->query['pagina'] ?? '')) ? (int) $request->query['pagina'] : 1;
+        $historico = $this->dispositivos->historico($dispositivo['id'], $pagina);
 
         return Response::html($this->view->render('admin/dispositivos/detalhe.html.twig', [
             'usuario' => $request->attribute('usuario'),
             'dispositivo' => $dispositivo,
             'url' => $this->urlDaTv($dispositivo['token']),
+            'url_pareamento' => rtrim($this->urlBase, '/') . '/tv',
+            'historico' => $historico,
+            'base_historico' => "/admin/dispositivos/{$dispositivo['id']}",
+            'pode_parear' => true,
             'ultimo_contato' => DataHora::relativo($dispositivo['ultimo_ping_epoch'], $agora),
             'situacao' => SituacaoDispositivo::de($dispositivo['ultimo_ping_epoch'], $dispositivo['ativo'], $agora),
             'rotulos' => SituacaoDispositivo::ROTULOS,
             'eventos' => array_map(static fn (array $e): array => $e + [
                 'quando' => DataHora::exibir($e['registrado_epoch']),
                 'desde' => $e['ultimo_ping_epoch'] === null ? null : DataHora::exibir($e['ultimo_ping_epoch']),
-            ], $this->dispositivos->eventos($dispositivo['id'])),
+            ], $historico['eventos']),
         ]));
     }
 
