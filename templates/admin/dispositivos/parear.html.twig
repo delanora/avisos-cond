@@ -1,0 +1,36 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+{% set menu = 'dispositivos' %}
+
+{% block titulo %}Parear TV - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/admin/dispositivos">Dispositivos</a> {{ ui.icone('seta', 14) }} <a href="/admin/dispositivos/{{ dispositivo.id }}">{{ dispositivo.nome }}</a> {{ ui.icone('seta', 14) }} <span>Parear TV</span></p>
+    <div class="pagina-topo"><h1>Parear TV</h1></div>
+
+    <div class="cartao formulario">
+        <p class="texto-confirmacao">Ligar uma TV a <strong>{{ dispositivo.nome }}</strong> ({{ dispositivo.condominio_nome }}).</p>
+        <ol class="passos">
+            <li>Na TV, abra o navegador e acesse <code>{{ url_pareamento }}</code>.</li>
+            <li>A TV mostra um código de 6 caracteres. Digite-o abaixo.</li>
+            <li>Em alguns segundos a TV abre sozinha com os avisos do condomínio.</li>
+        </ol>
+        <p class="alerta alerta-erro">{{ ui.icone('alerta', 20) }}<span>Parear troca o token do dispositivo: o endereço antigo deixa de funcionar na hora. Se já havia outra TV configurada aqui, ela passa a mostrar só o relógio.</span></p>
+
+        {% if erros.geral is defined %}<p class="alerta alerta-erro" role="alert">{{ ui.icone('alerta', 20) }}<span>{{ erros.geral }}</span></p>{% endif %}
+
+        <form method="post" action="/admin/dispositivos/{{ dispositivo.id }}/parear">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <div class="campo{% if erros.codigo is defined %} campo-erro{% endif %}">
+                <label for="codigo">Código mostrado na TV</label>
+                <input id="codigo" type="text" name="codigo" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" required autofocus>
+                <p class="campo-ajuda">Maiúsculas e minúsculas tanto faz; espaços e hífens são ignorados.</p>
+                {% if erros.codigo is defined %}<p class="erro-texto">{{ erros.codigo }}</p>{% endif %}
+            </div>
+            <div class="acoes">
+                <button type="submit">{{ ui.icone('tv', 18) }}Parear</button>
+                <a class="botao botao-secundario" href="/admin/dispositivos/{{ dispositivo.id }}">Cancelar</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

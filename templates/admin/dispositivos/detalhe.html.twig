@@ -13,6 +13,7 @@
         </div>
         <div class="acoes sem-margem">
             <a class="botao botao-secundario" href="/admin/dispositivos/{{ dispositivo.id }}/editar">{{ ui.icone('editar', 18) }}Editar</a>
+            {% if dispositivo.ativo %}<a class="botao botao-secundario" href="/admin/dispositivos/{{ dispositivo.id }}/parear">{{ ui.icone('tv', 18) }}Parear TV</a>{% endif %}
             <a class="botao botao-secundario" href="/admin/dispositivos/{{ dispositivo.id }}/token">{{ ui.icone('chave', 18) }}Trocar token</a>
         </div>
     </div>
@@ -31,6 +32,7 @@
 
         <div class="formulario-secao">
             <h2>Como configurar no Fire Stick</h2>
+            <p class="secao-ajuda">Caminho mais curto: digite só <code>/tv</code> no navegador da TV e use <strong>Parear TV</strong> aqui em cima com o código que aparecer. Ou, se preferir, use o endereço completo abaixo.</p>
             <ol class="passos">
                 <li>Abra o navegador (Fully Kiosk Browser ou Silk) no Fire Stick.</li>
                 <li>Digite o endereço acima com o controle remoto e abra a página.</li>

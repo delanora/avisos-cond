@@ -190,3 +190,11 @@ html.tv-html, body.tv-pagina { margin: 0; height: 100%; overflow: hidden; backgr
 .tv-pagina .tv { width: 100%; height: 100%; font-size: 1.0417vw; }
 /* TVs mais largas que 16:9 limitam o tamanho pela altura; mais altas, pela largura. */
 @media (min-aspect-ratio: 16/9) { .tv-pagina .tv { font-size: 1.85185vh; } }
+
+/* Pareamento por código (/tv): cartão central com o código em letras grandes. */
+.tv-parear { -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; text-align: center; }
+.parear-cartao { width: 70%; padding: 3.4em 3em; box-sizing: border-box; background: #FFFFFF; border-radius: 1.4em; box-shadow: 0 0.08em 0.2em rgba(29, 33, 37, 0.06), 0 0.3em 1em rgba(29, 33, 37, 0.08); }
+.parear-titulo { margin: 0; font-size: 2.6em; font-weight: 700; color: #5B6472; }
+.parear-codigo { margin: 0.3em 0; font-size: 11em; font-weight: 800; letter-spacing: 0.08em; line-height: 1.1; color: #1D2125; }
+.parear-passos { margin: 0 auto; max-width: 30em; font-size: 2em; line-height: 1.4; color: #1D2125; }
+.parear-status { margin: 1.4em 0 0; font-size: 1.6em; color: #5B6472; }

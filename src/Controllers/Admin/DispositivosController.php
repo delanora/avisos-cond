@@ -7,6 +7,7 @@ namespace App\Controllers\Admin;
 use App\Services\AuditoriaService;
 use App\Services\DispositivoService;
 use App\Services\GestaoCondominiosService;
+use App\Services\PareamentoService;
 use App\Services\ValidacaoException;
 use App\Support\DataHora;
 use App\Support\Request;
@@ -25,6 +26,7 @@ final class DispositivosController
         private readonly GestaoCondominiosService $condominios,
         private readonly string $urlBase,
         private readonly AuditoriaService $auditoria,
+        private readonly PareamentoService $pareamento,
     ) {
     }
 
@@ -141,6 +143,45 @@ final class DispositivosController
     }
 
     /** @param array<string, string> $vars */
+    public function formularioParear(Request $request, array $vars): Response
+    {
+        return $this->paginaParear($request, $this->dispositivos->buscar((int) $vars['id']), []);
+    }
+
+    /** @param array<string, string> $vars */
+    public function parear(Request $request, array $vars): Response
+    {
+        $id = (int) $vars['id'];
+        $codigo = is_string($request->body['codigo'] ?? null) ? $request->body['codigo'] : '';
+
+        try {
+            $ipDaTv = $this->pareamento->parear($id, $codigo, (int) $request->attribute('usuario')['id']);
+        } catch (ValidacaoException $e) {
+            return $this->paginaParear($request, $this->dispositivos->buscar($id), $e->erros, 422);
+        }
+
+        // Só o IP da TV e o dispositivo: nunca o código, o segredo nem o token.
+        $this->auditoriaDoDispositivo($request, 'dispositivo.pareado', $this->dispositivos->buscar($id), ['ip_da_tv' => $ipDaTv]);
+        $this->sessao->flash('TV pareada. Ela abre sozinha em alguns segundos. O endereço antigo deste dispositivo deixou de funcionar.');
+
+        return Response::redirect("/admin/dispositivos/{$id}", 303);
+    }
+
+    /**
+     * @param array<string, mixed>  $dispositivo
+     * @param array<string, string> $erros
+     */
+    private function paginaParear(Request $request, array $dispositivo, array $erros, int $status = 200): Response
+    {
+        return Response::html($this->view->render('admin/dispositivos/parear.html.twig', [
+            'usuario' => $request->attribute('usuario'),
+            'dispositivo' => $dispositivo,
+            'erros' => $erros,
+            'url_pareamento' => rtrim($this->urlBase, '/') . '/tv',
+        ]), $status);
+    }
+
+    /** @param array<string, string> $vars */
     public function confirmarExclusao(Request $request, array $vars): Response
     {
         return Response::html($this->view->render('admin/dispositivos/excluir.html.twig', [
@@ -165,10 +206,11 @@ final class DispositivosController
      * Registra a ação sem o token (que é uma credencial): só nome, condomínio e situação.
      *
      * @param array<string, mixed> $d
+     * @param array<string, scalar> $extra
      */
-    private function auditoriaDoDispositivo(Request $request, string $acao, array $d): void
+    private function auditoriaDoDispositivo(Request $request, string $acao, array $d, array $extra = []): void
     {
-        $this->auditoria->registrarDaRequisicao($request, $acao, 'dispositivo', (int) $d['id'], ['id' => (int) $d['condominio_id'], 'nome' => (string) $d['condominio_nome']], ['nome' => $d['nome'], 'ativo' => $d['ativo'] ? 'sim' : 'não']);
+        $this->auditoria->registrarDaRequisicao($request, $acao, 'dispositivo', (int) $d['id'], ['id' => (int) $d['condominio_id'], 'nome' => (string) $d['condominio_nome']], ['nome' => $d['nome'], 'ativo' => $d['ativo'] ? 'sim' : 'não'] + $extra);
     }
 
     private function urlDaTv(string $token): string

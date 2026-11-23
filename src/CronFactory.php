@@ -7,6 +7,7 @@ namespace App;
 use App\Repositories\ArquivoRepository;
 use App\Repositories\AuditoriaRepository;
 use App\Repositories\DispositivoRepository;
+use App\Repositories\PareamentoRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\RateLimitRepository;
 use App\Repositories\TarefaAgendadaRepository;
@@ -14,6 +15,7 @@ use App\Services\Scheduler;
 use App\Services\Tarefas\DetectarDispositivosOffline;
 use App\Services\Tarefas\LimparArquivosOrfaos;
 use App\Services\Tarefas\LimparAuditoria;
+use App\Services\Tarefas\LimparPareamentos;
 use App\Services\Tarefas\LimparRateLimits;
 use App\Services\Tarefas\LimparResetsDeSenha;
 use App\Services\UploadService;
@@ -37,6 +39,7 @@ final class CronFactory
                 new LimparResetsDeSenha(new PasswordResetRepository($pdo)),
                 new LimparArquivosOrfaos($upload, new ArquivoRepository($pdo)),
                 new DetectarDispositivosOffline(new DispositivoRepository($pdo)),
+                new LimparPareamentos(new PareamentoRepository($pdo)),
                 new LimparAuditoria(new AuditoriaRepository($pdo), $config->int('AUDITORIA_RETENCAO_DIAS', 365)),
             ]
         );

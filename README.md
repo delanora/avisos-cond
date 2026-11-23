@@ -38,7 +38,7 @@ Existem três "superfícies" no sistema:
 ### Painel Embracore
 - CRUD de usuários gerentes e de usuários administradores (ativar/desativar, redefinir senha, excluir com confirmação).
 - CRUD de condomínios e vínculo gerente ↔ condomínios (N:N).
-- Gestão de dispositivos (Fire Sticks, mini PCs e outras TVs): geração de token e último ping (MVP); painel de status online/offline com histórico de quedas (Fase 2, pronto) e código de pareamento (Fase 2).
+- Gestão de dispositivos (Fire Sticks, mini PCs e outras TVs): geração de token e último ping (MVP); painel de status online/offline com histórico de quedas (Fase 2, pronto) e pareamento por código (Fase 2, pronto).
 - Situação financeira por condomínio: **somente visualização** (situação, valor, vencimento, observações cadastrados manualmente) e **bloqueio/desbloqueio manual** da exibição (a TV passa a mostrar somente o relógio). A cobrança em si (boletos, Pix, faturas) é feita em um sistema à parte, fora deste projeto.
 - Log de auditoria (quem fez o quê) e acesso de suporte como gerente (com registro).
 
@@ -294,6 +294,7 @@ O agendador executa tarefas de **manutenção**, cada uma com seu intervalo:
 | `limpar_rate_limits` | 1 h | apaga contadores de tentativas (login, recuperação de senha, token de TV) com mais de 1 dia e sem bloqueio ativo |
 | `limpar_resets_de_senha` | 1 dia | apaga tokens de recuperação já usados ou expirados há mais de 7 dias (nunca os ainda válidos) |
 | `detectar_dispositivos_offline` | 1 min | registra no histórico (`dispositivo_eventos`) quando uma TV fica offline (sem contato há mais de 3 min) e quando volta; só grava mudanças |
+| `limpar_pareamentos` | 1 h | apaga pareamentos de TV com mais de 1 dia |
 | `limpar_auditoria` | 1 dia | apaga registros de auditoria mais antigos que `AUDITORIA_RETENCAO_DIAS` (padrão 365, mínimo 30) |
 | `limpar_arquivos_orfaos` | 1 dia | apaga de `storage/uploads` arquivos que nenhum aviso usa, com mais de 24 h (tem travas de segurança) |
 
@@ -328,7 +329,7 @@ sudo chown -R www-data:www-data /var/www/avisos-cond/storage/uploads
 
 ## Instalando a tela no condomínio
 
-1. No painel Embracore (**Dispositivos → Novo dispositivo**), escolha o condomínio e dê um nome à TV (ex.: "Elevador social"). O sistema gera o endereço `https://avisos.exemplo.com.br/tv/{token}`; a página do dispositivo mostra o endereço e o passo a passo. O token tem 12 caracteres e vale em maiúsculas ou minúsculas. Para revogar uma TV, desmarque "Dispositivo ativo"; se o endereço vazar, use "Trocar token".
+1. No painel Embracore (**Dispositivos → Novo dispositivo**), escolha o condomínio e dê um nome à TV (ex.: "Elevador social"). O sistema gera o endereço `https://avisos.exemplo.com.br/tv/{token}`; a página do dispositivo mostra o endereço e o passo a passo. O token tem 12 caracteres e vale em maiúsculas ou minúsculas. **Pareamento por código (mais curto):** no navegador da TV digite só `https://avisos.exemplo.com.br/tv`; a TV mostra um código de 6 caracteres. Na página do dispositivo clique em **Parear TV** e digite o código: a TV abre sozinha e guarda o acesso (`localStorage`), então o endereço curto serve também como página inicial. Parear **troca o token** do dispositivo (o endereço antigo deixa de funcionar). O código vale 10 minutos e muda sozinho. Para revogar uma TV, desmarque "Dispositivo ativo"; se o endereço vazar, use "Trocar token".
 2. **Fire Stick, Amazon Fire TV (Fire OS), opção principal**:
    1. Conecte o Fire Stick à TV e à rede, e entre com a conta Amazon da Embracore.
    2. Instale um navegador pela Appstore da Amazon. Duas opções:

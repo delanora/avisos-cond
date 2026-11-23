@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR" class="tv-html">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Parear TV</title>
+    {% include 'partials/favicon.html.twig' %}
+    <link rel="stylesheet" href="/assets/tv.css">
+</head>
+<body class="tv-pagina" data-intervalo="{{ intervalo }}">
+    <div class="tv tv-parear" id="tv-parear">
+        <div class="parear-cartao">
+            <p class="parear-titulo">Parear esta TV</p>
+            <p class="parear-codigo" id="parear-codigo">------</p>
+            <p class="parear-passos">No painel de administração, abra o dispositivo desta TV, escolha <strong>Parear TV</strong> e digite o código acima.</p>
+            <p class="parear-status" id="parear-status">Gerando o código...</p>
+        </div>
+    </div>
+    <script src="/assets/parear.js" defer></script>
+</body>
+</html>

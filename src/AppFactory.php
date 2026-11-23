@@ -19,6 +19,7 @@ use App\Controllers\AuthController;
 use App\Controllers\ContaController;
 use App\Controllers\GerenteController;
 use App\Controllers\HomeController;
+use App\Controllers\Tv\PareamentoController;
 use App\Controllers\Tv\TvController;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
@@ -32,6 +33,7 @@ use App\Repositories\AvisoRepository;
 use App\Repositories\CondominioRepository;
 use App\Repositories\DispositivoRepository;
 use App\Repositories\PasswordResetRepository;
+use App\Repositories\PareamentoRepository;
 use App\Repositories\RateLimitRepository;
 use App\Repositories\ModeloAvisoRepository;
 use App\Repositories\PadroesDoGerenteRepository;
@@ -52,6 +54,7 @@ use App\Services\RateLimiter;
 use App\Services\SenhaService;
 use App\Services\ModeloAvisoService;
 use App\Services\TipoAvisoService;
+use App\Services\PareamentoService;
 use App\Services\TvAcesso;
 use App\Services\TvService;
 use App\Services\UploadService;
@@ -116,6 +119,7 @@ final class AppFactory
         $tvService = new TvService(new AvisoRepository($pdo), $dispositivos, $upload, $intervaloTv, $versaoApp ?? self::versaoDoCodigoDaTv($diretorioTemplates));
         $tvAcesso = new TvAcesso($dispositivos, $limitador);
         $gestaoDispositivos = new DispositivoService($dispositivos, $condominios);
+        $pareamento = new PareamentoService(new PareamentoRepository($pdo), $dispositivos, $gestaoDispositivos, $limitador, $transacao);
 
         $auditoria = new AuditoriaService(new AuditoriaRepository($pdo), $logger);
         $auth = new AuthService($usuarios, $hasher, $limitador);
@@ -157,13 +161,14 @@ final class AppFactory
         $gerenteModelos = new ModelosController($view, $sessao, $modeloAvisoService, $tipoAvisoService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
         $adminAuditoria = new AuditoriaController($view, new AuditoriaRepository($pdo), $gestaoCondominios);
-        $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'), $auditoria);
+        $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'), $auditoria, $pareamento);
         $tv = new TvController($view, $tvAcesso, $tvService, $aceleracao);
+        $tvPareamento = new PareamentoController($view, $pareamento);
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv, $tvPareamento,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -211,10 +216,18 @@ final class AppFactory
             $r->addRoute('POST', '/admin/dispositivos/{id:\d+}', $escrita([$adminDispositivos, 'atualizar']));
             $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/token', $leitura([$adminDispositivos, 'confirmarToken']));
             $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/token', $escrita([$adminDispositivos, 'trocarToken']));
+            $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/parear', $leitura([$adminDispositivos, 'formularioParear']));
+            $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/parear', $escrita([$adminDispositivos, 'parear']));
             $r->addRoute('GET', '/admin/dispositivos/{id:\d+}/excluir', $leitura([$adminDispositivos, 'confirmarExclusao']));
             $r->addRoute('POST', '/admin/dispositivos/{id:\d+}/excluir', $escrita([$adminDispositivos, 'excluir']));
 
             $r->addRoute('GET', '/admin/auditoria', $leitura([$adminAuditoria, 'lista']));
+
+            // Pareamento da TV por código: público e sem sessão (a TV ainda não tem token). A TV se identifica pelo segredo
+            // que recebe junto do código; o limite por IP fica no PareamentoService. POST sem CSRF porque não há sessão.
+            $r->addRoute('GET', '/tv', [$tvPareamento, 'pagina']);
+            $r->addRoute('POST', '/tv/parear', [$tvPareamento, 'iniciar']);
+            $r->addRoute('POST', '/tv/parear/consulta', [$tvPareamento, 'consultar']);
 
             // Tela da TV: pública, identificada só pelo token da URL (sem login, sem sessão, sem CSRF: só leitura).
             // O token aceita qualquer caixa; a validação e o rate limit de tokens inválidos ficam no TvAcesso.

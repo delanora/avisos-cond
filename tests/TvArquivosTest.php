@@ -33,7 +33,7 @@ final class TvArquivosTest extends TestCase
     /** @return array<string, array{string}> */
     public static function scripts(): array
     {
-        return ['tv.js' => ['assets/tv.js'], 'sw.js' => ['tv/sw.js']];
+        return ['tv.js' => ['assets/tv.js'], 'sw.js' => ['tv/sw.js'], 'parear.js' => ['assets/parear.js']];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('scripts')]

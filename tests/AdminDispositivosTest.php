@@ -30,8 +30,8 @@ final class AdminDispositivosTest extends AppHttpTestCase
         $d = $this->dispositivo;
 
         return [
-            'get' => ['/admin/dispositivos', '/admin/dispositivos/novo', "/admin/dispositivos/{$d}", "/admin/dispositivos/{$d}/editar", "/admin/dispositivos/{$d}/token", "/admin/dispositivos/{$d}/excluir"],
-            'post' => ['/admin/dispositivos', "/admin/dispositivos/{$d}", "/admin/dispositivos/{$d}/token", "/admin/dispositivos/{$d}/excluir"],
+            'get' => ['/admin/dispositivos', '/admin/dispositivos/novo', "/admin/dispositivos/{$d}", "/admin/dispositivos/{$d}/editar", "/admin/dispositivos/{$d}/token", "/admin/dispositivos/{$d}/parear", "/admin/dispositivos/{$d}/excluir"],
+            'post' => ['/admin/dispositivos', "/admin/dispositivos/{$d}", "/admin/dispositivos/{$d}/token", "/admin/dispositivos/{$d}/parear", "/admin/dispositivos/{$d}/excluir"],
         ];
     }
 
