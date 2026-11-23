@@ -5,6 +5,7 @@
 {% block titulo %}{{ dispositivo.nome }} - {{ app_nome }}{% endblock %}
 
 {% block conteudo %}
+    <div class="coluna-central">
     <p class="migalha"><a href="/admin/dispositivos">Dispositivos</a> {{ ui.icone('seta', 14) }} <span>{{ dispositivo.nome }}</span></p>
     <div class="pagina-topo">
         <div>
@@ -67,4 +68,5 @@
             {% endif %}
         </div>
     </section>
+    </div>
 {% endblock %}
