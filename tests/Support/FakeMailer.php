@@ -10,18 +10,18 @@ use App\Services\MailerException;
 /** Mailer de teste: guarda os e-mails em memória, ou falha quando $falhar é true. */
 final class FakeMailer implements Mailer
 {
-    /** @var list<array{para: string, assunto: string, texto: string}> */
+    /** @var list<array{para: string, assunto: string, texto: string, html: ?string}> */
     public array $enviados = [];
 
     public bool $falhar = false;
 
-    public function enviar(string $para, string $assunto, string $texto): void
+    public function enviar(string $para, string $assunto, string $texto, ?string $html = null): void
     {
         if ($this->falhar) {
             throw new MailerException('SMTP indisponível');
         }
 
-        $this->enviados[] = ['para' => $para, 'assunto' => $assunto, 'texto' => $texto];
+        $this->enviados[] = ['para' => $para, 'assunto' => $assunto, 'texto' => $texto, 'html' => $html];
     }
 
     /** Extrai o token do link de redefinição do último e-mail enviado. */

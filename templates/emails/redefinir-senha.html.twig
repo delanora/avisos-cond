@@ -1,0 +1,47 @@
+{# E-mail de recuperação de senha. Layout de tabelas e estilos inline (é o que os leitores de e-mail aceitam), com a identidade do app:
+   fundo quente, cartão branco arredondado, verde da marca no botão e grafite no texto. O logo vai embutido (cid:logo-avisoscond). #}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redefinição de senha - {{ app_nome }}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#F6F5F2;">
+<span style="display:none; max-height:0; overflow:hidden; opacity:0; color:#F6F5F2;">Use o link para escolher uma nova senha. Ele vale por {{ validade_minutos }} minutos.</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F6F5F2;">
+<tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+        <tr><td style="padding:0 4px 20px 4px;">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                <td style="vertical-align:middle;"><img src="cid:logo-avisoscond" width="36" height="36" alt="" style="display:block; border:0; border-radius:10px;"></td>
+                <td style="vertical-align:middle; padding-left:10px; font-family:Arial, Helvetica, sans-serif; font-size:20px; font-weight:bold; color:#1D2125;">{{ app_nome }}</td>
+            </tr></table>
+        </td></tr>
+        <tr><td style="background-color:#FFFFFF; border:1px solid #E8E6E1; border-radius:18px; padding:32px 28px; font-family:Arial, Helvetica, sans-serif; color:#1D2125;">
+            <p style="margin:0 0 8px 0; font-size:13px; font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; color:#007A5C;">Recuperação de conta</p>
+            <h1 style="margin:0 0 16px 0; font-size:24px; line-height:1.25; color:#1D2125;">Redefinição de senha</h1>
+            <p style="margin:0 0 12px 0; font-size:16px; line-height:1.55;">Olá, {{ nome }}.</p>
+            <p style="margin:0 0 24px 0; font-size:16px; line-height:1.55; color:#4B5563;">Recebemos um pedido para redefinir a senha da sua conta no {{ app_nome }}. Para escolher uma nova senha, use o botão abaixo.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;"><tr>
+                <td align="center" style="background-color:#007A5C; border-radius:10px;">
+                    <a href="{{ link }}" style="display:inline-block; padding:14px 28px; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#FFFFFF; text-decoration:none;">Escolher nova senha</a>
+                </td>
+            </tr></table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;"><tr>
+                <td style="background-color:#EAF7F2; border:1px solid #D3F0E5; border-radius:12px; padding:14px 16px; font-size:14px; line-height:1.5; color:#1D2125;">
+                    O link vale por <strong>{{ validade_minutos }} minutos</strong> e só pode ser usado <strong>uma vez</strong>.
+                </td>
+            </tr></table>
+            <p style="margin:0 0 6px 0; font-size:13px; line-height:1.5; color:#5B6472;">Se o botão não abrir, copie e cole este endereço no navegador:</p>
+            <p style="margin:0 0 20px 0; font-size:13px; line-height:1.5; word-break:break-all;"><a href="{{ link }}" style="color:#007A5C;">{{ link }}</a></p>
+            <p style="margin:0; padding-top:16px; border-top:1px solid #E8E6E1; font-size:14px; line-height:1.55; color:#5B6472;">Se você não fez este pedido, ignore este e-mail: a sua senha continua a mesma.</p>
+        </td></tr>
+        <tr><td style="padding:20px 8px 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; color:#8A919C; text-align:center;">
+            Mensagem automática do {{ app_nome }}, enviada pelo suporte da Embracore.<br>Por segurança, nunca pedimos a sua senha por e-mail.
+        </td></tr>
+    </table>
+</td></tr>
+</table>
+</body>
+</html>

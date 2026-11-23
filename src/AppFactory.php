@@ -123,6 +123,7 @@ final class AppFactory
             $mailer,
             $logger,
             $config->obrigatorio('APP_URL'),
+            $view,
         );
 
         $negado = new Negado($view);

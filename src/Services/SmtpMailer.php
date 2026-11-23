@@ -17,13 +17,17 @@ final class SmtpMailer implements Mailer
         private readonly string $senha,
         private readonly string $remetente,
         private readonly string $nomeDoRemetente = 'Avisos-Cond',
+        // Imagem do logo embutida nos e-mails em HTML (referenciada como cid:logo-avisoscond). Sem arquivo, o e-mail sai sem a imagem.
+        private readonly ?string $arquivoDoLogo = null,
     ) {
     }
 
-    public function enviar(string $para, string $assunto, string $texto): void
+    public const CID_LOGO = 'logo-avisoscond';
+
+    public function enviar(string $para, string $assunto, string $texto, ?string $html = null): void
     {
         try {
-            $this->montar($para, $assunto, $texto)->send();
+            $this->montar($para, $assunto, $texto, $html)->send();
         } catch (PhpMailerException $erro) {
             // A mensagem do PHPMailer não contém a senha SMTP.
             throw new MailerException('Falha ao enviar e-mail: ' . $erro->getMessage(), 0, $erro);
@@ -36,7 +40,7 @@ final class SmtpMailer implements Mailer
      *
      * @throws PhpMailerException endereço inválido
      */
-    public function montar(string $para, string $assunto, string $texto): PHPMailer
+    public function montar(string $para, string $assunto, string $texto, ?string $html = null): PHPMailer
     {
         $email = new PHPMailer(true);
 
@@ -50,12 +54,21 @@ final class SmtpMailer implements Mailer
         $email->SMTPSecure = $this->porta === 465 ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
         $email->Timeout = 10;
         $email->CharSet = PHPMailer::CHARSET_UTF8;
-        $email->isHTML(false);
+        $email->isHTML($html !== null);
 
         $email->setFrom($this->remetente, $this->nomeDoRemetente);
         $email->addAddress($para);
         $email->Subject = $assunto;
-        $email->Body = $texto;
+        if ($html === null) {
+            $email->Body = $texto;
+        } else {
+            // HTML como corpo principal e o texto puro como alternativa (leitores sem HTML e filtros de spam gostam disso).
+            $email->Body = $html;
+            $email->AltBody = $texto;
+            if ($this->arquivoDoLogo !== null && is_file($this->arquivoDoLogo)) {
+                $email->addEmbeddedImage($this->arquivoDoLogo, self::CID_LOGO, 'logo.png', PHPMailer::ENCODING_BASE64, 'image/png');
+            }
+        }
 
         return $email;
     }

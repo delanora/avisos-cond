@@ -55,6 +55,7 @@ try {
             // Remetente: MAIL_FROM, ou o próprio usuário SMTP (o Google só aceita o endereço da conta ou um apelido dela).
             $config->string('MAIL_FROM') !== '' ? $config->string('MAIL_FROM') : $config->string('MAIL_USER'),
             $config->string('MAIL_FROM_NAME', 'Avisos-Cond'),
+            $raiz . '/public/apple-touch-icon.png',
         );
 
     $app = AppFactory::criar(

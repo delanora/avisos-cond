@@ -41,7 +41,8 @@ final class PasswordResetServiceTest extends BancoMigradoTestCase
             $this->hasherRapido(),
             $this->mailer,
             new Logger($this->log),
-            'https://avisos.exemplo.com.br'
+            'https://avisos.exemplo.com.br',
+            new \App\Support\View(dirname(__DIR__, 2) . '/templates')
         );
     }
 
@@ -224,5 +225,56 @@ final class PasswordResetServiceTest extends BancoMigradoTestCase
 
         $this->expectException(RateLimitExcedidoException::class);
         $servico->redefinir(str_repeat('b', 64), 'nova-senha-muito-boa', 'nova-senha-muito-boa', '203.0.113.1');
+    }
+
+    public function testEmailVaiEmHtmlComBotaoELinkEMantemOTextoPuro(): void
+    {
+        $this->criarUsuario('maria@exemplo.com.br');
+
+        $this->servico()->solicitar('maria@exemplo.com.br', '203.0.113.1');
+
+        $email = $this->mailer->enviados[0];
+        $token = $this->mailer->ultimoToken();
+        $link = "https://avisos.exemplo.com.br/redefinir-senha/{$token}";
+        $this->assertSame('Redefinição de senha - Avisos-Cond', $email['assunto']);
+        $this->assertStringContainsString($link, $email['texto'], 'Versão em texto puro continua com o link.');
+        $this->assertNotNull($email['html']);
+        $this->assertStringContainsString('<a href="' . $link . '"', $email['html'], 'Botão com o link.');
+        $this->assertStringContainsString('Escolher nova senha', $email['html']);
+        $this->assertStringContainsString('30 minutos', $email['html']);
+        $this->assertStringContainsString('uma vez', $email['html']);
+        $this->assertStringContainsString('Se você não fez este pedido', $email['html']);
+        $this->assertStringContainsString('cid:logo-avisoscond', $email['html'], 'O logo vai embutido, não por endereço externo.');
+        $this->assertStringContainsString('#007A5C', $email['html'], 'Verde da marca no botão.');
+        $this->assertStringNotContainsString('<script', $email['html']);
+        $this->assertSame(3, substr_count($email['html'], $token), 'Botão, endereço escrito e texto do endereço: sempre o mesmo link.');
+    }
+
+    public function testNomeDoUsuarioEhEscapadoNoHtmlDoEmail(): void
+    {
+        $id = $this->criarUsuario('maria@exemplo.com.br');
+        $this->pdo->exec("UPDATE usuarios SET nome = '<script>alert(1)</script> & \"Cia\"' WHERE id = {$id}");
+
+        $this->servico()->solicitar('maria@exemplo.com.br', '203.0.113.1');
+
+        $html = (string) $this->mailer->enviados[0]['html'];
+        $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;Cia&quot;', $html);
+        $this->assertStringContainsString('<script>alert(1)</script> & "Cia"', $this->mailer->enviados[0]['texto'], 'No texto puro o nome vai como está.');
+    }
+
+    public function testFalhaNoEnvioContinuaComRespostaGenericaESemTokenNoLog(): void
+    {
+        $this->criarUsuario('maria@exemplo.com.br');
+        $this->mailer->falhar = true;
+
+        $this->servico()->solicitar('maria@exemplo.com.br', '203.0.113.1');
+
+        $this->assertSame([], $this->mailer->enviados);
+        $this->assertSame(1, $this->contarResets(), 'O pedido foi registrado mesmo assim.');
+        $guardado = is_file($this->log) ? (string) file_get_contents($this->log) : '';
+        $this->assertStringContainsString('Falha ao enviar e-mail de recuperação de senha', $guardado);
+        $token = (string) $this->pdo->query('SELECT token_hash FROM password_resets')->fetchColumn();
+        $this->assertStringNotContainsString($token, $guardado);
     }
 }

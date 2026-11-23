@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\UsuarioRepository;
 use App\Support\Logger;
+use App\Support\View;
 
 final class PasswordResetService
 {
@@ -20,6 +21,7 @@ final class PasswordResetService
         private readonly Mailer $mailer,
         private readonly Logger $logger,
         private readonly string $urlBase,
+        private readonly View $view,
     ) {
     }
 
@@ -54,7 +56,12 @@ final class PasswordResetService
             . "Se você não fez este pedido, ignore este e-mail: sua senha continua a mesma.\n";
 
         try {
-            $this->mailer->enviar($usuario['email'], 'Redefinição de senha - Avisos-Cond', $texto);
+            $html = $this->view->render('emails/redefinir-senha.html.twig', [
+                'nome' => $usuario['nome'],
+                'link' => $link,
+                'validade_minutos' => intdiv(self::VALIDADE_SEGUNDOS, 60),
+            ]);
+            $this->mailer->enviar($usuario['email'], 'Redefinição de senha - Avisos-Cond', $texto, $html);
         } catch (MailerException $erro) {
             // O usuário recebe a mesma resposta genérica; o problema fica no log (sem o token).
             $this->logger->error('Falha ao enviar e-mail de recuperação de senha', $erro);

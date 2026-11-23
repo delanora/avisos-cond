@@ -75,4 +75,45 @@ final class SmtpMailerTest extends TestCase
             $this->assertStringNotContainsString('SENHA-SECRETA-123', $e->getMessage());
         }
     }
+
+    public function testEmailEmHtmlTemTextoComoAlternativaELogoEmbutido(): void
+    {
+        $logo = sys_get_temp_dir() . '/logo_teste_' . bin2hex(random_bytes(4)) . '.png';
+        file_put_contents($logo, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
+        try {
+            $mailer = new SmtpMailer('smtp.exemplo.test', 587, 'u@exemplo.test', 's', 'u@exemplo.test', 'Suporte', $logo);
+
+            $email = $mailer->montar('p@exemplo.test', 'Assunto', 'Versão em texto', '<p>Versão <b>HTML</b> <img src="cid:logo-avisoscond"></p>');
+            $email->preSend();
+
+            $this->assertSame('multipart/alternative', $email->ContentType, 'HTML com texto como alternativa.');
+            $this->assertSame('<p>Versão <b>HTML</b> <img src="cid:logo-avisoscond"></p>', $email->Body);
+            $this->assertSame('Versão em texto', $email->AltBody);
+            $anexos = $email->getAttachments();
+            $this->assertCount(1, $anexos);
+            $this->assertSame('logo-avisoscond', $anexos[0][7], 'Imagem embutida com o cid usado no HTML.');
+            $this->assertStringContainsString('multipart/', $email->getMailMIME() . $email->getSentMIMEMessage());
+        } finally {
+            @unlink($logo);
+        }
+    }
+
+    public function testEmailEmHtmlSemArquivoDoLogoSaiSemAnexo(): void
+    {
+        $semArquivo = (new SmtpMailer('h', 587, 'u@exemplo.test', 's', 'u@exemplo.test', 'Suporte', '/nao/existe.png'))->montar('p@exemplo.test', 'A', 'texto', '<p>html</p>');
+        $semConfig = (new SmtpMailer('h', 587, 'u@exemplo.test', 's', 'u@exemplo.test'))->montar('p@exemplo.test', 'A', 'texto', '<p>html</p>');
+
+        $this->assertCount(0, $semArquivo->getAttachments());
+        $this->assertCount(0, $semConfig->getAttachments());
+    }
+
+    public function testEmailSoComTextoContinuaTextoPuroSemAnexos(): void
+    {
+        $email = (new SmtpMailer('h', 587, 'u@exemplo.test', 's', 'u@exemplo.test', 'Suporte', '/nao/existe.png'))->montar('p@exemplo.test', 'A', 'só texto');
+
+        $this->assertSame('text/plain', $email->ContentType);
+        $this->assertSame('só texto', $email->Body);
+        $this->assertSame('', $email->AltBody);
+        $this->assertCount(0, $email->getAttachments());
+    }
 }
