@@ -77,16 +77,18 @@ a:hover { color: var(--marca-800); }
     display: flex;
     align-items: center;
     gap: 0.5rem 1.5rem;
-    max-width: 1200px;
+    /* Barra em largura total: marca à esquerda, menu ao centro, perfil à direita (o conteúdo da página segue em 1200px). */
+    width: 100%;
+    box-sizing: border-box;
     min-height: 68px;
-    margin: 0 auto;
+    margin: 0;
     padding: 0 1.5rem;
 }
 .topo-marca { display: flex; align-items: center; flex: none; }
 .topo-marca { color: inherit; }
 .logo-marca { display: block; height: 34px; width: auto; }
 
-.menu { display: flex; gap: 0.25rem; margin-right: auto; }
+.menu { display: flex; gap: 0.25rem; margin: 0 auto; }
 .menu a {
     display: inline-flex;
     align-items: center;
@@ -103,7 +105,7 @@ a:hover { color: var(--marca-800); }
 .menu a.ativo { color: var(--marca-800); background: var(--marca-50); font-weight: 600; }
 .menu a.ativo .icone { color: var(--marca); }
 
-.perfil { display: flex; align-items: center; gap: 0.75rem; margin: 0 0 0 auto; }
+.perfil { display: flex; align-items: center; gap: 0.75rem; margin: 0; }
 .perfil-dados { display: flex; flex-direction: column; line-height: 1.25; text-align: right; }
 .perfil-nome { font-size: 0.875rem; font-weight: 600; }
 .perfil-papel { font-size: 0.75rem; color: var(--suave); }
