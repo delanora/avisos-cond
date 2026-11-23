@@ -267,7 +267,7 @@ final class AdminTest extends AppHttpTestCase
 
         $this->assertSame(422, $r->status);
         $this->assertStringContainsString('Este e-mail já está cadastrado.', $r->body);
-        $this->assertStringContainsString('no mínimo 10', $r->body);
+        $this->assertStringContainsString('no mínimo 8', $r->body);
         $this->assertStringContainsString('value="Fulano"', $r->body);
         $this->assertStringNotContainsString('value="curta"', $r->body);
         $this->assertStringContainsString('aria-invalid="true"', $r->body);
@@ -528,5 +528,15 @@ final class AdminTest extends AppHttpTestCase
         $this->assertSame(0, $this->contar('usuario_condominio'));
         $this->assertSame(2, $this->contar('usuarios'), 'As contas continuam.');
         $this->assertStringContainsString('Condomínio excluído.', $this->get('/admin/condominios')->body);
+    }
+
+    public function testFormularioDeUsuarioPedeSenhaDeNoMinimoOitoCaracteres(): void
+    {
+        $this->logarComoAdmin();
+
+        $corpo = $this->get('/admin/usuarios/novo')->body;
+
+        $this->assertSame(2, substr_count($corpo, 'minlength="8"'), 'Senha e confirmação.');
+        $this->assertStringNotContainsString('minlength="10"', $corpo);
     }
 }

@@ -177,7 +177,7 @@ final class ContaTest extends AppHttpTestCase
     public static function senhasNovasInvalidas(): array
     {
         return [
-            'curta demais' => [['nova_senha' => 'curta', 'confirmacao' => 'curta'], 'no mínimo 10 caracteres'],
+            'curta demais' => [['nova_senha' => 'curta', 'confirmacao' => 'curta'], 'no mínimo 8 caracteres'],
             'confirmação diferente' => [['confirmacao' => 'outra-coisa-bem-diferente'], 'A confirmação não coincide'],
             'igual à atual' => [['nova_senha' => self::SENHA, 'confirmacao' => self::SENHA], 'diferente da atual'],
             'vazia' => [['nova_senha' => '', 'confirmacao' => ''], 'Informe a senha'],
@@ -197,6 +197,16 @@ final class ContaTest extends AppHttpTestCase
         $this->assertSame(422, $r->status);
         $this->assertStringContainsString($mensagem, $r->body);
         $this->assertSame($antes, $this->hashDoBanco());
+    }
+
+    public function testNovaSenhaDeOitoCaracteresVale(): void
+    {
+        $this->entrarComoGerente();
+
+        $this->assertSame(422, $this->post('/conta/seguranca', $this->troca(['nova_senha' => 'abcd123', 'confirmacao' => 'abcd123']))->status, '7 caracteres: recusada.');
+        $this->assertSame(303, $this->post('/conta/seguranca', $this->troca(['nova_senha' => 'abcd1234', 'confirmacao' => 'abcd1234']))->status, '8 caracteres: aceita.');
+        $this->assertStringContainsString('pelo menos 8 caracteres', $this->get('/conta/seguranca')->body);
+        $this->assertStringNotContainsString('pelo menos 10', $this->get('/conta/seguranca')->body);
     }
 
     public function testErrarASenhaAtualVariasVezesBloqueiaAsTentativas(): void

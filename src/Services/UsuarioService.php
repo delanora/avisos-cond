@@ -9,7 +9,7 @@ use App\Support\Validator;
 
 final class UsuarioService
 {
-    public const SENHA_MIN = 10;
+    public const SENHA_MIN = 8;
     public const SENHA_MAX = 128;
 
     public function __construct(

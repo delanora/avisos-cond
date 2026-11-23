@@ -65,8 +65,8 @@
             <h2>{{ editando ? 'Trocar a senha' : 'Senha' }}</h2>
             <p class="secao-ajuda">{{ editando ? 'Deixe em branco para manter a senha atual. Ao trocar, os acessos abertos desta pessoa são encerrados.' : 'Use pelo menos 10 caracteres. A pessoa poderá trocar depois pelo "Esqueci minha senha".' }}</p>
             <div class="grade-2">
-                {{ f.campo('senha', editando ? 'Nova senha' : 'Senha', 'password', '', erros.senha|default(''), {obrigatorio: not editando, min: 10, max: 128, autocomplete: 'new-password'}) }}
-                {{ f.campo('confirmacao', 'Confirme a senha', 'password', '', '', {obrigatorio: not editando, min: 10, max: 128, autocomplete: 'new-password'}) }}
+                {{ f.campo('senha', editando ? 'Nova senha' : 'Senha', 'password', '', erros.senha|default(''), {obrigatorio: not editando, min: constant('App\\Services\\UsuarioService::SENHA_MIN'), max: 128, autocomplete: 'new-password'}) }}
+                {{ f.campo('confirmacao', 'Confirme a senha', 'password', '', '', {obrigatorio: not editando, min: constant('App\\Services\\UsuarioService::SENHA_MIN'), max: 128, autocomplete: 'new-password'}) }}
             </div>
         </section>
 

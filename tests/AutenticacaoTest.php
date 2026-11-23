@@ -244,6 +244,20 @@ final class AutenticacaoTest extends AppHttpTestCase
         $this->assertSame('/login', $this->get('/gerente')->headers['Location']);
     }
 
+    public function testRedefinirAceitaSenhaDeOitoCaracteresERecusaSete(): void
+    {
+        $this->criarUsuario('maria@exemplo.com.br');
+        $this->post('/esqueci-senha', ['email' => 'maria@exemplo.com.br']);
+        $token = $this->mailer->ultimoToken();
+
+        $this->assertStringContainsString('minlength="8"', $this->get("/redefinir-senha/{$token}")->body);
+        $this->assertSame(422, $this->post("/redefinir-senha/{$token}", ['senha' => 'abcd123', 'confirmacao' => 'abcd123'])->status);
+        $this->assertSame(303, $this->post("/redefinir-senha/{$token}", ['senha' => 'abcd1234', 'confirmacao' => 'abcd1234'])->status);
+
+        $_SESSION = [];
+        $this->assertSame(303, $this->logar('maria@exemplo.com.br', 'abcd1234')->status);
+    }
+
     public function testRedefinirComSenhaFracaMostraErroEMantemOLink(): void
     {
         $this->criarUsuario('maria@exemplo.com.br');
@@ -253,7 +267,7 @@ final class AutenticacaoTest extends AppHttpTestCase
         $r = $this->post("/redefinir-senha/{$token}", ['senha' => 'curta', 'confirmacao' => 'curta']);
 
         $this->assertSame(422, $r->status);
-        $this->assertStringContainsString('no mínimo 10', $r->body);
+        $this->assertStringContainsString('no mínimo 8', $r->body);
         $this->assertSame(200, $this->get("/redefinir-senha/{$token}")->status);
     }
 

@@ -18,7 +18,7 @@
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <section class="formulario-secao">
             <h2>Trocar a senha</h2>
-            <p class="secao-ajuda">Informe a senha atual e escolha uma nova, com pelo menos 10 caracteres. Ao trocar, os outros aparelhos conectados com esta conta são desconectados.</p>
+            <p class="secao-ajuda">Informe a senha atual e escolha uma nova, com pelo menos {{ constant('App\\Services\\UsuarioService::SENHA_MIN') }} caracteres. Ao trocar, os outros aparelhos conectados com esta conta são desconectados.</p>
             {{ f.campo('senha_atual', 'Senha atual', 'password', '', erros.senha_atual|default(''), {obrigatorio: true, autocomplete: 'current-password'}) }}
             {{ f.campo('nova_senha', 'Nova senha', 'password', '', erros.nova_senha|default(''), {obrigatorio: true, autocomplete: 'new-password'}) }}
             {{ f.campo('confirmacao', 'Repita a nova senha', 'password', '', erros.confirmacao|default(''), {obrigatorio: true, autocomplete: 'new-password'}) }}
