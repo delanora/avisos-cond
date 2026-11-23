@@ -1,0 +1,45 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% block titulo %}{{ dispositivo.nome }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/gerente/dispositivos">Dispositivos</a> {{ ui.icone('seta', 14) }} <span>{{ dispositivo.nome }}</span></p>
+    <div class="pagina-topo">
+        <div>
+            <h1>{{ dispositivo.nome }}</h1>
+            <p>{{ dispositivo.condominio_nome }}</p>
+        </div>
+    </div>
+
+    {% if not dispositivo.ativo %}
+        <p class="alerta alerta-erro" role="status">{{ ui.icone('alerta', 20) }}<span>Este dispositivo está revogado: a TV não exibe mais os avisos. Fale com a equipe da Embracore se precisar reativá-lo.</span></p>
+    {% endif %}
+
+    <section class="cartao formulario">
+        <div class="formulario-secao">
+            <h2>Situação</h2>
+            <p>
+                <span class="etiqueta etiqueta-disp-{{ dispositivo.situacao }}">{{ rotulos[dispositivo.situacao] }}</span>
+                <span class="celula-suave">Último contato: {{ ultimo_contato }}</span>
+            </p>
+            <p class="campo-ajuda">Considera-se offline a TV sem contato há mais de 3 minutos. Quem cuida da instalação e do endereço da TV é a equipe da Embracore.</p>
+        </div>
+
+        <div class="formulario-secao">
+            <h2>Histórico de conexão</h2>
+            {% if eventos|length == 0 %}
+                <p class="campo-ajuda">Nenhuma queda registrada.</p>
+            {% else %}
+                <ul class="historico">
+                    {% for e in eventos %}
+                        <li>
+                            <span class="etiqueta etiqueta-disp-{{ e.tipo }}">{{ e.tipo == 'offline' ? 'Ficou offline' : 'Voltou' }}</span>
+                            <span class="celula-suave">{{ e.quando }}{% if e.tipo == 'offline' and e.desde %} (último contato às {{ e.desde }}){% endif %}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

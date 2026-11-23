@@ -43,6 +43,38 @@ final class DispositivoService
     }
 
     /**
+     * Dispositivos dos condomínios do gerente, com a situação calculada na hora. SEM token: o gerente nunca o vê.
+     *
+     * @param list<int> $permitidos
+     * @return list<array<string, mixed>>
+     */
+    public function listarDoGerente(array $permitidos, int $agora): array
+    {
+        return array_map(function (array $d) use ($agora): array {
+            unset($d['token']);
+            $d['situacao'] = SituacaoDispositivo::de($d['ultimo_ping_epoch'], $d['ativo'], $agora);
+
+            return $d;
+        }, $this->dispositivos->listarDosCondominios($permitidos));
+    }
+
+    /**
+     * Um dispositivo de um condomínio do gerente (sem token) e o histórico de quedas e retornos dele.
+     *
+     * @param list<int> $permitidos
+     * @return array{dispositivo: array<string, mixed>, eventos: list<array{tipo: string, registrado_epoch: int, ultimo_ping_epoch: ?int}>}
+     * @throws NaoEncontradoException fora dos condomínios do gerente
+     */
+    public function buscarDoGerente(array $permitidos, int $id, int $agora): array
+    {
+        $d = $this->dispositivos->porIdDosCondominios($permitidos, $id) ?? throw new NaoEncontradoException();
+        unset($d['token']);
+        $d['situacao'] = SituacaoDispositivo::de($d['ultimo_ping_epoch'], $d['ativo'], $agora);
+
+        return ['dispositivo' => $d, 'eventos' => $this->dispositivos->eventos($id)];
+    }
+
+    /**
      * Quantos dispositivos há em cada situação (todas as chaves sempre presentes).
      *
      * @param list<array<string, mixed>> $comSituacao resultado de listarComSituacao()

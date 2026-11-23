@@ -177,7 +177,8 @@ final class AdminTest extends AppHttpTestCase
 
         $this->assertStringContainsString('<span class="perfil-nome">ágata Costa</span>', $corpo);
         $this->assertStringContainsString('<span class="perfil-papel">Administrador</span>', $corpo);
-        $this->assertMatchesRegularExpression('#<span class="avatar av-\d" aria-hidden="true">á</span>#u', $corpo);
+        $this->assertStringNotContainsString('class="avatar av-', substr($corpo, 0, (int) strpos($corpo, '</header>')), 'A inicial do usuário foi trocada pela engrenagem.');
+        $this->assertStringContainsString('<details class="config">', $corpo);
         $this->assertStringContainsString('class="logo-marca"', $corpo);
     }
 

@@ -9,11 +9,13 @@ use App\Controllers\Admin\DispositivosController;
 use App\Controllers\Admin\UsuariosController;
 use App\Controllers\Gerente\AparenciaController;
 use App\Controllers\Gerente\AvisosController;
+use App\Controllers\Gerente\DispositivosController as GerenteDispositivosController;
 use App\Controllers\Gerente\MidiaController;
 use App\Controllers\Gerente\ModelosController;
 use App\Controllers\Gerente\TiposController;
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
+use App\Controllers\ContaController;
 use App\Controllers\GerenteController;
 use App\Controllers\HomeController;
 use App\Controllers\Tv\TvController;
@@ -44,6 +46,7 @@ use App\Services\Mailer;
 use App\Services\PasswordHasher;
 use App\Services\PasswordResetService;
 use App\Services\RateLimiter;
+use App\Services\SenhaService;
 use App\Services\ModeloAvisoService;
 use App\Services\TipoAvisoService;
 use App\Services\TvAcesso;
@@ -142,6 +145,8 @@ final class AppFactory
         $adminCondominios = new CondominiosController($view, $sessao, $gestaoCondominios);
         $gerenteAvisos = new AvisosController($view, $sessao, $avisoService, $tipoAvisoService, $modeloAvisoService);
         $gerenteAparencia = new AparenciaController($view, $sessao, $aparenciaService);
+        $conta = new ContaController($view, $sessao, new SenhaService($usuarios, $hasher, $limitador));
+        $gerenteDispositivos = new GerenteDispositivosController($view, $gestaoDispositivos);
         $gerenteTipos = new TiposController($view, $sessao, $tipoAvisoService, new TipoAvisoRepository($pdo));
         $gerenteModelos = new ModelosController($view, $sessao, $modeloAvisoService, $tipoAvisoService);
         $gerenteMidia = new MidiaController($avisoService, $upload, $aceleracao);
@@ -151,7 +156,7 @@ final class AppFactory
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $mwEscopo, $mwTamanho, $adminDispositivos, $tv,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -166,6 +171,9 @@ final class AppFactory
             $r->addRoute('POST', "/redefinir-senha/{$token}", Pipeline::envolver([$authController, 'redefinir'], $mwLimiteRecuperacao, $mwCsrf));
 
             $r->addRoute('GET', '/', Pipeline::envolver([$home, 'index'], $mwAuth));
+            // Configurações da própria conta (Segurança): qualquer usuário logado, gerente ou administrador.
+            $r->addRoute('GET', '/conta/seguranca', Pipeline::envolver([$conta, 'seguranca'], $mwAuth));
+            $r->addRoute('POST', '/conta/seguranca', Pipeline::envolver([$conta, 'alterarSenha'], $mwAuth, $mwCsrf));
             // Área do superadmin: login → papel → (nas escritas) CSRF.
             $leitura = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwAdmin);
             $escrita = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwAdmin, $mwCsrf);
@@ -212,6 +220,10 @@ final class AppFactory
             $gUpload = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwGerente, $mwEscopo, $mwTamanho, $mwCsrf);
 
             $r->addRoute('GET', '/gerente', $gLeitura([$gerente, 'painel']));
+
+            // Dispositivos dos condomínios do gerente (só consulta; sem token): o escopo vem do banco a cada requisição.
+            $r->addRoute('GET', '/gerente/dispositivos', $gLeitura([$gerenteDispositivos, 'lista']));
+            $r->addRoute('GET', '/gerente/dispositivos/{id:\d+}', $gLeitura([$gerenteDispositivos, 'detalhe']));
 
             // Aparência é do próprio gerente (sem condomínio na URL): só login, papel e, na escrita, CSRF.
             $r->addRoute('GET', '/gerente/aparencia', $gLeitura([$gerenteAparencia, 'formulario']));

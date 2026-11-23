@@ -1,0 +1,31 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/form.html.twig' as f %}
+{% import 'macros/ui.html.twig' as ui %}
+
+{% block titulo %}Segurança - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <div class="pagina-topo">
+        <div>
+            <h1>Configurações</h1>
+            <p>Cuide da segurança da sua conta{% if usuario.papel == 'gerente' %} e do visual do seu painel{% endif %}.</p>
+        </div>
+    </div>
+
+    {% include 'partials/config_abas.html.twig' with {aba: 'seguranca'} %}
+
+    <form method="post" action="/conta/seguranca" class="cartao formulario">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <section class="formulario-secao">
+            <h2>Trocar a senha</h2>
+            <p class="secao-ajuda">Informe a senha atual e escolha uma nova, com pelo menos 10 caracteres. Ao trocar, os outros aparelhos conectados com esta conta são desconectados.</p>
+            {{ f.campo('senha_atual', 'Senha atual', 'password', '', erros.senha_atual|default(''), {obrigatorio: true, autocomplete: 'current-password'}) }}
+            {{ f.campo('nova_senha', 'Nova senha', 'password', '', erros.nova_senha|default(''), {obrigatorio: true, autocomplete: 'new-password'}) }}
+            {{ f.campo('confirmacao', 'Repita a nova senha', 'password', '', erros.confirmacao|default(''), {obrigatorio: true, autocomplete: 'new-password'}) }}
+        </section>
+
+        <div class="acoes">
+            <button type="submit">Alterar senha</button>
+        </div>
+    </form>
+{% endblock %}

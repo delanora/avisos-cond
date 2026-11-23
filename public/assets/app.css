@@ -124,6 +124,35 @@ a:hover { color: var(--marca-800); }
 .topo-painel, .topo-painel-conteudo { display: contents; }
 @media (prefers-reduced-motion: reduce) { .topo-painel { transition: none; } }
 
+/* Engrenagem de configurações (suspenso, só no desktop) e abas das Configurações. */
+.config { position: relative; flex: none; }
+.config summary {
+    display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; list-style: none; cursor: pointer;
+    color: var(--suave); background: var(--superficie); border: 1px solid var(--linha-forte); border-radius: 50%;
+    transition: color 160ms ease-out, border-color 160ms ease-out, background-color 160ms ease-out;
+}
+.config summary::-webkit-details-marker { display: none; }
+.config summary:hover, .config[open] summary { color: var(--marca-800); border-color: var(--marca); background: var(--marca-50); }
+.config summary.ativo { color: var(--marca-800); border-color: var(--marca); }
+.config-lista {
+    position: absolute; z-index: 150; top: calc(100% + 8px); right: 0; min-width: 190px; margin: 0; padding: 0.4rem; list-style: none;
+    background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); box-shadow: 0 2px 8px rgba(29, 33, 37, 0.12);
+}
+.config-lista a { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.75rem; color: var(--tinta); font-size: 0.9375rem; font-weight: 500; text-decoration: none; border-radius: 8px; }
+.config-lista a:hover { background: #F3F2EE; }
+.config-lista a[aria-current="page"] { color: var(--marca-800); font-weight: 600; background: var(--marca-50); }
+.menu a.so-celular { display: none; }
+
+.abas { display: flex; gap: 0.25rem; margin: 0 0 1.25rem; border-bottom: 1px solid var(--linha); }
+.abas a {
+    display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: -1px; padding: 0.7rem 1rem; color: var(--suave);
+    font-size: 0.9375rem; font-weight: 500; text-decoration: none; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0;
+    transition: color 160ms ease-out, background-color 160ms ease-out;
+}
+.abas a:hover { color: var(--tinta); background: #F3F2EE; }
+.abas a.ativa { color: var(--marca-800); font-weight: 600; border-bottom-color: var(--marca); }
+.abas a.ativa .icone { color: var(--marca); }
+
 /* ---------- Avatares ---------- */
 .avatar {
     display: inline-flex;
@@ -443,9 +472,9 @@ td.acoes-celula form { display: inline; margin: 0; }
     .menu { flex-direction: column; gap: 0.2rem; margin: 0.6rem 0 0; padding: 0; }
     .menu a { padding: 0.8rem 0.9rem; font-size: 1rem; }
     .perfil { margin: 0.6rem 0 0; padding: 0.8rem 0 0.2rem; border-top: 1px solid var(--linha); }
-    .perfil-dados { display: flex; flex: 1; text-align: left; order: 2; }
-    .perfil .avatar { order: 1; }
-    .perfil form { order: 3; }
+    .perfil-dados { display: flex; flex: 1; text-align: left; }
+    .config { display: none; }
+    .menu a.so-celular { display: inline-flex; }
     .boas-vindas { padding: 1.5rem; }
     .boas-vindas-arte { display: none; }
     .numeros { grid-auto-flow: row; grid-template-columns: 1fr; }

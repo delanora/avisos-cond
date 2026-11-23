@@ -6,10 +6,12 @@
 {% block conteudo %}
     <div class="pagina-topo">
         <div>
-            <h1>Aparência</h1>
+            <h1>Configurações</h1>
             <p>Escolha a cor do seu painel. Ela vale só para você e muda tudo o que hoje é verde. Os tons mais claros são calculados sozinhos.</p>
         </div>
     </div>
+
+    {% include 'partials/config_abas.html.twig' with {aba: 'aparencia'} %}
 
     <form method="post" action="/gerente/aparencia" class="cartao formulario">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">

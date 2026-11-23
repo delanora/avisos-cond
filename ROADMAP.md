@@ -131,8 +131,8 @@ Banco e segurança do segredo:
 - [ ] `TotpService`: gerar segredo (160 bits, base32), validar código com tolerância de ±1 passo (30 s), comparação em tempo constante e rejeição de passo já usado
 
 Interface (decidida em 2026-11-17):
-- [ ] Na barra superior, o ícone com a inicial do usuário (ao lado de "Sair") é **substituído por uma engrenagem**; ao clicar abre um menu (dropdown) com **Segurança** e **Aparência** (sem JavaScript inline: o CSP proíbe; usar `<details>`, como o seletor de condomínio)
-- [ ] **Aparência sai do menu principal** (hoje é um item do menu do gerente) e passa para o dropdown da engrenagem
+- [x] Na barra superior, o ícone com a inicial do usuário (ao lado de "Sair") é **substituído por uma engrenagem**; ao clicar abre um menu (dropdown) com **Segurança** e **Aparência** (`<details>`, sem JavaScript; no celular viram itens do menu) (2026-11-23; a aba Segurança já tem a troca de senha e o 2FA entra nela depois)
+- [x] **Aparência sai do menu principal** e passa para o dropdown da engrenagem e para a aba Aparência das Configurações (2026-11-23)
 - [ ] Quem **não ativou** o 2FA vê, **a cada login**, um aviso em pop-up lembrando de ativar, com botão que leva à página de ativação (e opção de fechar/continuar); aparece uma vez por login, não a cada página
 
 Ativação e gestão pelo próprio usuário:
@@ -241,3 +241,4 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-19: painel no celular (até 768 px): barra com ícone da marca, nome do condomínio selecionado sempre à mostra (reticências se longo) e menu hambúrguer que abre um painel com a navegação e o perfil/Sair; sem JavaScript (caixa escondida + CSS, painel desce com transição). Vale também para a área do admin. Telas sem condomínio na URL (Condomínios, Aparência, Tipos, Modelos) não têm condomínio selecionado para mostrar.
 - 2026-11-19: botões do topo da lista de avisos ficam sempre numa linha no celular; se não couber (até 460 px), "Tipos de aviso" vira "Tipos". O ícone de Tipos de aviso passou a ser uma tag em todo o sistema (antes era a paleta, que continua em Aparência).
 - 2026-11-19: favicon adicionado (`public/favicon.svg`, `favicon.ico` e `apple-touch-icon.png`), igual ao ícone da marca na barra (quadrado verde com três linhas); ligado nos painéis, nas telas de acesso e na TV. O favicon é fixo no verde padrão (um arquivo estático não acompanha a cor de destaque do gerente).
+- 2026-11-23: engrenagem de configurações criada (sem nada de 2FA ainda). A tela **Configurações** tem duas abas: **Segurança** (troca de senha pelo próprio usuário, para gerente e administrador; exige a senha atual, limita erros e desconecta os outros aparelhos) e **Aparência** (só gerente). O gerente ganhou o item **Dispositivos** no menu principal: mesma lista e histórico do admin, mas só dos condomínios dele, só consulta. Decisão minha a confirmar: o gerente **não vê o token nem o endereço da TV**, porque a regra do AGENTS.md 6.8 diz que o gerente nunca vê tokens; se quiser que ele veja o endereço (para reinstalar uma TV, por exemplo), é preciso mudar essa regra de propósito.

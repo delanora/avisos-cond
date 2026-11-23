@@ -41,8 +41,11 @@
                     {% if condominio is defined and condominio %}
                         <a href="/gerente/condominios/{{ condominio.id }}/avisos"{% if menu == 'avisos' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('aviso', 18) }}Avisos</a>
                     {% endif %}
-                    <a href="/gerente/aparencia"{% if menu == 'aparencia' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a>
+                    <a href="/gerente/dispositivos"{% if menu == 'dispositivos' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('tv', 18) }}Dispositivos</a>
                 {% endif %}
+                {# Celular: as configurações viram itens do menu (o suspenso da engrenagem fica só no desktop). #}
+                <a class="so-celular{% if menu == 'seguranca' %} ativo{% endif %}" href="/conta/seguranca"{% if menu == 'seguranca' %} aria-current="page"{% endif %}>{{ ui.icone('escudo', 18) }}Segurança</a>
+                {% if usuario.papel == 'gerente' %}<a class="so-celular{% if menu == 'aparencia' %} ativo{% endif %}" href="/gerente/aparencia"{% if menu == 'aparencia' %} aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a>{% endif %}
                 {% if usuario.papel == 'superadmin' %}
                     <a href="/admin"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('painel', 18) }}Início</a>
                     <a href="/admin/usuarios"{% if menu == 'usuarios' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('usuarios', 18) }}Usuários</a>
@@ -55,7 +58,14 @@
                     <span class="perfil-nome">{{ usuario.nome }}</span>
                     <span class="perfil-papel">{{ usuario.papel == 'superadmin' ? 'Administrador' : 'Gerente' }}</span>
                 </div>
-                {{ ui.avatar(usuario.nome, usuario.id) }}
+                {# Engrenagem de configurações: Segurança e (para o gerente) Aparência. #}
+                <details class="config">
+                    <summary aria-label="Configurações" title="Configurações"{% if menu == 'seguranca' or menu == 'aparencia' %} class="ativo"{% endif %}>{{ ui.icone('engrenagem', 20) }}</summary>
+                    <ul class="config-lista">
+                        <li><a href="/conta/seguranca"{% if menu == 'seguranca' %} aria-current="page"{% endif %}>{{ ui.icone('escudo', 18) }}Segurança</a></li>
+                        {% if usuario.papel == 'gerente' %}<li><a href="/gerente/aparencia"{% if menu == 'aparencia' %} aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a></li>{% endif %}
+                    </ul>
+                </details>
                 <form method="post" action="/logout">
                     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
                     <button type="submit" class="botao-secundario botao-sutil">{{ ui.icone('sair', 16) }}Sair</button>

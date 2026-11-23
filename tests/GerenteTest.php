@@ -1086,7 +1086,8 @@ final class GerenteTest extends AppHttpTestCase
         $this->assertStringNotContainsString('cor_secundaria', $corpo, 'Só uma cor: o tom claro é calculado.');
         $this->assertStringNotContainsString('type="file"', $corpo, 'Não há mais upload de logo.');
         $this->assertStringNotContainsString('tema.css', $corpo, 'Sem cor escolhida, nenhuma folha extra.');
-        $this->assertStringContainsString('href="/gerente/aparencia" class="ativo"', $corpo);
+        $this->assertStringContainsString('href="/gerente/aparencia" class="ativa" aria-current="page"', $corpo, 'A aba Aparência está ativa nas Configurações.');
+        $this->assertStringContainsString('href="/conta/seguranca"', $corpo, 'E a aba Segurança está ao lado.');
     }
 
     public function testSalvarCorEMostrarDepois(): void

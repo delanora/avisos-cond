@@ -1,0 +1,8 @@
+{% import 'macros/ui.html.twig' as ui %}
+{# Abas das Configurações. Recebe: usuario, aba ('seguranca' ou 'aparencia'). Aparência só existe para o gerente. #}
+<nav class="abas" aria-label="Configurações">
+    <a href="/conta/seguranca"{% if aba == 'seguranca' %} class="ativa" aria-current="page"{% endif %}>{{ ui.icone('escudo', 18) }}Segurança</a>
+    {% if usuario.papel == 'gerente' %}
+        <a href="/gerente/aparencia"{% if aba == 'aparencia' %} class="ativa" aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a>
+    {% endif %}
+</nav>

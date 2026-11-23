@@ -28,6 +28,42 @@ final class DispositivoRepository
         return array_map($this->normalizar(...), $linhas);
     }
 
+    /**
+     * Dispositivos dos condomínios permitidos (o gerente só vê os dos condomínios dele).
+     *
+     * @param list<int> $permitidos
+     * @return list<array<string, mixed>>
+     */
+    public function listarDosCondominios(array $permitidos): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT ' . self::COLUNAS . ' FROM dispositivos d JOIN condominios c ON c.id = d.condominio_id
+             WHERE d.condominio_id = ANY(:permitidos::bigint[])
+             ORDER BY lower(c.nome), lower(d.nome), d.id'
+        );
+        $stmt->execute(['permitidos' => Pg::arrayDeInteiros($permitidos)]);
+
+        return array_map($this->normalizar(...), $stmt->fetchAll());
+    }
+
+    /**
+     * Um dispositivo, só se for de um condomínio permitido (senão null).
+     *
+     * @param list<int> $permitidos
+     * @return array<string, mixed>|null
+     */
+    public function porIdDosCondominios(array $permitidos, int $id): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT ' . self::COLUNAS . ' FROM dispositivos d JOIN condominios c ON c.id = d.condominio_id
+             WHERE d.id = :id AND d.condominio_id = ANY(:permitidos::bigint[])'
+        );
+        $stmt->execute(['id' => $id, 'permitidos' => Pg::arrayDeInteiros($permitidos)]);
+        $linha = $stmt->fetch();
+
+        return $linha === false ? null : $this->normalizar($linha);
+    }
+
     /** @return array<string, mixed>|null */
     public function porId(int $id): ?array
     {
