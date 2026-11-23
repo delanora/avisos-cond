@@ -19,9 +19,11 @@ use App\Controllers\AuthController;
 use App\Controllers\ContaController;
 use App\Controllers\GerenteController;
 use App\Controllers\HomeController;
+use App\Controllers\SuporteController;
 use App\Controllers\Tv\PareamentoController;
 use App\Controllers\Tv\TvController;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\BloqueioSuporteMiddleware;
 use App\Middleware\CsrfMiddleware;
 use App\Middleware\EscopoGerenteMiddleware;
 use App\Middleware\Negado;
@@ -139,6 +141,7 @@ final class AppFactory
         $mwCsrf = new CsrfMiddleware($csrf, $negado);
         $mwAuth = new AuthMiddleware($sessao, $usuarios);
         $mwAdmin = new RoleMiddleware(['superadmin'], $negado);
+        $mwSemSuporte = new BloqueioSuporteMiddleware($negado);
         $mwGerente = new RoleMiddleware(['gerente'], $negado);
         $mwEscopo = new EscopoGerenteMiddleware($condominios, new PadroesDoGerenteRepository($pdo));
         // Margem de 1 MB para os demais campos do formulário além do arquivo.
@@ -164,11 +167,12 @@ final class AppFactory
         $adminDispositivos = new DispositivosController($view, $sessao, $gestaoDispositivos, $gestaoCondominios, $config->obrigatorio('APP_URL'), $auditoria, $pareamento);
         $tv = new TvController($view, $tvAcesso, $tvService, $aceleracao);
         $tvPareamento = new PareamentoController($view, $pareamento);
+        $suporte = new SuporteController($sessao, $gestaoUsuarios, $auditoria);
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv, $tvPareamento,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv, $tvPareamento, $suporte, $mwSemSuporte,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -184,8 +188,10 @@ final class AppFactory
 
             $r->addRoute('GET', '/', Pipeline::envolver([$home, 'index'], $mwAuth));
             // Configurações da própria conta (Segurança): qualquer usuário logado, gerente ou administrador.
-            $r->addRoute('GET', '/conta/seguranca', Pipeline::envolver([$conta, 'seguranca'], $mwAuth));
-            $r->addRoute('POST', '/conta/seguranca', Pipeline::envolver([$conta, 'alterarSenha'], $mwAuth, $mwCsrf));
+            // Em modo suporte (admin vendo como gerente) a senha e a aparência do gerente ficam bloqueadas.
+            $r->addRoute('GET', '/conta/seguranca', Pipeline::envolver([$conta, 'seguranca'], $mwAuth, $mwSemSuporte));
+            $r->addRoute('POST', '/conta/seguranca', Pipeline::envolver([$conta, 'alterarSenha'], $mwAuth, $mwCsrf, $mwSemSuporte));
+            $r->addRoute('POST', '/suporte/sair', Pipeline::envolver([$suporte, 'sair'], $mwAuth, $mwCsrf));
             // Área do superadmin: login → papel → (nas escritas) CSRF.
             $leitura = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwAdmin);
             $escrita = static fn (callable $h): callable => Pipeline::envolver($h, $mwAuth, $mwAdmin, $mwCsrf);
@@ -197,6 +203,7 @@ final class AppFactory
             $r->addRoute('POST', '/admin/usuarios', $escrita([$adminUsuarios, 'criar']));
             $r->addRoute('GET', '/admin/usuarios/{id:\d+}/editar', $leitura([$adminUsuarios, 'editar']));
             $r->addRoute('POST', '/admin/usuarios/{id:\d+}', $escrita([$adminUsuarios, 'atualizar']));
+            $r->addRoute('POST', '/admin/usuarios/{id:\d+}/suporte', $escrita([$suporte, 'entrar']));
             $r->addRoute('GET', '/admin/usuarios/{id:\d+}/excluir', $leitura([$adminUsuarios, 'confirmarExclusao']));
             $r->addRoute('POST', '/admin/usuarios/{id:\d+}/excluir', $escrita([$adminUsuarios, 'excluir']));
 
@@ -248,8 +255,8 @@ final class AppFactory
             $r->addRoute('GET', '/gerente/dispositivos/{id:\d+}', $gLeitura([$gerenteDispositivos, 'detalhe']));
 
             // Aparência é do próprio gerente (sem condomínio na URL): só login, papel e, na escrita, CSRF.
-            $r->addRoute('GET', '/gerente/aparencia', $gLeitura([$gerenteAparencia, 'formulario']));
-            $r->addRoute('POST', '/gerente/aparencia', $gEscrita([$gerenteAparencia, 'salvar']));
+            $r->addRoute('GET', '/gerente/aparencia', Pipeline::envolver([$gerenteAparencia, 'formulario'], $mwAuth, $mwGerente, $mwEscopo, $mwSemSuporte));
+            $r->addRoute('POST', '/gerente/aparencia', Pipeline::envolver([$gerenteAparencia, 'salvar'], $mwAuth, $mwGerente, $mwEscopo, $mwCsrf, $mwSemSuporte));
             $r->addRoute('GET', '/gerente/tema.css', $gLeitura([$gerenteAparencia, 'css']));
 
             // Tipos e modelos de aviso são DO GERENTE (sem condomínio na URL): só login, papel e, na escrita, CSRF.

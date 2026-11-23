@@ -15,6 +15,17 @@
 </head>
 <body>
     {% set menu = menu is defined ? menu : '' %}
+    {% if usuario.suporte_admin is defined %}
+        <div class="faixa-suporte" role="status">
+            <div class="faixa-suporte-interno">
+                <span>{{ ui.icone('escudo', 18) }}<strong>Modo suporte:</strong> você está vendo o painel como {{ usuario.nome }}. Tudo que fizer fica registrado em nome de {{ usuario.suporte_admin.nome }}.</span>
+                <form method="post" action="/suporte/sair">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                    <button type="submit" class="botao botao-secundario botao-sutil">Sair do modo suporte</button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
     <header class="topo">
         <div class="topo-interno">
             {# Celular: o menu e o perfil ficam atrás do hambúrguer (caixa escondida + CSS, sem JavaScript). #}
@@ -44,8 +55,8 @@
                     <a href="/gerente/dispositivos"{% if menu == 'dispositivos' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('tv', 18) }}Dispositivos</a>
                 {% endif %}
                 {# Celular: as configurações viram itens do menu (o suspenso da engrenagem fica só no desktop). #}
-                <a class="so-celular{% if menu == 'seguranca' %} ativo{% endif %}" href="/conta/seguranca"{% if menu == 'seguranca' %} aria-current="page"{% endif %}>{{ ui.icone('escudo', 18) }}Segurança</a>
-                {% if usuario.papel == 'gerente' %}<a class="so-celular{% if menu == 'aparencia' %} ativo{% endif %}" href="/gerente/aparencia"{% if menu == 'aparencia' %} aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a>{% endif %}
+                {% if usuario.suporte_admin is not defined %}<a class="so-celular{% if menu == 'seguranca' %} ativo{% endif %}" href="/conta/seguranca"{% if menu == 'seguranca' %} aria-current="page"{% endif %}>{{ ui.icone('escudo', 18) }}Segurança</a>
+                {% if usuario.papel == 'gerente' %}<a class="so-celular{% if menu == 'aparencia' %} ativo{% endif %}" href="/gerente/aparencia"{% if menu == 'aparencia' %} aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a>{% endif %}{% endif %}
                 {% if usuario.papel == 'superadmin' %}
                     <a href="/admin"{% if menu == 'painel' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('painel', 18) }}Início</a>
                     <a href="/admin/usuarios"{% if menu == 'usuarios' %} class="ativo" aria-current="page"{% endif %}>{{ ui.icone('usuarios', 18) }}Usuários</a>
@@ -60,13 +71,13 @@
                     <span class="perfil-papel">{{ usuario.papel == 'superadmin' ? 'Administrador' : 'Gerente' }}</span>
                 </div>
                 {# Engrenagem de configurações: Segurança e (para o gerente) Aparência. #}
-                <details class="config">
+                {% if usuario.suporte_admin is not defined %}<details class="config">
                     <summary aria-label="Configurações" title="Configurações"{% if menu == 'seguranca' or menu == 'aparencia' %} class="ativo"{% endif %}>{{ ui.icone('engrenagem', 20) }}</summary>
                     <ul class="config-lista">
                         <li><a href="/conta/seguranca"{% if menu == 'seguranca' %} aria-current="page"{% endif %}>{{ ui.icone('escudo', 18) }}Segurança</a></li>
                         {% if usuario.papel == 'gerente' %}<li><a href="/gerente/aparencia"{% if menu == 'aparencia' %} aria-current="page"{% endif %}>{{ ui.icone('paleta', 18) }}Aparência</a></li>{% endif %}
                     </ul>
-                </details>
+                </details>{% endif %}
                 <form method="post" action="/logout">
                     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
                     <button type="submit" class="botao-secundario botao-sutil">{{ ui.icone('sair', 16) }}Sair</button>

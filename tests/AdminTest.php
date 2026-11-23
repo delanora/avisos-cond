@@ -23,7 +23,7 @@ final class AdminTest extends AppHttpTestCase
                 "/admin/condominios/{$condominioId}/editar", "/admin/condominios/{$condominioId}/excluir",
             ],
             'post' => [
-                '/admin/usuarios', "/admin/usuarios/{$usuarioId}", "/admin/usuarios/{$usuarioId}/excluir",
+                '/admin/usuarios', "/admin/usuarios/{$usuarioId}", "/admin/usuarios/{$usuarioId}/suporte", "/admin/usuarios/{$usuarioId}/excluir",
                 '/admin/condominios', "/admin/condominios/{$condominioId}", "/admin/condominios/{$condominioId}/excluir",
             ],
         ];

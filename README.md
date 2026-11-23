@@ -40,7 +40,7 @@ Existem três "superfícies" no sistema:
 - CRUD de condomínios e vínculo gerente ↔ condomínios (N:N).
 - Gestão de dispositivos (Fire Sticks, mini PCs e outras TVs): geração de token e último ping (MVP); painel de status online/offline com histórico de quedas (Fase 2, pronto) e pareamento por código (Fase 2, pronto).
 - Situação financeira por condomínio: **somente visualização** (situação, valor, vencimento, observações cadastrados manualmente) e **bloqueio/desbloqueio manual** da exibição (a TV passa a mostrar somente o relógio). A cobrança em si (boletos, Pix, faturas) é feita em um sistema à parte, fora deste projeto.
-- Log de auditoria (quem fez o quê) e acesso de suporte como gerente (com registro).
+- Log de auditoria (quem fez o quê, em `/admin/auditoria`) e **modo suporte**: o administrador entra como um gerente (botão de olho em Usuários), vê o painel dele com uma faixa de aviso, não mexe em senha nem aparência dele, e tudo fica registrado com os dois nomes (Fase 2, pronto).
 
 ### Tela de exibição
 - Fullscreen, rotação automática, destaque em tela cheia para avisos urgentes.

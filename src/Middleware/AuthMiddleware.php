@@ -13,6 +13,10 @@ use App\Support\Session;
  * Exige login. O usuário é recarregado do banco a cada requisição, então desativar uma
  * conta ou trocar a senha tem efeito imediato (sessões antigas deixam de valer).
  * Anexa o usuário à requisição no atributo "usuario".
+ *
+ * Modo suporte: se a sessão de um superadmin guarda "suporte_como_id" de um gerente ativo, o "usuario" passa a
+ * ser esse gerente (com a chave "suporte_admin" trazendo o administrador real, sem o hash da senha). Gerente
+ * apagado, desativado ou que mudou de papel encerra o modo suporte na hora.
  */
 final class AuthMiddleware implements Middleware
 {
@@ -33,7 +37,30 @@ final class AuthMiddleware implements Middleware
             return Response::redirect('/login');
         }
 
-        return $proximo($request->withAttribute('usuario', $usuario));
+        return $proximo($request->withAttribute('usuario', $this->emModoSuporte($usuario)));
+    }
+
+    /**
+     * @param array<string, mixed> $usuario
+     * @return array<string, mixed>
+     */
+    private function emModoSuporte(array $usuario): array
+    {
+        $comoId = $this->sessao->get('suporte_como_id');
+        if ($comoId === null) {
+            return $usuario;
+        }
+
+        $gerente = is_int($comoId) && $usuario['papel'] === 'superadmin' ? $this->usuarios->porId($comoId) : null;
+        if ($gerente === null || !$gerente['ativo'] || $gerente['papel'] !== 'gerente') {
+            $this->sessao->forget('suporte_como_id');
+
+            return $usuario;
+        }
+
+        unset($usuario['senha_hash'], $gerente['senha_hash']);
+
+        return $gerente + ['suporte_admin' => $usuario];
     }
 
     /** @return array<string, mixed>|null */

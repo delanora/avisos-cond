@@ -96,6 +96,11 @@ Regras de camada:
 - Middleware `Role` protege rotas por papel (`superadmin`, `gerente`). `/admin/*` só `superadmin`; `/gerente/*` só `gerente` (ou superadmin em modo suporte, com registro em auditoria).
 - Negar por padrão: rota sem regra explícita não é pública.
 
+### 6.3.2 Modo suporte (superadmin como gerente)
+- O superadmin clica no olho da lista de usuários (`POST /admin/usuarios/{id}/suporte`, CSRF; só gerente **ativo**, senão 404) e passa a ver o painel `/gerente` exatamente como aquele gerente. A sessão continua **do administrador** (`usuario_id`); só se guarda `suporte_como_id`. O `AuthMiddleware` recarrega os dois do banco a cada requisição e monta o gerente como `usuario`, com `suporte_admin` = administrador (sem hash). Admin desativado, gerente desativado/apagado ou com outro papel **encerram o modo na hora**.
+- Enquanto está em modo suporte: `/admin/*` dá 403 (o papel visto é gerente, não dá para empilhar); o escopo de condomínios é o do gerente (isolamento intacto); **senha e aparência do gerente ficam bloqueadas** (`BloqueioSuporteMiddleware` em `/conta/seguranca` e `/gerente/aparencia`); faixa amarela no topo com "Sair do modo suporte" (`POST /suporte/sair`). Avisos criados nesse modo têm `criado_por` = gerente.
+- Auditoria: `suporte.iniciado`/`suporte.encerrado` e toda ação feita no modo gravam `usuario` = administrador real e `como_usuario` = gerente. Rota nova que mexa em algo **pessoal** do gerente (senha, preferências, e-mail) deve ir atrás do `BloqueioSuporteMiddleware`.
+
 ### 6.3.1 Auditoria
 - Toda ação relevante (login, troca/recuperação de senha, criar/editar/excluir usuário, condomínio, dispositivo e aviso) passa por `AuditoriaService`, que grava em `auditoria` com **nomes copiados** (o registro sobrevive à exclusão da pessoa ou do condomínio). A tabela é **imutável** (gatilho barra UPDATE); só a tarefa `limpar_auditoria` apaga, após `AUDITORIA_RETENCAO_DIAS`.
 - `detalhes` nunca leva senha, token, segredo, chave ou hash (`AuditoriaService::limpar` remove por nome de campo): ao auditar uma ação nova, monte o resumo à mão, só com o necessário. Falha ao auditar vai para o log e **não** derruba a ação.
@@ -157,7 +162,7 @@ Regras de camada:
 
 ### 6.11 Painel /gerente (multi-tenant)
 - As rotas são **escopadas pela URL**: `/gerente/condominios/{cid}/...`. Pipeline: `Auth` → `Role(gerente)` → `EscopoGerenteMiddleware` → (upload) `TamanhoMiddleware` → (escrita) `Csrf`.
-- `EscopoGerenteMiddleware` lê **do banco, a cada requisição**, os condomínios **ativos** vinculados ao gerente. Condomínio desativado pelo admin ou vínculo removido deixam de valer na hora. O superadmin recebe 403 nessas rotas (modo suporte fica para a Fase 2).
+- `EscopoGerenteMiddleware` lê **do banco, a cada requisição**, os condomínios **ativos** vinculados ao gerente. Condomínio desativado pelo admin ou vínculo removido deixam de valer na hora. O superadmin **fora** do modo suporte recebe 403 nessas rotas; em modo suporte ele é tratado como o gerente visto (ver abaixo).
 - Todo controller começa com `EscopoGerente::exigir($request, $cid)`: condomínio fora da lista → `NaoEncontradoException` → **404** (nunca 403, para não revelar que ele existe).
 - Todo método de `AvisoRepository` recebe a lista de condomínios permitidos e filtra por **ela e pelo condomínio pedido** (`condominio_id = :cid AND condominio_id = ANY(:permitidos)`); aviso de outro condomínio pedido por ID resulta em `null`/`false`. Criação usa `INSERT ... SELECT ... WHERE :cid = ANY(:permitidos)`.
 - O `condominio_id` de um formulário é **ignorado**: o aviso nasce no condomínio da URL validada, e a edição nunca muda o dono do aviso.

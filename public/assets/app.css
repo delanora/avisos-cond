@@ -675,3 +675,10 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 .nowrap { white-space: nowrap; }
 .detalhe-auditoria { display: inline-block; margin: 0 0.75rem 0.15rem 0; font-size: 0.8125rem; }
 .paginacao { display: flex; gap: 0.75rem; margin-top: 1rem; }
+
+/* Modo suporte: faixa fixa no topo avisando que o administrador está vendo o painel como um gerente. */
+.faixa-suporte { position: sticky; top: 0; z-index: 110; background: #FFF4D6; border-bottom: 1px solid #E8D08A; color: #5A4300; font-size: 0.875rem; }
+.faixa-suporte-interno { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; padding: 0.5rem 1rem; }
+.faixa-suporte-interno span { display: flex; align-items: center; gap: 0.5rem; }
+.faixa-suporte-interno form { margin: 0; }
+.faixa-suporte + .topo { top: 0; position: static; }

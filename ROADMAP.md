@@ -109,9 +109,9 @@ Objetivo: um gerente cadastra avisos e a TV do condomínio os exibe, com rotaç�
 - [x] Agendamento avançado (recorrência): dias da semana e janela de horário dentro do período do aviso, valendo na TV (offline), no painel e na prévia; regra única em `Recorrencia` (PHP) e `recorrenciaAtiva` (JS), verificada num Chromium real (2026-11-18)
 - [x] Tipos de aviso criados pelo gerente (agora **por gerente**, ver 2026-11-18 abaixo): dropdown na tela do aviso, criação na própria tela ou em "Tipos de aviso", nome + cor principal (cartão em tom claro calculado) + fixo ou não; os 5 de fábrica são copiados para cada gerente e ele pode apagá-los; gatilho de isolamento no banco (2026-11-18)
 - [x] Modelos prontos de aviso (falta de água, elevador, dedetização, assembleia), **de cada gerente**, que ele também cadastra, edita e apaga; "Começar de um modelo" e "Salvar como modelo" no formulário do aviso (2026-11-18)
-- [~] Auditoria (tabela `auditoria`, registro de ações) e modo suporte do superadmin como gerente
+- [x] Auditoria (tabela `auditoria`, registro de ações) e modo suporte do superadmin como gerente (2026-11-23)
   - [x] Auditoria (2026-11-23): tabela imutável (gatilho barra UPDATE; só a retenção apaga), ações de login, senha, usuários, condomínios, dispositivos (sem token) e avisos; tela `/admin/auditoria` com filtros e paginação; tarefa `limpar_auditoria` (`AUDITORIA_RETENCAO_DIAS`, padrão 365, mínimo 30). Testes em `AuditoriaTest`
-  - [ ] Modo suporte: superadmin entra como um gerente (faixa de aviso, sair, ações auditadas com os dois nomes)
+  - [x] Modo suporte (2026-11-23): botão "entrar como" na lista de usuários (gerente ativo), faixa de aviso com "Sair do modo suporte", senha e aparência do gerente bloqueadas, `/admin` 403 enquanto em suporte, encerra sozinho se o gerente/admin for desativado ou apagado, ações auditadas com admin e gerente. 17 testes em `SuporteTest`
 
 ### 2.x Autenticação de dois fatores (2FA, TOTP)
 

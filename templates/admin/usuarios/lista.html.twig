@@ -49,6 +49,12 @@
                             <td class="celula-suave esconde-movel">{{ u.papel == 'gerente' ? u.total_condominios : '-' }}</td>
                             <td><span class="etiqueta {{ u.ativo ? 'etiqueta-ok' : 'etiqueta-off' }}">{{ u.ativo ? 'Ativo' : 'Inativo' }}</span></td>
                             <td class="acoes-celula">
+                                {% if u.papel == 'gerente' and u.ativo %}
+                                    <form method="post" action="/admin/usuarios/{{ u.id }}/suporte" class="form-na-linha">
+                                        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                                        <button type="submit" class="botao-icone" title="Entrar como este gerente (modo suporte)" aria-label="Entrar como {{ u.nome }}">{{ ui.icone('olho', 18) }}</button>
+                                    </form>
+                                {% endif %}
                                 <a class="botao-icone" href="/admin/usuarios/{{ u.id }}/editar" title="Editar" aria-label="Editar {{ u.nome }}">{{ ui.icone('editar', 18) }}</a>
                                 {% if u.id != usuario.id %}
                                     <a class="botao-icone perigo" href="/admin/usuarios/{{ u.id }}/excluir" title="Excluir" aria-label="Excluir {{ u.nome }}">{{ ui.icone('lixeira', 18) }}</a>
