@@ -47,7 +47,7 @@ final class CondominioRepository
     public function listarDoGerente(int $usuarioId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT c.id, c.nome, c.endereco, c.ativo, 0 AS total_gerentes
+            'SELECT c.id, c.nome, c.endereco, c.ativo, c.bloqueado, 0 AS total_gerentes
              FROM condominios c
              JOIN usuario_condominio uc ON uc.condominio_id = c.id
              WHERE uc.usuario_id = :usuario AND c.ativo
@@ -145,6 +145,8 @@ final class CondominioRepository
             'nome' => (string) $linha['nome'],
             'endereco' => $linha['endereco'] === null ? null : (string) $linha['endereco'],
             'ativo' => (bool) $linha['ativo'],
+            // Só o fato de estar bloqueado (o gerente vê o aviso); o motivo fica no financeiro, restrito ao superadmin.
+            'bloqueado' => (bool) ($linha['bloqueado'] ?? false),
             'total_gerentes' => (int) $linha['total_gerentes'],
         ];
     }

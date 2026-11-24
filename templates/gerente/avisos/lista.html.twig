@@ -6,8 +6,9 @@
 {% block conteudo %}
     <div class="pagina-topo">
         <div>
-            <h1>Avisos</h1>
+            <h1 class="titulo-com-etiqueta">Avisos{% if condominio.bloqueado %} <span class="etiqueta etiqueta-disp-offline">Bloqueado</span>{% endif %}</h1>
             <p>O que aparece na TV do {{ condominio.nome }}.</p>
+            {% if condominio.bloqueado %}<p class="campo-ajuda">Este condomínio está bloqueado por pendências financeiras: a TV mostra só o relógio, e os avisos ficam guardados. Fale com nosso atendimento para regularizar.</p>{% endif %}
         </div>
         <div class="acoes sem-margem acoes-linha">
             <a class="botao botao-secundario" href="/gerente/modelos">{{ ui.icone('aviso', 18) }}Modelos</a>

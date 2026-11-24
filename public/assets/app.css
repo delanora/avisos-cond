@@ -701,6 +701,9 @@ input[type="color"] { display: block; width: 8rem; height: 46px; padding: 4px; b
 
 /* Token e botão "Abrir a tela da TV" na mesma linha, alinhados à esquerda. */
 .token-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0.5rem 1rem; margin-top: 0.4rem; }
+/* Título com etiqueta ao lado (ex.: "Avisos" + "Bloqueado"). */
+.titulo-com-etiqueta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.titulo-com-etiqueta .etiqueta { font-size: 0.8125rem; }
 .token-linha .campo-ajuda { margin: 0; }
 
 /* Orientação da tela: duas opções lado a lado e o botão logo abaixo. */

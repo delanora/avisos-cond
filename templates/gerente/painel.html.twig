@@ -27,7 +27,7 @@
                     <div class="pessoa">
                         <span class="avatar av-{{ c.id % 6 }}" aria-hidden="true">{{ ui.icone('predio', 20) }}</span>
                         <div>
-                            <span class="pessoa-nome">{{ c.nome }}</span>
+                            <span class="pessoa-nome">{{ c.nome }}{% if c.bloqueado %} <span class="etiqueta etiqueta-disp-offline">Bloqueado</span>{% endif %}</span>
                             <span class="pessoa-sub">{{ c.endereco ?? 'Sem endereço cadastrado' }}</span>
                         </div>
                     </div>

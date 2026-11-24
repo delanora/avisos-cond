@@ -308,6 +308,32 @@ final class FinanceiroTest extends AppHttpTestCase
         $this->assertSame(200, $this->get('/gerente/dispositivos')->status);
     }
 
+    public function testGerenteVeOAvisoDeBloqueadoNaListaENaAbaAvisosSemOMotivo(): void
+    {
+        $gerente = $this->criarUsuario('gerente@exemplo.com.br');
+        $this->vincular($gerente, $this->a);
+        $this->vincular($gerente, $this->b);
+        $this->pdo->exec("UPDATE condominios SET bloqueado = true, bloqueio_motivo = 'Mensalidade de outubro em aberto' WHERE id = {$this->a}");
+        $this->logar();
+
+        $painel = $this->get('/gerente');
+        $this->assertSame(200, $painel->status);
+        $this->assertSame(1, substr_count($painel->body, 'etiqueta-disp-offline'), 'Só o condomínio bloqueado leva a etiqueta.');
+        $this->assertStringContainsString('Bloqueado', $painel->body);
+
+        $avisosA = $this->get("/gerente/condominios/{$this->a}/avisos");
+        $this->assertSame(200, $avisosA->status);
+        $this->assertMatchesRegularExpression('/<h1[^>]*>\s*Avisos\s*<span class="etiqueta etiqueta-disp-offline">Bloqueado<\/span>/', $avisosA->body);
+        $this->assertStringContainsString('pendências financeiras', $avisosA->body);
+
+        $avisosB = $this->get("/gerente/condominios/{$this->b}/avisos");
+        $this->assertStringNotContainsString('Bloqueado', $avisosB->body);
+
+        foreach ([$painel, $avisosA, $this->get("/gerente/condominios/{$this->a}/avisos/novo")] as $r) {
+            $this->assertStringNotContainsString('Mensalidade de outubro', $r->body, 'O motivo é só do admin.');
+        }
+    }
+
     public function testFinanceiroSomeJuntoComOCondominioExcluido(): void
     {
         $this->logarComoAdmin();
