@@ -1,0 +1,66 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/form.html.twig' as f %}
+{% import 'macros/ui.html.twig' as ui %}
+{% set menu = 'financeiro' %}
+
+{% block titulo %}Financeiro de {{ alvo.nome }} - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <p class="migalha"><a href="/admin/financeiro">Financeiro</a> {{ ui.icone('seta', 14) }} <span>{{ alvo.nome }}</span></p>
+    <div class="pagina-topo">
+        <div>
+            <h1>{{ alvo.nome }}</h1>
+            <p>Situação financeira e bloqueio da exibição nas TVs deste condomínio.</p>
+        </div>
+    </div>
+
+    <div class="coluna-central">
+        <form method="post" action="/admin/financeiro/{{ alvo.id }}" class="cartao formulario">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <section class="formulario-secao">
+                <h2>Situação financeira</h2>
+                <p class="secao-ajuda">Informações digitadas por você, só para consulta. Nada aqui gera cobrança.</p>
+                <div class="campo{% if erros.situacao is defined %} campo-erro{% endif %}">
+                    <label for="campo-situacao">Situação</label>
+                    <select id="campo-situacao" name="situacao" required>
+                        {% for chave, rotulo in situacoes %}<option value="{{ chave }}"{% if valores.situacao == chave %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+                    </select>
+                    {% if erros.situacao is defined %}<p class="erro-texto">{{ erros.situacao }}</p>{% endif %}
+                </div>
+                {{ f.campo('valor_mensal', 'Valor mensal (R$)', 'text', valores.valor_mensal, erros.valor_mensal|default(''), {max: 15, autocomplete: 'off', ajuda: 'O que este condomínio paga por mês. Ex.: 1.250,00'}) }}
+                {{ f.campo('dia_vencimento', 'Dia do vencimento', 'text', valores.dia_vencimento, erros.dia_vencimento|default(''), {max: 2, autocomplete: 'off', ajuda: 'De 1 a 31.'}) }}
+                <div class="campo{% if erros.observacoes is defined %} campo-erro{% endif %}">
+                    <label for="campo-observacoes">Observações</label>
+                    <textarea id="campo-observacoes" name="observacoes" rows="4" maxlength="1000">{{ valores.observacoes }}</textarea>
+                    {% if erros.observacoes is defined %}<p class="erro-texto">{{ erros.observacoes }}</p>{% endif %}
+                </div>
+            </section>
+            <div class="acoes">
+                <button type="submit">Salvar situação</button>
+                <a class="botao botao-secundario" href="/admin/financeiro">Voltar</a>
+            </div>
+        </form>
+
+        <section class="cartao formulario">
+            <section class="formulario-secao">
+                <h2>Bloqueio da exibição</h2>
+                {% if alvo.bloqueado %}
+                    <p><span class="etiqueta etiqueta-disp-offline">Bloqueada</span>{% if alvo.bloqueado_em %} desde {{ alvo.bloqueado_em }}{% endif %}</p>
+                    <p class="secao-ajuda">Motivo: {{ alvo.bloqueio_motivo }}</p>
+                    <p class="secao-ajuda">Enquanto estiver bloqueado, as TVs mostram só o relógio. O gerente continua acessando o painel e os avisos ficam guardados.</p>
+                    <form method="post" action="/admin/financeiro/{{ alvo.id }}/desbloquear">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                        <div class="acoes"><button type="submit">Desbloquear exibição</button></div>
+                    </form>
+                {% else %}
+                    <p class="secao-ajuda">Bloqueando, as TVs deste condomínio passam a mostrar só o relógio, sem avisos. O gerente continua acessando o painel e os avisos ficam guardados. Você pode desbloquear quando quiser.</p>
+                    <form method="post" action="/admin/financeiro/{{ alvo.id }}/bloquear">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                        {{ f.campo('motivo', 'Motivo do bloqueio', 'text', motivo, erros.motivo|default(''), {obrigatorio: true, max: 255, autocomplete: 'off', ajuda: 'Fica registrado na auditoria. Ex.: Mensalidade de outubro em aberto.'}) }}
+                        <div class="acoes"><button type="submit" class="botao-perigo">Bloquear exibição</button></div>
+                    </form>
+                {% endif %}
+            </section>
+        </section>
+    </div>
+{% endblock %}

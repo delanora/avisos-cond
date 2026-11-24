@@ -6,6 +6,7 @@ namespace App\Support;
 
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
+use Twig\TwigFilter;
 use Twig\TwigFunction;
 
 /**
@@ -39,6 +40,9 @@ final class View
             throw new \LogicException('A função csrf_token não foi configurada nesta View.');
         };
         $this->twig->addFunction(new TwigFunction('csrf_token', fn (): string => ($this->geradorCsrf)()));
+
+        // Valor em centavos → "R$ 1.250,00".
+        $this->twig->addFilter(new TwigFilter('moeda', static fn (?int $centavos): string => \App\Services\FinanceiroService::formatar($centavos)));
 
         // Sem sessão configurada, não há mensagem a mostrar.
         $this->geradorFlash = static fn (): string => '';

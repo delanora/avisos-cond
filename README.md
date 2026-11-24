@@ -96,12 +96,12 @@ README.md
 ## Modelo de dados (resumo)
 
 - `usuarios` (id, nome, email, senha_hash, papel, ativo)
-- `condominios` (id, nome, endereco, ativo; `bloqueado` e `bloqueio_motivo` na Fase 3). `bloqueado` é definido manualmente pelo admin.
+- `condominios` (id, nome, endereco, ativo, `bloqueado`, `bloqueio_motivo`, `bloqueado_em`). `bloqueado` é definido manualmente pelo admin (com motivo) em `/admin/financeiro`.
 - `usuario_condominio` (usuario_id, condominio_id), relação N:N
 - `avisos` (id, condominio_id, titulo, corpo, tipo, midia, midia_tipo, inicio_em, fim_em, ativo, criado_por; `recorrencia` na Fase 2); cada aviso pertence a um único condomínio
 - `modelos_aviso` (modelos prontos de aviso)
 - `dispositivos` (id, condominio_id, nome, token, ultimo_ping, ativo; `codigo_pareamento` na Fase 2)
-- `condominio_financeiro` (condominio_id, situacao, valor_mensal em centavos, dia_vencimento, observacoes): informação financeira cadastrada manualmente, só para consulta
+- `condominio_financeiro` (condominio_id, situacao `em_dia`/`pendente`, valor_mensal em centavos, dia_vencimento, observacoes): informação financeira cadastrada manualmente, só para consulta (`/admin/financeiro`, só superadmin)
 - `password_resets` (usuario_id, token_hash, expira_em, usado_em)
 - `rate_limits` (contadores de tentativas de login, recuperação de senha e token de TV inválido)
 - `auditoria` (usuario_id, acao, entidade, entidade_id, dados, criado_em)
@@ -363,7 +363,7 @@ Resumo abaixo. O detalhamento item a item e o status real de cada um ficam em [`
 
 - **MVP**: login com rate limit, recuperação de senha, CRUD de condomínios, gerentes e avisos, cor de destaque do gerente, dispositivos (cadastro, token e heartbeat), tela da TV com rotação e cache offline.
 - **Fase 2**: painel de status online/offline dos dispositivos, agendamento avançado, auditoria, pareamento por código.
-- **Fase 3**: situação financeira (visualização e bloqueio manual; TV bloqueada mostra só o relógio), widget de clima, notificações externas (WhatsApp/e-mail), perfil zelador.
+- **Fase 3**: situação financeira (feita: visualização, totais e bloqueio manual; TV bloqueada mostra só o relógio), widget de clima, notificações externas (WhatsApp/e-mail), perfil zelador.
 
 ## Segurança
 

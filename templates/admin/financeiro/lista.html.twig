@@ -1,0 +1,89 @@
+{% extends 'layouts/base.html.twig' %}
+{% import 'macros/ui.html.twig' as ui %}
+{% set menu = 'financeiro' %}
+
+{% block titulo %}Financeiro - {{ app_nome }}{% endblock %}
+
+{% block conteudo %}
+    <div class="pagina-topo">
+        <div>
+            <h1>Financeiro</h1>
+            <p>Situação de cada condomínio, digitada por você. A cobrança é feita em outro sistema; aqui você consulta e, se preciso, bloqueia a exibição das TVs.</p>
+        </div>
+    </div>
+
+    <section class="cartao cartao-sem-espaco numeros" aria-label="Resumo financeiro">
+        <div class="numero">
+            <span class="numero-icone">{{ ui.icone('ok', 24) }}</span>
+            <div><span class="numero-valor">{{ resumo.valor_em_dia|moeda }}</span><span class="numero-rotulo">por mês em {{ resumo.em_dia }} {{ resumo.em_dia == 1 ? 'condomínio em dia' : 'condomínios em dia' }}</span></div>
+        </div>
+        <div class="numero">
+            <span class="numero-icone">{{ ui.icone('alerta', 24) }}</span>
+            <div><span class="numero-valor">{{ resumo.valor_pendente|moeda }}</span><span class="numero-rotulo">em aberto em {{ resumo.pendentes }} {{ resumo.pendentes == 1 ? 'condomínio pendente' : 'condomínios pendentes' }}</span></div>
+        </div>
+        <div class="numero">
+            <span class="numero-icone">{{ ui.icone('tv', 24) }}</span>
+            <div><span class="numero-valor">{{ resumo.bloqueados }}</span><span class="numero-rotulo">{{ resumo.bloqueados == 1 ? 'condomínio bloqueado' : 'condomínios bloqueados' }}</span></div>
+        </div>
+    </section>
+
+    <nav class="filtros-situacao" aria-label="Filtrar por situação">
+        <a class="filtro{% if filtro == '' %} filtro-ativo{% endif %}" href="/admin/financeiro"{% if filtro == '' %} aria-current="true"{% endif %}>Todos</a>
+        <a class="filtro{% if filtro == 'em_dia' %} filtro-ativo{% endif %}" href="/admin/financeiro?situacao=em_dia"{% if filtro == 'em_dia' %} aria-current="true"{% endif %}>Em dia</a>
+        <a class="filtro{% if filtro == 'pendente' %} filtro-ativo{% endif %}" href="/admin/financeiro?situacao=pendente"{% if filtro == 'pendente' %} aria-current="true"{% endif %}>Pendentes</a>
+        <a class="filtro{% if filtro == 'bloqueado' %} filtro-ativo{% endif %}" href="/admin/financeiro?situacao=bloqueado"{% if filtro == 'bloqueado' %} aria-current="true"{% endif %}>Bloqueados</a>
+        <a class="filtro{% if filtro == 'sem_cadastro' %} filtro-ativo{% endif %}" href="/admin/financeiro?situacao=sem_cadastro"{% if filtro == 'sem_cadastro' %} aria-current="true"{% endif %}>Sem cadastro</a>
+    </nav>
+
+    {% if condominios|length == 0 %}
+        <div class="cartao vazio">
+            <span class="vazio-icone">{{ ui.icone('moeda', 30) }}</span>
+            <h2>Nenhum condomínio nesta visão</h2>
+            <p>Tente outro filtro.</p>
+        </div>
+    {% else %}
+        <div class="cartao cartao-sem-espaco">
+            <div class="tabela-rolagem">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Condomínio</th>
+                            <th>Situação</th>
+                            <th class="esconde-movel">Valor mensal</th>
+                            <th class="esconde-movel">Vencimento</th>
+                            <th>Exibição</th>
+                            <th><span class="sr-only">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for c in condominios %}
+                        <tr>
+                            <td class="pessoa-celula">
+                                <div class="pessoa">
+                                    <span class="avatar av-{{ c.id % 6 }}" aria-hidden="true">{{ ui.icone('predio', 20) }}</span>
+                                    <div><span class="pessoa-nome">{{ c.nome }}</span></div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if not c.cadastrado %}<span class="etiqueta etiqueta-disp-nunca">Sem cadastro</span>
+                                {% elseif c.situacao == 'em_dia' %}<span class="etiqueta etiqueta-ok">Em dia</span>
+                                {% else %}<span class="etiqueta etiqueta-disp-offline">Pendente</span>{% endif %}
+                            </td>
+                            <td class="celula-suave esconde-movel nowrap">{{ c.valor_mensal|moeda }}</td>
+                            <td class="celula-suave esconde-movel">{{ c.dia_vencimento is null ? '—' : 'dia ' ~ c.dia_vencimento }}</td>
+                            <td>
+                                {% if c.bloqueado %}<span class="etiqueta etiqueta-disp-offline">Bloqueada</span>
+                                {% elseif not c.ativo %}<span class="etiqueta etiqueta-off">Condomínio inativo</span>
+                                {% else %}<span class="etiqueta etiqueta-ok">Liberada</span>{% endif %}
+                            </td>
+                            <td class="acoes-celula">
+                                <a class="botao-icone" href="/admin/financeiro/{{ c.id }}/editar" title="Editar situação e bloqueio" aria-label="Editar situação financeira de {{ c.nome }}">{{ ui.icone('editar', 18) }}</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

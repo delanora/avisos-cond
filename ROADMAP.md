@@ -179,11 +179,11 @@ Documentação:
 
 A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para consulta e bloqueio manual.
 
-- [ ] Migration `condominio_financeiro` (situação, valor mensal, dia de vencimento, observações) e campos `bloqueado`/`bloqueio_motivo` em `condominios`
-- [ ] Painel `/admin` de situação financeira por condomínio (listagem, filtros por situação, edição manual)
-- [ ] Bloqueio/desbloqueio manual da exibição, com motivo e registro na auditoria
-- [ ] TV de condomínio bloqueado mostra somente o relógio
-- [ ] Testes: financeiro restrito ao superadmin (gerente → negado) e TV bloqueada sem avisos
+- [x] Migration `condominio_financeiro` (situação, valor mensal, dia de vencimento, observações) e campos `bloqueado`/`bloqueio_motivo` em `condominios` (016, 2026-11-24)
+- [x] Painel `/admin/financeiro` de situação financeira por condomínio: listagem, filtros (todos, em dia, pendentes, bloqueados, sem cadastro), totais (valor mensal dos condomínios em dia, valor em aberto dos pendentes, quantidade de bloqueados) e edição manual (2026-11-24)
+- [x] Bloqueio/desbloqueio manual da exibição, com motivo obrigatório e registro na auditoria (`condominio.bloqueado`, `condominio.desbloqueado`, `financeiro.atualizado`) (2026-11-24)
+- [x] TV de condomínio bloqueado mostra somente o relógio; mídias dão 404 (2026-11-24)
+- [x] Testes: financeiro restrito ao superadmin (gerente → 403, visitante → login, sem CSRF → 403) e TV bloqueada sem avisos (`FinanceiroTest`, 24 testes) (2026-11-24)
 - [ ] Widget de clima
 - [ ] Notificações externas (WhatsApp/e-mail)
 - [ ] Perfil zelador
@@ -210,7 +210,7 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-16: `001_init.sql` não tem `bloqueado`/`bloqueio_motivo`, `recorrencia` nem `codigo_pareamento`: entram em migrations aditivas das fases 2 e 3. Foi adicionado `avisos.midia_tipo` (imagem/video) para a TV saber como exibir a mídia; `atualizado_em` foi omitido (a auditoria cobrirá o histórico).
 - 2026-11-16: Nginx da VM no ar (`/etc/nginx/sites-available/avisos-cond`, porta 80, PHP-FPM 8.4), servindo `public/` e bloqueando `.env`, `.git`, `src`, `vendor`, `storage` etc. O PHP-FPM roda como `www-data`: `.env` fica `root:www-data` modo 640 e `storage/` pertence a `www-data`. (Resolvido em 2026-11-17: IP real, HTTPS e firewall.)
 - 2026-11-17: proxy reverso em 172.16.31.29, HTTPS em https://avisos.embracore.com.br (`APP_URL` atualizado). Na VM: `set_real_ip_from`, mapa `$avisos_https` (só o proxy diz que é https), firewall nftables (porta 80 só do proxy, SSH intocado) e Service Worker da TV verificado offline por HTTPS num Chromium real. Pendente no proxy: ele adiciona cabeçalhos próprios (`Referrer-Policy: same-origin`, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options`, `X-XSS-Protection`) que duplicam e conflitam com os da aplicação (que pede `no-referrer` e `DENY`); remova esses do vhost do proxy e mantenha só o HSTS.
-- Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados do sistema de cobrança no futuro.
+- ~~Pendente: definir os campos exatos do financeiro e se os dados serão digitados à mão ou importados.~~ Resolvido em 2026-11-24: digitados à mão (ver decisões abaixo); importação ou gateway só no futuro.
 - 2026-11-16: PHPMailer adicionado (e-mail SMTP da recuperação de senha); justificativa no `AGENTS.md` seção 3.
 - 2026-11-16: política de senha: 10 a 128 caracteres, Argon2id (19 MiB, 2 iterações, 1 thread). Sem `MAIL_HOST` o e-mail não é enviado e o motivo vai para o log, sem o token.
 - 2026-11-16: `migrations/003_usuarios_senha_alterada.sql` adiciona `usuarios.senha_alterada_em`, usado para derrubar sessões antigas na troca de senha.
@@ -252,3 +252,5 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - 2026-11-23: por decisão do responsável, o **gerente passa a ver o endereço e o token** da TV no detalhe do dispositivo dele (antes nunca via). Mesmo layout do admin (endereço e token, situação, histórico com 5 por página, métodos de configuração). A lista continua sem token; o gerente segue sem trocar token, parear ou revogar. Fora do escopo dele: 404.
 - 2026-11-23: o **gerente também pareia TVs** (só dos condomínios dele; 404 fora do escopo). Limite de 10 códigos errados por usuário em 15 min (bloqueio de 15 min) para ele não adivinhar códigos de TVs de outros condomínios. Testes em `GerenteDispositivosTest` e `PareamentoTest`.
 - 2026-11-24: **orientação da tela por dispositivo** (horizontal ou vertical, pedido do cliente para monitor em pé), editável por admin e gerente no detalhe do dispositivo, independente por TV e auditada. Layout vertical verificado num Chromium real (viewport em pé e deitado girado). **Falta teste manual no monitor real**: se a imagem sair de cabeça para baixo, é só inverter o sentido da rotação (hoje o monitor deve estar virado para a esquerda); decidir se vale uma terceira opção "vertical invertido".
+- 2026-11-24: **financeiro manual concluído** (Fase 3). Decisões minhas a confirmar: (1) a situação tem só **Em dia** e **Pendente**; (2) "valor pago por condomínio" = o **valor mensal** cadastrado; o painel soma o valor dos em dia ("pago") e dos pendentes ("em aberto"), sem histórico de pagamentos mês a mês (isso só faria sentido com o gateway futuro); (3) o bloqueio é **manual**, independente da situação (nada bloqueia sozinho: suspensão automática segue fora do escopo); (4) condomínio bloqueado: TV só com o relógio, mas o **gerente continua usando o painel** (a TV não mostra o motivo); (5) o financeiro nunca aparece para o gerente. Quando o gateway de pagamento entrar, o desenho pede uma tabela de pagamentos e nova decisão aqui.
+- 2026-11-24: **bug corrigido (migration 017)**: o gatilho de imutabilidade da auditoria barrava o `ON DELETE SET NULL`, então não dava para excluir condomínio ou usuário que já tivesse registro de auditoria. Agora só o vínculo pode virar nulo (nomes copiados e detalhes continuam intactos).

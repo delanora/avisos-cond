@@ -90,6 +90,38 @@ final class AuditoriaTest extends AppHttpTestCase
         $this->pdo->exec("UPDATE auditoria SET acao = 'outra'");
     }
 
+    public function testExcluirCondominioEUsuarioComAuditoriaMantemORegistroSemOVinculo(): void
+    {
+        $ana = $this->criarUsuario('ana@exemplo.com.br');
+        $cond = $this->criarCondominio('Cond X');
+        $this->servico()->registrar('aviso.criado', ['id' => $ana, 'nome' => 'Ana'], null, 'aviso', 9, ['id' => $cond, 'nome' => 'Cond X'], ['titulo' => 'Água']);
+
+        $this->pdo->exec("DELETE FROM condominios WHERE id = {$cond}");
+        $this->pdo->exec("DELETE FROM usuarios WHERE id = {$ana}");
+
+        $l = $this->pdo->query('SELECT usuario_id, usuario_nome, condominio_id, condominio_nome, acao, detalhes::text AS d FROM auditoria')->fetch();
+        $this->assertNull($l['usuario_id']);
+        $this->assertNull($l['condominio_id']);
+        $this->assertSame('Ana', $l['usuario_nome']);
+        $this->assertSame('Cond X', $l['condominio_nome']);
+        $this->assertStringContainsString('Água', $l['d']);
+    }
+
+    public function testSoOsVinculosPodemVirarNuloNaImutabilidade(): void
+    {
+        $ana = $this->criarUsuario('ana@exemplo.com.br');
+        $this->servico()->registrar('login.entrou', ['id' => $ana, 'nome' => 'Ana'], null);
+
+        foreach (["usuario_nome = 'Outra'", "acao = 'outra'", "usuario_id = {$ana} + 1", "detalhes = '{}'::jsonb || '{\"x\":1}'::jsonb"] as $set) {
+            try {
+                $this->pdo->exec("UPDATE auditoria SET {$set}");
+                $this->fail("UPDATE {$set} deveria ser barrado");
+            } catch (PDOException $e) {
+                $this->assertStringContainsString('não podem ser alterados', $e->getMessage());
+            }
+        }
+    }
+
     public function testFiltros(): void
     {
         $s = $this->servico();

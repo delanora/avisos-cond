@@ -85,7 +85,7 @@ final class DispositivoRepository
     {
         $stmt = $this->pdo->prepare(
             'SELECT d.id, d.condominio_id, d.nome, d.token, d.ativo, d.orientacao,
-                    c.nome AS condominio_nome, c.ativo AS condominio_ativo
+                    c.nome AS condominio_nome, c.ativo AS condominio_ativo, c.bloqueado AS condominio_bloqueado
              FROM dispositivos d JOIN condominios c ON c.id = d.condominio_id
              WHERE d.token = :token'
         );
@@ -101,6 +101,7 @@ final class DispositivoRepository
                 'id' => (int) $l['condominio_id'],
                 'nome' => (string) $l['condominio_nome'],
                 'ativo' => (bool) $l['condominio_ativo'],
+                'bloqueado' => (bool) $l['condominio_bloqueado'],
             ],
         ];
     }

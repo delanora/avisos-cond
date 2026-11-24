@@ -7,6 +7,7 @@ namespace App;
 use App\Controllers\Admin\AuditoriaController;
 use App\Controllers\Admin\CondominiosController;
 use App\Controllers\Admin\DispositivosController;
+use App\Controllers\Admin\FinanceiroController;
 use App\Controllers\Admin\UsuariosController;
 use App\Controllers\Gerente\AparenciaController;
 use App\Controllers\Gerente\AvisosController;
@@ -35,6 +36,7 @@ use App\Repositories\AuditoriaRepository;
 use App\Repositories\AvisoRepository;
 use App\Repositories\CondominioRepository;
 use App\Repositories\DispositivoRepository;
+use App\Repositories\FinanceiroRepository;
 use App\Repositories\PasswordResetRepository;
 use App\Repositories\PareamentoRepository;
 use App\Repositories\RateLimitRepository;
@@ -48,6 +50,7 @@ use App\Services\AuditoriaService;
 use App\Services\AuthService;
 use App\Services\AvisoService;
 use App\Services\DispositivoService;
+use App\Services\FinanceiroService;
 use App\Services\GestaoCondominiosService;
 use App\Services\GestaoUsuariosService;
 use App\Services\Mailer;
@@ -169,12 +172,13 @@ final class AppFactory
         $tv = new TvController($view, $tvAcesso, $tvService, $aceleracao);
         $tvPareamento = new PareamentoController($view, $pareamento);
         $gerentePareamento = new GerentePareamentoController($view, $sessao, $gestaoDispositivos, $pareamento, $auditoria, $config->obrigatorio('APP_URL'));
+        $adminFinanceiro = new FinanceiroController($view, $sessao, new FinanceiroService(new FinanceiroRepository($pdo)), $auditoria);
         $suporte = new SuporteController($sessao, $gestaoUsuarios, $auditoria);
 
         // Ordem dos middlewares: o primeiro executa primeiro (limite → CSRF → login → papel).
         $dispatcher = simpleDispatcher(static function (RouteCollector $r) use (
             $authController, $home, $admin, $gerente, $adminUsuarios, $adminCondominios,
-            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv, $tvPareamento, $suporte, $mwSemSuporte, $gerentePareamento,
+            $gerenteAvisos, $gerenteAparencia, $gerenteMidia, $gerenteTipos, $gerenteModelos, $conta, $gerenteDispositivos, $adminAuditoria, $mwEscopo, $mwTamanho, $adminDispositivos, $tv, $tvPareamento, $suporte, $mwSemSuporte, $gerentePareamento, $adminFinanceiro,
             $mwCsrf, $mwAuth, $mwAdmin, $mwGerente, $mwLimiteLogin, $mwLimiteRecuperacao
         ): void {
             $token = '{token:[a-f0-9]{64}}';
@@ -216,6 +220,13 @@ final class AppFactory
             $r->addRoute('POST', '/admin/condominios/{id:\d+}', $escrita([$adminCondominios, 'atualizar']));
             $r->addRoute('GET', '/admin/condominios/{id:\d+}/excluir', $leitura([$adminCondominios, 'confirmarExclusao']));
             $r->addRoute('POST', '/admin/condominios/{id:\d+}/excluir', $escrita([$adminCondominios, 'excluir']));
+
+            // Financeiro manual: situação digitada à mão e bloqueio da exibição (só superadmin; nada de cobrança aqui).
+            $r->addRoute('GET', '/admin/financeiro', $leitura([$adminFinanceiro, 'lista']));
+            $r->addRoute('GET', '/admin/financeiro/{id:\d+}/editar', $leitura([$adminFinanceiro, 'editar']));
+            $r->addRoute('POST', '/admin/financeiro/{id:\d+}', $escrita([$adminFinanceiro, 'atualizar']));
+            $r->addRoute('POST', '/admin/financeiro/{id:\d+}/bloquear', $escrita([$adminFinanceiro, 'bloquear']));
+            $r->addRoute('POST', '/admin/financeiro/{id:\d+}/desbloquear', $escrita([$adminFinanceiro, 'desbloquear']));
 
             $r->addRoute('GET', '/admin/dispositivos', $leitura([$adminDispositivos, 'lista']));
             $r->addRoute('GET', '/admin/dispositivos/novo', $leitura([$adminDispositivos, 'novo']));
