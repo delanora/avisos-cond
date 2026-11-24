@@ -36,6 +36,18 @@ final class TvArquivosTest extends TestCase
         return ['tv.js' => ['assets/tv.js'], 'sw.js' => ['tv/sw.js'], 'parear.js' => ['assets/parear.js']];
     }
 
+    public function testBloqueioFinanceiroApareceSoNoModoFinanceiroAbaixoDoRelogio(): void
+    {
+        $js = $this->ler('assets/tv.js');
+        $css = $this->ler('assets/tv.css');
+
+        $this->assertStringContainsString("estado.bloqueio_financeiro ? 'financeiro' : 'relogio'", $js);
+        $this->assertMatchesRegularExpression('/\.tv-ocioso-bloqueio\s*\{\s*display:\s*none/', $css, 'Escondido nos demais modos.');
+        $this->assertStringContainsString('.tv-modo-financeiro .tv-ocioso-bloqueio { display: block', $css);
+        $this->assertStringContainsString('.tv-modo-financeiro .tv-ocioso-texto { display: none; }', $css);
+        $this->assertStringContainsString('Bloqueado por pendências financeiras', $this->ler('../templates/tv/tela.html.twig'));
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('scripts')]
     public function testScriptsSaoEs5SemSintaxeModerna(string $arquivo): void
     {

@@ -207,8 +207,9 @@
     function definirModo(modo) {
         var classe = 'tv';
         if (modo === 'ocioso') { classe += ' tv-modo-ocioso'; }
-        if (modo === 'relogio') { classe += ' tv-modo-relogio'; }
-        if (temFixos && modo !== 'relogio') { classe += ' tv-com-fixos'; }
+        if (modo === 'relogio' || modo === 'financeiro') { classe += ' tv-modo-relogio'; }
+        if (modo === 'financeiro') { classe += ' tv-modo-financeiro'; }
+        if (temFixos && modo !== 'relogio' && modo !== 'financeiro') { classe += ' tv-com-fixos'; }
         if (modo === 'semCarrossel') { classe += ' tv-sem-carrossel'; }
         if (el.tv.className !== classe) { el.tv.className = classe; }
     }
@@ -362,7 +363,7 @@
         if (!estado || estado.bloqueado || estado.revogado) {
             atual = null;
             atualizarFixos([]);
-            definirModo('relogio');
+            definirModo(estado && estado.bloqueio_financeiro ? 'financeiro' : 'relogio');
             return;
         }
 

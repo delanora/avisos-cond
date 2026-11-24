@@ -181,6 +181,11 @@
 .tv-modo-relogio .tv-ocioso { display: -webkit-flex; display: flex; }
 .tv-modo-relogio .tv-ocioso-texto { visibility: hidden; }
 
+/* Bloqueio manual por pendência financeira: aviso logo abaixo do relógio (só nesse modo). */
+.tv-ocioso-bloqueio { display: none; }
+.tv-modo-financeiro .tv-ocioso-texto { display: none; }
+.tv-modo-financeiro .tv-ocioso-bloqueio { display: block; margin-top: 0.6em; font-size: 2.4em; font-weight: 600; color: #B42318; }
+
 .tv-offline { position: absolute; right: 1.5em; bottom: 1em; padding: 0.3em 0.9em; font-size: 1.2em; color: #FFFFFF; background: rgba(29, 33, 37, 0.7); border-radius: 999px; }
 .tv-offline[hidden] { display: none; }
 .tv-saindo { opacity: 0; }

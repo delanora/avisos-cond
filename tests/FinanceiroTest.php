@@ -258,14 +258,27 @@ final class FinanceiroTest extends AppHttpTestCase
 
         $estado = json_decode($this->get('/tv/' . self::TOKEN . '/state')->body, true);
         $this->assertTrue($estado['bloqueado']);
+        $this->assertTrue($estado['bloqueio_financeiro']);
         $this->assertSame([], $estado['avisos']);
+        $this->assertStringContainsString('Bloqueado por pendências financeiras', $this->get('/tv/' . self::TOKEN)->body, 'A mensagem já vem na página (funciona offline).');
         $this->assertStringNotContainsString('Aviso que não pode aparecer', $this->get('/tv/' . self::TOKEN)->body);
         $this->assertStringNotContainsString('Atraso', $this->get('/tv/' . self::TOKEN . '/state')->body, 'A TV não vê o motivo.');
 
         $this->post("/admin/financeiro/{$this->a}/desbloquear");
         $depois = json_decode($this->get('/tv/' . self::TOKEN . '/state')->body, true);
         $this->assertFalse($depois['bloqueado']);
+        $this->assertFalse($depois['bloqueio_financeiro']);
         $this->assertCount(1, $depois['avisos']);
+    }
+
+    public function testCondominioDesativadoNaoMostraAMensagemFinanceira(): void
+    {
+        $this->pdo->exec("UPDATE condominios SET ativo = false WHERE id = {$this->a}");
+
+        $estado = json_decode($this->get('/tv/' . self::TOKEN . '/state')->body, true);
+
+        $this->assertTrue($estado['bloqueado']);
+        $this->assertFalse($estado['bloqueio_financeiro'], 'Desativar não é pendência financeira.');
     }
 
     public function testBloquearUmCondominioNaoAfetaATvDeOutro(): void

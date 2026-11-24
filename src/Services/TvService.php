@@ -72,6 +72,8 @@ final class TvService
             // Como a tela está montada: vertical = monitor em pé (a TV gira o layout). Muda a versão, então a TV redesenha.
             'orientacao' => (string) ($acesso['dispositivo']['orientacao'] ?? 'horizontal'),
             'bloqueado' => $bloqueado,
+            // Bloqueio manual feito pelo admin (pendência financeira): a TV mostra um aviso abaixo do relógio. O motivo não sai daqui.
+            'bloqueio_financeiro' => ($condominio['bloqueado'] ?? false) === true,
             'avisos' => $avisos,
         ];
 

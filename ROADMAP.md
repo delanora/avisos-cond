@@ -182,7 +182,7 @@ A cobrança é feita em um sistema à parte; aqui o financeiro serve apenas para
 - [x] Migration `condominio_financeiro` (situação, valor mensal, dia de vencimento, observações) e campos `bloqueado`/`bloqueio_motivo` em `condominios` (016, 2026-11-24)
 - [x] Painel `/admin/financeiro` de situação financeira por condomínio: listagem, filtros (todos, em dia, pendentes, bloqueados, sem cadastro), totais (valor mensal dos condomínios em dia, valor em aberto dos pendentes, quantidade de bloqueados) e edição manual (2026-11-24)
 - [x] Bloqueio/desbloqueio manual da exibição, com motivo obrigatório e registro na auditoria (`condominio.bloqueado`, `condominio.desbloqueado`, `financeiro.atualizado`) (2026-11-24)
-- [x] TV de condomínio bloqueado mostra somente o relógio; mídias dão 404 (2026-11-24)
+- [x] TV de condomínio bloqueado mostra somente o relógio; mídias dão 404 (2026-11-24). Bloqueio manual (pendência financeira) mostra também, logo abaixo do relógio, "Bloqueado por pendências financeiras" (`bloqueio_financeiro` no `/state`; condomínio apenas desativado continua só com o relógio) (2026-11-24)
 - [x] Testes: financeiro restrito ao superadmin (gerente → 403, visitante → login, sem CSRF → 403) e TV bloqueada sem avisos (`FinanceiroTest`, 24 testes) (2026-11-24)
 - [ ] Widget de clima
 - [ ] Notificações externas (WhatsApp/e-mail)

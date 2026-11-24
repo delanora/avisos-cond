@@ -86,7 +86,7 @@ final class TvServiceTest extends BancoMigradoTestCase
 
         $estado = $this->servico(30)->estado($this->acesso($this->a), $agora);
 
-        $this->assertSame(['orientacao', 'bloqueado', 'avisos', 'version', 'server_time', 'server_epoch', 'intervalo', 'app'], array_keys($estado), 'Só o necessário para exibir.');
+        $this->assertSame(['orientacao', 'bloqueado', 'bloqueio_financeiro', 'avisos', 'version', 'server_time', 'server_epoch', 'intervalo', 'app'], array_keys($estado), 'Só o necessário para exibir.');
         $this->assertFalse($estado['bloqueado']);
         $this->assertSame($agora, $estado['server_epoch']);
         $this->assertSame(gmdate('Y-m-d\TH:i:s\Z', $agora), $estado['server_time']);
