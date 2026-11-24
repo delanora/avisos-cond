@@ -90,7 +90,8 @@
         </div>
         {% if total_paginas > 1 %}
             <nav class="paginacao" aria-label="Páginas">
-                {% if pagina > 1 %}<a class="botao botao-secundario" href="/admin/auditoria?{{ consulta }}{{ consulta ? '&' : '' }}pagina={{ pagina - 1 }}">Anteriores</a>{% endif %}
+                {% if pagina > 1 %}<a class="botao botao-secundario" href="/admin/auditoria?{{ consulta }}{{ consulta ? '&' : '' }}pagina={{ pagina - 1 }}">Mais recentes</a>{% endif %}
+                <span class="celula-suave">Página {{ pagina }} de {{ total_paginas }}</span>
                 {% if pagina < total_paginas %}<a class="botao botao-secundario" href="/admin/auditoria?{{ consulta }}{{ consulta ? '&' : '' }}pagina={{ pagina + 1 }}">Mais antigos</a>{% endif %}
             </nav>
         {% endif %}

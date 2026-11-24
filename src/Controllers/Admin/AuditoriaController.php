@@ -15,7 +15,7 @@ use App\Support\View;
 /** Consulta da auditoria (somente superadmin; a rota já passa pelo RoleMiddleware). Só leitura: nada aqui altera registros. */
 final class AuditoriaController
 {
-    public const POR_PAGINA = 50;
+    public const POR_PAGINA = 10;
 
     public function __construct(
         private readonly View $view,
@@ -46,6 +46,10 @@ final class AuditoriaController
 
         $resultado = $this->auditoria->listar($filtros, self::POR_PAGINA, ($pagina - 1) * self::POR_PAGINA);
         $totalPaginas = max(1, (int) ceil($resultado['total'] / self::POR_PAGINA));
+        if ($pagina > $totalPaginas) { // página além do fim (link antigo, filtro novo): mostra a última
+            $pagina = $totalPaginas;
+            $resultado = $this->auditoria->listar($filtros, self::POR_PAGINA, ($pagina - 1) * self::POR_PAGINA);
+        }
 
         $linhas = array_map(static fn (array $l): array => $l + [
             'quando' => DataHora::exibir($l['criado_epoch']),

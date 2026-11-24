@@ -224,18 +224,33 @@ final class AuditoriaTest extends AppHttpTestCase
     {
         $this->logarComoAdmin();
         $s = $this->servico();
-        for ($i = 1; $i <= 55; $i++) {
+        for ($i = 1; $i <= 25; $i++) {
             $s->registrar('aviso.criado', ['id' => null, 'nome' => 'Pessoa ' . $i], null, null, null, null, ['titulo' => "Aviso {$i}"]);
         }
 
         $pagina1 = $this->get('/admin/auditoria');
         $this->assertSame(200, $pagina1->status);
         $this->assertStringContainsString('Criou um aviso', $pagina1->body);
-        $this->assertStringContainsString('página 1 de 2', $pagina1->body);
+        $this->assertStringContainsString('página 1 de 3', $pagina1->body);
         $this->assertStringContainsString('Mais antigos', $pagina1->body);
+        $this->assertStringNotContainsString('Mais recentes', $pagina1->body);
+        $this->assertSame(10, substr_count($pagina1->body, 'Criou um aviso'), '10 registros por página.');
+        $this->assertStringContainsString('Pessoa 25', $pagina1->body, 'Os mais recentes primeiro.');
+        $this->assertStringNotContainsString('Pessoa 15<', $pagina1->body);
 
         $pagina2 = $this->get('/admin/auditoria?pagina=2');
-        $this->assertStringContainsString('página 2 de 2', $pagina2->body);
+        $this->assertStringContainsString('página 2 de 3', $pagina2->body);
+        $this->assertSame(10, substr_count($pagina2->body, 'Criou um aviso'));
+        $this->assertStringContainsString('Mais recentes', $pagina2->body);
+        $this->assertStringContainsString('Mais antigos', $pagina2->body);
+
+        $ultima = $this->get('/admin/auditoria?pagina=3');
+        $this->assertSame(5, substr_count($ultima->body, 'Criou um aviso'));
+        $this->assertStringNotContainsString('Mais antigos', $ultima->body);
+
+        $alem = $this->get('/admin/auditoria?pagina=99');
+        $this->assertSame(5, substr_count($alem->body, 'Criou um aviso'), 'Página além do fim mostra a última.');
+        $this->assertStringContainsString('página 3 de 3', $alem->body);
 
         $vazio = $this->get('/admin/auditoria?grupo=senha');
         $this->assertStringContainsString('Nenhum registro encontrado', $vazio->body);
